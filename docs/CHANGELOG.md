@@ -1,0 +1,58 @@
+# Changelog
+
+Newest entries go first. Each entry has a date, what changed, why, and the files touched.
+
+## 2026-10-15
+- **Switched to Kotlin Multiplatform + Compose Multiplatform, Android first.**
+  - The project lives in `mobile/` (`composeApp`, `androidApp`, `iosApp` later, `build-logic`).
+  - Platform APIs sit behind `core/platform` interfaces.
+  - Strings, fonts and icons use Compose MP resources, with `verifyShared` enforcing Hindi completeness.
+  - **Why:** user request.
+  - **Files:**
+    - `ARCHITECTURE.md` (rewritten)
+    - `SHARED_DEFINITIONS.md` (codegen outputs, resources)
+    - `DESIGN_SYSTEM.md` (font bundling)
+    - `TESTING.md` (Gradle tasks, commonTest)
+    - `BILLING.md` (the iOS StoreKit note)
+    - `WEB_RENDERER.md`, `STATUS.md` (scaffold, iOS phase), `PRODUCT.md`, `README.md`, `CLAUDE.md` (KMP rules)
+    - `DECISIONS.md` #22 (supersedes the module part of #6)
+- **Pricing corrected:**
+  - **₹499 (first year) and ₹299/yr (renewal) are for the Agent PRO service.** There's a 14-day free trial. After the year ends there are 15 days of grace, then the site goes offline and the app becomes read-only.
+  - **Custom domains are an extra cost:** the live registrar price plus a fixed fee (₹99, configurable), and a paid plan is required.
+  - **Why:** the user clarified the pricing and chose the trial, lapse and fee models.
+  - **Files:**
+    - new `BILLING.md`
+    - `DOMAINS.md` (rewritten)
+    - `BACKEND.md` (`subscriptions`, `orders` replacing `domain_orders`, `domain_quotes`, `entitlement()`/`can_write()`, `billing` and `cron` functions)
+    - `SHARED_DEFINITIONS.md` (`pricing.service`/`pricing.domain`, `planStatuses`, `servicePlan` flag)
+    - `UX.md` (Plan & billing, Plan ended, read-only mode, live domain prices, shared Checkout)
+    - `ARCHITECTURE.md`, `PRODUCT.md`, `STATUS.md`, `TESTING.md`, `WEB_RENDERER.md`, `DESIGN_SYSTEM.md`, `README.md`, `CLAUDE.md`
+    - `DECISIONS.md` #20 and #21 (supersede #16)
+- **Standardised spacing, type and font.**
+  - **Spacing:** 3 values (8/16/24).
+  - **Type sizes:** 4 (14/23/39/65 sp, ratio 1.67; 65 is web-only), with hierarchy from weight and colour.
+  - **Fonts:** Inter plus Noto Sans Devanagari, bundled.
+  - The build fails on raw dp spacing or raw sp.
+  - **Why:** user request.
+  - **Files:** `DESIGN_SYSTEM.md` (Typography, Spacing), `SHARED_DEFINITIONS.md` (tokens schema, `verifyShared` checks), `CLAUDE.md` (engineering rules), `DECISIONS.md` #19, `PRODUCT.md` (requirement log).
+- **Custom domains and payments are now a v1 feature** (₹499 buy, ₹299/yr renew, Razorpay).
+  - **Why:** user request ("let this be a working feature").
+  - **Files:**
+    - `DOMAINS.md` (rewritten: pricing, flows, interfaces, compliance)
+    - `BACKEND.md` (new tables `domain_orders`, `payments`, `registrant_contacts`, `app_config.pricing`; Edge Functions)
+    - `SHARED_DEFINITIONS.md` (`pricing`, `domainStatuses`, flags on)
+    - `ARCHITECTURE.md` (`domains` and `billing` features, Razorpay SDK)
+    - `UX.md` (domain screens, receipts)
+    - `PRODUCT.md`, `STATUS.md`, `DECISIONS.md` #16 and #17
+- **The theme is now "Clean Professional"** (near-white, uncluttered, Inter), with the calm-screen rules. The bottom bar is reduced to 4 tabs, with Dues inside Customers.
+  - **Why:** user feedback ("ease of use and professionalism, closer to white, not cluttered").
+  - **Files:**
+    - `DESIGN_SYSTEM.md` (rewritten)
+    - `UX.md` (rewritten: simpler Home, NavRow-based Website hub, More details in forms)
+    - `DECISIONS.md` #15 (supersedes #9) and #18
+    - `WEB_RENDERER.md`, `PRODUCT.md`
+- Added `BACKEND.md`, which had been missing from the first documentation pass.
+- **Added the complete project documentation** (design phase; no code yet):
+  - README, CLAUDE.md (with the documentation protocol), and in `docs/`: STATUS, PRODUCT, ARCHITECTURE, SHARED_DEFINITIONS, DESIGN_SYSTEM, UX, BACKEND, WEB_RENDERER, DOMAINS, TESTING, DECISIONS and CHANGELOG.
+  - **Why:** the user asked that everything be documented, so work can carry forward from the documented state.
+  - **Files:** `README.md`, `CLAUDE.md`, `docs/*.md`.
