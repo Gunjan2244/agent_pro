@@ -1,0 +1,9 @@
+/* Simple: type-led, single column */
+.tpl-minimal .sec{max-width:640px}
+.tpl-minimal .sec+.sec{border-top:0}
+.tpl-minimal .hero-in{display:grid;gap:var(--space-l)}
+.tpl-minimal .hero-photo{width:80px;height:80px;border-radius:var(--shape-sm)}
+.tpl-minimal .cards{grid-template-columns:1fr;gap:0}
+.tpl-minimal .card{border:0;border-bottom:1px solid var(--c-outlineVariant);border-radius:0;padding:var(--space-m) 0;background:transparent}
+.tpl-minimal .contact-grid{grid-template-columns:1fr}
+.tpl-minimal .enq{background:transparent}

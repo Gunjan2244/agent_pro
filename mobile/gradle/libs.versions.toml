@@ -1,0 +1,115 @@
+# Agent PRO version catalog. Every version here is the newest stable release that was at least
+# two weeks old on 2026-10-15 and is compatible with the rest (see docs/ARCHITECTURE.md, Build setup).
+# Record every bump in docs/CHANGELOG.md.
+# Phase 1 modules depend only on Compose (runtime/foundation/ui/material3/resources), activity-compose
+# and kotlin-test. The other entries are pinned now so later phases add dependencies, not versions.
+
+[versions]
+# Toolchain (Gradle itself: 9.7.1, see gradle/wrapper/gradle-wrapper.properties)
+kotlin = "2.4.20"                  # KGP 2.4.20 fully supports Gradle <= 9.7 and AGP <= 9.3.x
+agp = "9.3.3"                      # newest AGP patch inside KGP 2.4.20's fully supported range
+compose-multiplatform = "1.12.1"
+compose-material3 = "1.9.0"        # newest stable JetBrains material3 (1.10+ are alpha only)
+ksp = "2.3.12"
+android-compileSdk = "37"
+android-targetSdk = "36"
+android-minSdk = "26"
+
+# Libraries (all multiplatform unless marked)
+kotlinx-coroutines = "1.11.0"
+kotlinx-serialization = "1.11.0"
+kotlinx-datetime = "0.8.0"
+androidx-lifecycle-mp = "2.11.0"   # org.jetbrains.androidx.lifecycle (multiplatform ViewModel)
+androidx-navigation-mp = "2.9.2"   # org.jetbrains.androidx.navigation (multiplatform Navigation Compose)
+androidx-activity = "1.13.0"       # Android only (androidApp)
+androidx-work = "2.12.0"           # Android only (androidApp)
+androidx-appcompat = "1.8.0"       # Android only: per-app locales (DECISIONS #45); Google Maven, 2026-08-12
+supabase = "3.8.0"
+ktor = "3.6.0"
+room = "2.8.5"                     # Room KMP
+androidx-sqlite = "2.7.1"          # bundled SQLite driver for Room KMP
+androidx-datastore = "1.2.1"       # DataStore Preferences KMP
+vico = "2.5.2"                     # multiplatform artifact
+coil = "3.6.3"
+qrose = "1.3.0"                    # KMP support to be verified when Phase 8 is built
+razorpay-checkout = "1.6.41"       # Android only (androidApp)
+turbine = "1.2.1"
+roborazzi = "1.76.0"               # Android screenshot tests
+robolectric = "4.17"               # JVM Android runtime for Roborazzi + Compose UI host tests
+junit = "4.13.2"                   # JUnit 4 runner used by Robolectric
+androidx-compose-ui-test = "1.12.1" # androidx Compose UI test (manifest + junit4) matching Compose MP 1.12.1
+
+[libraries]
+# Compose Multiplatform
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose-multiplatform" }
+compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "compose-multiplatform" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
+compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "compose-multiplatform" } # system Back in common code ("Discard changes?")
+androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle-mp" }
+androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle-mp" }
+androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation-mp" }
+
+# Kotlin
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+
+# Backend
+supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "supabase" }
+supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt" }
+supabase-postgrest = { module = "io.github.jan-tennert.supabase:postgrest-kt" }
+supabase-realtime = { module = "io.github.jan-tennert.supabase:realtime-kt" }
+supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt" }
+supabase-functions = { module = "io.github.jan-tennert.supabase:functions-kt" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+
+# Cache and settings
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidx-sqlite" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
+
+# UI extras
+vico-multiplatform = { module = "com.patrykandpatrick.vico:multiplatform", version.ref = "vico" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
+
+# Android only (androidApp)
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
+androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidx-work" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
+razorpay-checkout = { module = "com.razorpay:checkout", version.ref = "razorpay-checkout" }
+
+# Testing
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+junit = { module = "junit:junit", version.ref = "junit" }
+androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-compose-ui-test" }
+androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-compose-ui-test" }
+
+# build-logic only (compileOnly: the plugins themselves are put on the classpath by the root build script)
+build-logic-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+build-logic-compose-gradle-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "compose-multiplatform" }
+build-logic-android-gradle-api = { module = "com.android.tools.build:gradle-api", version.ref = "agp" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

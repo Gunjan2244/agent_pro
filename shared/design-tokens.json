@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "color": {
+    "light": {
+      "background": "#FFFFFF",
+      "surface": "#FFFFFF",
+      "surfaceContainerLow": "#F9FAFB",
+      "surfaceContainer": "#F3F4F6",
+      "surfaceContainerHigh": "#EDEEF1",
+      "outlineVariant": "#E5E7EB",
+      "outline": "#D1D5DB",
+      "onSurface": "#111827",
+      "onSurfaceVariant": "#4B5563",
+      "muted": "#6B7280",
+      "primary": "#1F4AA8",
+      "onPrimary": "#FFFFFF",
+      "primaryContainer": "#E8EEFB",
+      "onPrimaryContainer": "#12306E",
+      "error": "#B42318"
+    },
+    "dark": {
+      "background": "#0F1115",
+      "surface": "#0F1115",
+      "surfaceContainerLow": "#16191F",
+      "surfaceContainer": "#1C2027",
+      "surfaceContainerHigh": "#242932",
+      "outlineVariant": "#2A2F38",
+      "outline": "#3A404B",
+      "onSurface": "#F3F4F6",
+      "onSurfaceVariant": "#C4C8D0",
+      "muted": "#A1A7B3",
+      "primary": "#9DB7F5",
+      "onPrimary": "#0B1F4D",
+      "primaryContainer": "#1E2F57",
+      "onPrimaryContainer": "#DCE6FF",
+      "error": "#F97066"
+    }
+  },
+  "tone": {
+    "info":    { "light": { "text": "#1F4AA8", "container": "#E8EEFB" }, "dark": { "text": "#9DB7F5", "container": "#1E2F57" } },
+    "success": { "light": { "text": "#067647", "container": "#ECFDF3" }, "dark": { "text": "#47CD89", "container": "#0B3B26" } },
+    "warning": { "light": { "text": "#B54708", "container": "#FFFAEB" }, "dark": { "text": "#FDB022", "container": "#3D2A06" } },
+    "danger":  { "light": { "text": "#B42318", "container": "#FEF3F2" }, "dark": { "text": "#F97066", "container": "#43160F" } },
+    "neutral": { "light": { "text": "#4B5563", "container": "#F3F4F6" }, "dark": { "text": "#C4C8D0", "container": "#242932" } }
+  },
+  "chart": {
+    "series": {
+      "light": ["#2a78d6", "#eb6834"],
+      "dark": ["#3987e5", "#d95926"]
+    },
+    "ordinalRamp": {
+      "light": ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab"],
+      "dark": ["#1c4f93", "#2a6dc4", "#3987e5", "#6ba3ee"]
+    }
+  },
+  "font": {
+    "latin": "Inter",
+    "devanagari": "Noto Sans Devanagari",
+    "weights": [400, 500, 600],
+    "webHeroWeight": 700
+  },
+  "text": {
+    "base": 14,
+    "ratio": 1.67,
+    "s":  { "size": 14, "line": 20 },
+    "m":  { "size": 23, "line": 30 },
+    "l":  { "size": 39, "line": 46 },
+    "xl": { "size": 65, "line": 72, "webOnly": true },
+    "hiLineExtra": 2
+  },
+  "space": { "s": 8, "m": 16, "l": 24 },
+  "shape": { "sm": 8, "md": 12, "lg": 16 },
+  "motion": { "short": 150, "medium": 250 }
+}

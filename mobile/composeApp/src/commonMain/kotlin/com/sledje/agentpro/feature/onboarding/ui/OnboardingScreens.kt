@@ -1,0 +1,276 @@
+package com.sledje.agentpro.feature.onboarding.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import com.sledje.agentpro.core.catalog.TemplateSpec
+import com.sledje.agentpro.core.catalog.color
+import com.sledje.agentpro.core.catalog.label
+import com.sledje.agentpro.core.data.message
+import com.sledje.agentpro.core.designsystem.AgentProTheme
+import com.sledje.agentpro.core.designsystem.AppShapes
+import com.sledje.agentpro.core.designsystem.Dimens
+import com.sledje.agentpro.core.designsystem.Spacing
+import com.sledje.agentpro.core.designsystem.Tokens
+import com.sledje.agentpro.core.designsystem.components.AppCard
+import com.sledje.agentpro.core.designsystem.components.AppScaffold
+import com.sledje.agentpro.core.designsystem.components.AppTextField
+import com.sledje.agentpro.core.designsystem.components.AppTopBar
+import com.sledje.agentpro.core.designsystem.components.BottomActionBar
+import com.sledje.agentpro.core.designsystem.components.StepProgressBar
+import com.sledje.agentpro.core.forms.FormRenderer
+import com.sledje.agentpro.core.forms.FormState
+import com.sledje.agentpro.core.forms.fieldTestTag
+import com.sledje.agentpro.core.forms.message
+import androidx.compose.ui.platform.testTag
+import com.sledje.agentpro.core.ui.LocalIsOnline
+import com.sledje.agentpro.core.designsystem.components.NetworkImage
+import com.sledje.agentpro.feature.website.data.ImageUnreadable
+import com.sledje.agentpro.feature.website.data.SiteLinks
+import com.sledje.agentpro.resources.website_photo_unreadable
+import com.sledje.agentpro.resources.website_photo_uploading
+import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.resources.cat_site_cta_default
+import com.sledje.agentpro.resources.needs_internet
+import com.sledje.agentpro.resources.onboarding_continue
+import com.sledje.agentpro.resources.onboarding_later
+import com.sledje.agentpro.resources.onboarding_link_available
+import com.sledje.agentpro.resources.onboarding_link_checking
+import com.sledje.agentpro.resources.onboarding_link_label
+import com.sledje.agentpro.resources.onboarding_link_preview
+import com.sledje.agentpro.resources.onboarding_link_taken
+import com.sledje.agentpro.resources.onboarding_link_title
+import com.sledje.agentpro.resources.onboarding_profile_title
+import com.sledje.agentpro.resources.onboarding_publish_now
+import com.sledje.agentpro.resources.onboarding_template_position
+import com.sledje.agentpro.resources.onboarding_template_title
+import com.sledje.agentpro.resources.onboarding_use_template
+import org.jetbrains.compose.resources.stringResource
+
+private const val STEPS = 3
+
+/** Test tag key of the link field. */
+const val SLUG_FIELD = "slug"
+
+/** Top bar plus the thin step progress bar (docs/UX.md: each step has a progress bar at the top). */
+@Composable
+private fun StepTopBar(title: String, step: OnboardingStep, onBack: (() -> Unit)?) {
+    Column {
+        AppTopBar(title = title, onBack = onBack)
+        StepProgressBar(step.number, STEPS)
+    }
+}
+
+@Composable
+private fun ErrorLine(text: String) {
+    Text(
+        text,
+        style = AgentProTheme.text.body,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
+/** Step 1: name, mobile, designation and city; agency code and branch under More details. */
+@Composable
+fun OnboardingProfileScreen(
+    form: FormState,
+    state: OnboardingUiState,
+    onContinue: () -> Unit,
+    /** Opens the photo picker (MediaPicker); the view model uploads the result. */
+    onPickPhoto: () -> Unit = {},
+) {
+    val online = LocalIsOnline.current
+    AppScaffold(
+        topBar = { StepTopBar(stringResource(Res.string.onboarding_profile_title), OnboardingStep.Profile, onBack = null) },
+        offline = !online,
+        bottomBar = {
+            BottomActionBar(
+                text = stringResource(Res.string.onboarding_continue),
+                onClick = onContinue,
+                enabled = online && form.isValid && !state.saving && !state.uploadingPhoto,
+                helperText = if (!online) stringResource(Res.string.needs_internet) else null,
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.m),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
+            FormRenderer(
+                form,
+                visibleKeys = OnboardingViewModel.VISIBLE_PROFILE_KEYS,
+                enabled = !state.saving && !state.uploadingPhoto,
+                onPickImage = { if (online) onPickPhoto() },
+                imagePreview = { url -> NetworkImage(url) },
+            )
+            if (state.uploadingPhoto) Text(stringResource(Res.string.website_photo_uploading), style = AgentProTheme.text.bodyMuted)
+            state.error?.let { ErrorLine(stringResource(if (it == ImageUnreadable) Res.string.website_photo_unreadable else it.message)) }
+        }
+    }
+}
+
+/**
+ * Step 2: a full-height pager of the templates with the template name below and **Use this template**.
+ * The app passes [preview] = the live render of the agent's starter content (SitePreview, the bundled
+ * web renderer; Phase 8); the default placeholder shows the name in the template's accent (screenshots).
+ */
+@Composable
+fun OnboardingTemplateScreen(
+    templates: List<TemplateSpec>,
+    selectedKey: String,
+    agentName: String,
+    agentLine: String,
+    onUse: (String) -> Unit,
+    onBack: (() -> Unit)?,
+    preview: @Composable (TemplateSpec) -> Unit = { TemplatePlaceholder(it, agentName, agentLine) },
+) {
+    val initial = templates.indexOfFirst { it.key == selectedKey }.coerceAtLeast(0)
+    val pager = rememberPagerState(initialPage = initial) { templates.size }
+    val current = templates[pager.currentPage.coerceIn(0, templates.lastIndex)]
+    AppScaffold(
+        topBar = { StepTopBar(stringResource(Res.string.onboarding_template_title), OnboardingStep.Template, onBack) },
+        offline = !LocalIsOnline.current,
+        bottomBar = { BottomActionBar(stringResource(Res.string.onboarding_use_template), onClick = { onUse(current.key) }) },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).padding(vertical = Spacing.m)) {
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = Spacing.l),
+                pageSpacing = Spacing.m,
+            ) { page -> preview(templates[page]) }
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = Spacing.m).padding(top = Spacing.m),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                Text(stringResource(current.name), style = AgentProTheme.text.title, modifier = Modifier.semantics { heading() })
+                Text(stringResource(current.description), style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Text(stringResource(Res.string.onboarding_template_position, pager.currentPage + 1, templates.size), style = AgentProTheme.text.bodyMuted)
+            }
+        }
+    }
+}
+
+/** Placeholder page: the agent's name and line with a button in the template's default accent. */
+@Composable
+fun TemplatePlaceholder(template: TemplateSpec, agentName: String, agentLine: String) {
+    AppCard(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(agentName, style = AgentProTheme.text.title, textAlign = TextAlign.Center)
+            if (agentLine.isNotBlank()) {
+                Text(agentLine, style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+            Box(
+                Modifier.background(template.defaultAccent.color(), AppShapes.md).padding(horizontal = Spacing.m, vertical = Spacing.s),
+            ) {
+                // Accent swatches all keep ≥ 4.5:1 with white text (verifyShared), as on the website.
+                Text(stringResource(Res.string.cat_site_cta_default), style = AgentProTheme.text.label, color = Tokens.ColorLight.onPrimary)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                Box(Modifier.size(Dimens.iconSmall).background(template.defaultAccent.color(), AppShapes.full))
+                Text(template.defaultAccent.label(), style = AgentProTheme.text.bodyMuted)
+            }
+        }
+    }
+}
+
+/**
+ * Step 3: the suggested link with live validation and the availability check, a preview of the full
+ * URL, then **Publish now** (primary) or **Later** (text button). Both need internet.
+ */
+@Composable
+fun OnboardingLinkScreen(
+    state: OnboardingUiState,
+    onSlugChange: (String) -> Unit,
+    onPublishNow: () -> Unit,
+    onLater: () -> Unit,
+    onBack: () -> Unit,
+    /** The short address shown under the field (SITE_BASE_URL + /a/slug); injectable for screenshots. */
+    linkDisplay: (String) -> String = { SiteLinks.display(it) },
+) {
+    val online = LocalIsOnline.current
+    val enabled = online && state.canSubmitLink
+    val (helper, error) = when (val s = state.slugStatus) {
+        SlugStatus.Empty -> null to null
+        is SlugStatus.Invalid -> null to s.error.message()
+        SlugStatus.Checking -> stringResource(Res.string.onboarding_link_checking) to null
+        SlugStatus.Available -> stringResource(Res.string.onboarding_link_available) to null
+        SlugStatus.Taken -> null to stringResource(Res.string.onboarding_link_taken)
+        is SlugStatus.Unchecked -> null to null
+    }
+    AppScaffold(
+        topBar = { StepTopBar(stringResource(Res.string.onboarding_link_title), OnboardingStep.Link, onBack) },
+        offline = !online,
+        bottomBar = {
+            BottomActionBar(
+                text = stringResource(Res.string.onboarding_publish_now),
+                onClick = onPublishNow,
+                enabled = enabled,
+                helperText = if (!online) stringResource(Res.string.needs_internet) else null,
+                secondaryText = stringResource(Res.string.onboarding_later),
+                onSecondary = onLater,
+                secondaryEnabled = enabled,
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.m),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
+            AppTextField(
+                value = state.slug,
+                onValueChange = onSlugChange,
+                label = stringResource(Res.string.onboarding_link_label),
+                error = error,
+                helper = helper,
+                enabled = !state.saving,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Uri,
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    imeAction = ImeAction.Done,
+                ),
+                inputModifier = Modifier.testTag(fieldTestTag(SLUG_FIELD)),
+            )
+            if (state.slug.isNotEmpty()) {
+                Text(
+                    stringResource(Res.string.onboarding_link_preview, linkDisplay(state.slug)),
+                    style = AgentProTheme.text.body,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            state.error?.let { ErrorLine(stringResource(it.message)) }
+        }
+    }
+}

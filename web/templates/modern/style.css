@@ -1,0 +1,13 @@
+/* Fresh: split hero banner, hairline cards */
+.tpl-modern .band{max-width:none;background:var(--c-surfaceContainerLow);border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-modern .hero-in{display:grid;gap:var(--space-l);max-width:880px;margin:0 auto;align-items:center}
+.tpl-modern .hero-photo{border-radius:var(--shape-lg);width:160px;height:160px}
+.tpl-modern .sec+.sec{border-top:0}
+.tpl-modern .card{border-width:1px;box-shadow:none}
+.tpl-modern .cards{grid-template-columns:1fr}
+@media(min-width:720px){
+  .tpl-modern .hero-in{grid-template-columns:1fr 160px}
+  .tpl-modern .hero-photo{grid-column:2;grid-row:1}
+  .tpl-modern .cards{grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:1024px){.tpl-modern .sec-highlights .cards{grid-template-columns:repeat(4,1fr)}}

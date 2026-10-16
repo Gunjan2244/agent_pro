@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "key": "classic",
+      "nameKey": "template.classic.name",
+      "descriptionKey": "template.classic.description",
+      "sections": [
+        "hero",
+        "about",
+        "services",
+        "highlights",
+        "achievements",
+        "testimonials",
+        "faq",
+        "contact"
+      ],
+      "defaultAccent": "indigo",
+      "preview": "web/templates/classic/preview.webp",
+      "order": 1
+    },
+    {
+      "key": "modern",
+      "nameKey": "template.modern.name",
+      "descriptionKey": "template.modern.description",
+      "sections": [
+        "hero",
+        "about",
+        "services",
+        "highlights",
+        "achievements",
+        "testimonials",
+        "faq",
+        "contact"
+      ],
+      "defaultAccent": "teal",
+      "preview": "web/templates/modern/preview.webp",
+      "order": 2
+    },
+    {
+      "key": "minimal",
+      "nameKey": "template.minimal.name",
+      "descriptionKey": "template.minimal.description",
+      "sections": [
+        "hero",
+        "about",
+        "services",
+        "highlights",
+        "achievements",
+        "testimonials",
+        "faq",
+        "contact"
+      ],
+      "defaultAccent": "slate",
+      "preview": "web/templates/minimal/preview.webp",
+      "order": 3
+    }
+  ]
+}

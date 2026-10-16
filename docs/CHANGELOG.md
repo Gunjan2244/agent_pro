@@ -2,7 +2,344 @@
 
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
+## 2026-10-17
+- **P1, web part one** (sub-agent `p1-web-fonts`, Sonnet).
+  - **Fonts are self-hosted:** `@fontsource/inter` and `@fontsource/noto-sans-devanagari` 5.3.0 WOFF2, 11 files in `web/fonts/` with OFL licences, declared in `web/styles/fonts.css` with `font-display: swap`. Inter latin 400 is preloaded, and latin-ext is included because ₹ (U+20B9) needs it.
+  - **The CSP no longer allows Google Fonts.** Visitors' IPs no longer go to Google (DECISIONS #54), and the render-blocking font CSS is gone.
+  - **Enquiry form:** "Interested in" starts on a blank "Select…" / "चुनें…" (`site.form_interest_placeholder`); a blank choice sends no interest.
+  - **Verified** (re-run by the orchestrator): 43 web checks pass; the CSS lint passes; no Google Fonts references remain; the Hindi render is checked.
+  - JS and CSS per page are about 36 KB raw (15 KB gzipped), under the 50 KB budget.
+  - **Not deployed yet;** the preview needs a redeploy, which needs the user's approval.
+  - **Files:** `web/index.html`, `web/styles/fonts.css`, `web/fonts/*`, `web/_headers`, `web/sections/contact.js`, `web/form.js`, `shared/i18n/{en,hi}.json`, `scripts/build-web.sh`, `scripts/test-web.mjs`, `docs/WEB_RENDERER.md`, `PRIVACY.md`, `DESIGN_SYSTEM.md`, `TESTING.md`.
+- **Full live check of website creation: all steps pass** (sub-agent `e2e-website`, Sonnet; on `AGENT_PRO` and the Cloudflare preview; test data).
+  - **The checklist A–K:**
+    - sign-up artifacts (profile, 14-day trial, `my_entitlement` = trial);
+    - slugs: available, taken, reserved and bad format all handled; a slug change moves the site;
+    - draft vs published: a missing headline and too-long text are refused with the right field and rule;
+    - hide and reorder sections, with pinned Contact always shown;
+    - appearance changes are live immediately, and an invalid accent or template is rejected;
+    - photo upload: own folder works; another agent's folder 403; wrong type 415; over 2 MB 413; it shows on the live page within the CSP;
+    - public rendering: title, canonical, JSON-LD, the unavailable page, no console errors;
+    - Hindi copy and `lang="hi"`;
+    - the enquiry form in a real browser: inline errors, a real enquiry reaching the agent with `source=website`, the honeypot inserts nothing, the 6th submission per hour is rate-limited, another agent can't see it;
+    - view counting, with no double count on reload.
+  - **Restored:** all demo state, checked against a snapshot. The 7 test enquiries are soft-deleted; the test photo file stays in Storage, unreferenced.
+  - **The orchestrator verified** the restored state and the soft-deleted rows in the database, and reviewed the photo and Hindi screenshots.
+  - **Minor observations:**
+    - the "Interested in" select defaults to "Other" rather than a blank choice;
+    - on a Hindi site, the agent's own content stays in the language they wrote it in, which is expected.
+  - **Not covered:** the Android app UI on a real device, and the third account (waiting for the email setup).
+  - **Files:** `docs/STATUS.md`.
+- **New requirement: auth emails at 100+ per hour** (PRODUCT.md). The user chose to wait for the platform domain and then set up a proper provider (DECISIONS #60).
+- **Live check of website creation, partial** (sub-agent `e2e-website`, Sonnet):
+  - **Public rendering passed** on the Cloudflare preview: titles, canonical URLs and JSON-LD; `/?s=` works; an unknown slug shows the "unavailable" page; no console errors or failed requests.
+  - **Enquiry form validation passed** in a real browser: an empty form and a bad phone show inline errors and send nothing.
+  - **RPC error shapes passed:** `unavailable`, `invalid/phone`, honeypot; anon is denied `is_slug_available`.
+  - **The authenticated steps couldn't run**, because the demo passwords were lost when the session scratchpad was wiped. The third sign-up (`akash2244everyone@gmail.com`) was refused by the email rate limit.
+  - **Files:** `docs/STATUS.md`, `docs/DECISIONS.md`, `docs/PRODUCT.md`.
+- **First deploy: the renderer preview is live on Cloudflare** (the user approved it with "deploy").
+  - **Address:** `https://agentpro-sites.sledjesoftwares.workers.dev`. Deployed twice, because the second build needed that URL as `SITE_BASE_URL`.
+  - **Verified:**
+    - `/`, `/a/ramesh-kumar-pune` and `/a/priya-sharma-jaipur` return 200 (the single-page-application fallback works);
+    - the CSP, nosniff, frame-deny, referrer and permissions headers are present;
+    - both demo sites render live from `AGENT_PRO` (screenshots reviewed).
+  - **`_headers` fixed:** `! Cache-Control` detaches the default value, so `/config.js` is `no-store` only and `/a/*` is `no-cache`; redeployed. Minor: `/` still gets both values, but `no-cache` still forces revalidation.
+  - **Preview only:** demo data, and not for public sharing until P1.
+  - **Files:** `web/_headers`, `docs/STATUS.md`, `docs/WEB_RENDERER.md`.
+- **Hosting switched from Vercel to Cloudflare** (DECISIONS #59, the user's choice; supersedes #4).
+  - Workers static assets serve the renderer; Cloudflare for SaaS custom hostnames serve agents' own domains (100 free, then $0.10/month each).
+  - **Why:** static hosting is free, whereas Vercel's commercial use needs Pro at $20/seat/month; Cloudflare for SaaS is built for multi-tenant domains.
+  - **Config** (sub-agent `cf-hosting`, Sonnet):
+    - `web/wrangler.jsonc`: the Worker `agentpro-sites`, serving static assets from `web/dist`, with the single-page-application fallback and `workers_dev`.
+    - `web/_headers`: CSP, nosniff, frame-deny, referrer and permissions policies; short cache, with `no-cache` for `index.html` and `no-store` for `config.js`.
+    - `web/vercel.json` is removed; `build-web.sh` copies `_headers` instead; `test-web.mjs` gains config and dist checks.
+  - **Verified:** `wrangler@4.151.1 deploy --dry-run` passes (46 files, no login needed); 31 web checks pass and the CSS lint passes (re-run by the orchestrator).
+  - **Docs updated from Vercel to Cloudflare:** WEB_RENDERER, DOMAINS (`HostingAttach` is now Cloudflare for SaaS custom hostnames), ARCHITECTURE, TESTING, BACKEND, OFFERS (the admin panel is a separate Worker, `agentpro-admin`), PRIVACY (Cloudflare replaces Vercel as a processor), README.
+  - **Nothing is deployed.**
+  - **Files:** `web/wrangler.jsonc`, `web/_headers`, `scripts/build-web.sh`, `scripts/test-web.mjs`, the docs above, `docs/DECISIONS.md`, `docs/STATUS.md`.
+- **First live end-to-end run on `AGENT_PRO`** (test data, without the app; the user asked to see sites created from sign-ups).
+  - Two sign-ups through the public Auth API, using the user's email and a `+priya` alias; the user supplied the confirmation links. A third was refused by Supabase's built-in email rate limit.
+  - **Each account went through these steps on the live backend, and each passed:**
+    - sign-in after confirmation;
+    - the signup trigger created the `profiles` row and a 14-day `subscriptions` trial;
+    - a profile update under RLS (204);
+    - a `sites` insert through the column grants and the reserved-slug trigger (201);
+    - `publish_site` returned `{ok:true}`;
+    - the anon `get_public_site` returned the site.
+  - The renderer, built against `AGENT_PRO` and served locally, rendered both sites from the live database: Classic/indigo (`ramesh-kumar-pune`) and Modern/teal (`priya-sharma-jaipur`). The screenshots were reviewed.
+  - **Files:** none in the repo (the demo script and accounts are in the scratchpad); `docs/STATUS.md`.
+- **Phases 6 and 7 built** (sub-agent `crm`, Opus). The agent was stopped by the usage limit before its report; `crm-finisher` (Sonnet) finished and verified the work.
+  - **Enquiries:** list with status filter chips and counts, search, detail, add, notes, convert to customer, and a realtime channel.
+  - **Customers and policies:** customer detail with Policies, Details and Activity tabs, and the policy form.
+  - **Dues segment:** Overdue, This week, This month and Next 3 months, with ₹ totals.
+  - **Record payment:** the sheet calls `mark_premium_paid`, and Undo calls `undo_premium_payment`.
+  - **Also:** `DueDateCalculator`; the `ContactPicker` seam (Android `ACTION_PICK`, no permission; iOS stub); Room VERSION 2, with an exported schema covering profiles, sites, `site_daily_views`, enquiries, customers, policies and premium_payments.
+  - **Website Stats** now counts real website enquiries, through `WebsiteEnquirySource.from(EnquiryRepository)` (Asia/Kolkata days), with a new test.
+- **Combined verification of Phases 5 (follow-up), 6, 7 and 8:** the full TESTING.md command with `--rerun-tasks` and Roborazzi verify passed: BUILD SUCCESSFUL.
+  - build-logic: 62 tests; app: 231 tests; 0 failures.
+  - 0 screenshot diffs across 160 baselines.
+  - lint: 0 errors, 3 warnings.
+  - The orchestrator checked the result files, the screenshot diffs, the APK and the lint SARIF from that run.
+  - **Known minor issue:** "Half-yearly" is cut off in the premium-mode segmented control (dark, EN).
+  - **Files:** `feature/{enquiries,customers,policies,dues}/**`, `domain/DueDateCalculator.kt`, `core/platform/ContactPicker.kt` with its Android and iOS implementations, `core/data/AppDatabase.kt`, `app/AppContainer.kt`, `feature/website/data/SiteStats.kt`, `composeApp/schemas/**/2.json`, tests and 36 crm screenshots, `docs/UX.md`, `ARCHITECTURE.md`, `TESTING.md`.
+
+## 2026-10-16
+- **Phase 5 follow-up** (sub-agent `p5-followup`, Opus; DECISIONS #44–#46, #57).
+  - **Set new password:**
+    - The reset email redirects to `agentpro://auth-callback?type=recovery`, and `AuthCallbackLink` parses auth links.
+    - A link opens Set new password, or "This link has expired" with a way to send a new one.
+    - Saving calls `updateUser(password)`, then goes to Home with "Password updated".
+  - **Per-app language:**
+    - AppCompat 1.8.0 (Android only) and `AppCompatLocaleController`.
+    - `MainActivity` is now an `AppCompatActivity` with `Theme.AgentPro`.
+    - The manifest declares `localeConfig` (en, hi) and the `autoStoreLocales` service.
+  - **Encrypted session:**
+    - The `SecureSettings` seam; on Android, `KeystoreSecureSettings` encrypts with AES-256-GCM using a non-exportable AndroidKeyStore key.
+    - `SecureSessionManager` plugs into supabase-kt Auth. An unreadable session is cleared and the app signs out cleanly.
+    - iOS has a stub.
+  - **Agent's test result:** the full TESTING.md command passed: 230 host tests and 62 build-logic tests, 160 screenshots with 0 diffs, lint 0 errors (a new `UnusedAttribute` warning for `localeConfig` below API 33). **The orchestrator's re-verification is pending**, together with `crm`.
+  - **Still needs a device or live test:** the real Keystore cipher, the reset email flow, and system per-app languages.
+  - **Files:**
+    - `core/platform/SecureSettings.kt`, `core/data/SecureSessionManager.kt`
+    - `feature/auth/**`, `app/{App,AppGate,MainShell,AppContainer,AppDependencies}.kt`
+    - the Android `KeystoreSecureSettings` and `AppCompatLocaleController`, and the iOS stub
+    - `androidApp` manifest, `MainActivity`, `res/xml/locales_config.xml`, `res/values/themes.xml`
+    - `libs.versions.toml` and the build files
+    - tests and 8 screenshots
+    - `docs/ARCHITECTURE.md`, `UX.md`, `TESTING.md`
+- **OFFERS.md and PRIVACY.md updated to the user's decisions** (#49–#54) (sub-agent `product-design`, docs only).
+  - **Company link:** a new `company_memberships` table replaces `profiles.company_id`.
+    - It holds the status, rejection reasons and the agency-code check, and only admins decide.
+    - New RPCs: `request_company`, `withdraw_company_request`, `admin_review_membership`, `admin_link_membership`, `admin_membership_queue`.
+    - The admin panel gets a Membership requests screen.
+  - **Never-converted enquiries:** no automatic deletion. A "Clear old enquiries" tool is added (`erase_enquiries`).
+  - **Lapsed accounts:** deleted after 12 months, with notices.
+  - **Approved:** self-hosted fonts and an email provider.
+  - **New section, "Backup risk":** includes a recommended launch gate (no real agents until Supabase Pro is approved).
+  - **Grievance officer:** placeholders plus a `TODO(doc)`.
+  - **Planned pointers updated** in BACKEND, UX, WEB_RENDERER, SHARED_DEFINITIONS, ARCHITECTURE and TESTING.
+  - **Files:** `docs/OFFERS.md`, `docs/PRIVACY.md`, and the six docs above.
+- **STATUS.md was rebuilt.** An orchestrator script truncated it (it reopened the file for writing before reading it back). It was rewritten from the full session record, with no information lost that's known of. Other docs weren't affected; the same script had already saved DECISIONS #49–#54. Lesson: doc edits now use read-then-write only.
+- **Model policy, from the user's cost feedback** (DECISIONS #55): Sonnet is now the default model for sub-agents; Opus only for complex or security-critical work.
+- **Phase 8, Website hub, built** (sub-agent `website-hub`, Opus):
+  - **Screens:**
+    - the hub: a status card, NavRows from the registry, and a Publish/Preview bar;
+    - Content: show/hide and reorder;
+    - the schema-driven section editor, with photo upload (MediaPicker → ImageProcessor, WebP ≤ 1024 px → Storage `site-media/<uid>/`);
+    - Appearance, with a live template picker;
+    - Link: change link, share, copy, and a QR code via qrose (verified);
+    - Stats, from a `site_daily_views` cache;
+    - Preview: a WebView `SitePreview` serving the bundled renderer from `https://appassets.androidplatform.net`;
+    - mapping of publish errors back to fields;
+    - the onboarding step 1 photo.
+  - `copySitePreviewAssets` also writes `tokens.css`.
+  - **New dependencies:** Coil 3.6.3, qrose 1.3.0, `ui-backhandler`, `activity-compose` (androidMain).
+  - **Agent's test result:** 230 host tests, 0 failures, 0 screenshot diffs; 32 new screenshots. **The orchestrator's re-verification is pending**, waiting for `crm` to finish.
+  - **Files:** `mobile/composeApp/src/**/feature/website/**`, `core/platform/{MediaPicker,ImageProcessor,SitePreview}.kt` with their Android implementations and iOS stubs, `AppContainer`, `AppDependencies`, `AppDatabase` (one entity), build-logic `TokensCssGenerator`, `docs/UX.md`, `ARCHITECTURE.md`, `TESTING.md`, `SHARED_DEFINITIONS.md`, `DESIGN_SYSTEM.md`.
+- **Design docs added; nothing built yet** (sub-agent `product-design`, Opus, docs only):
+  - **`docs/OFFERS.md`** (DECISIONS #47): the companies, offers, admins and audit-log tables; the site-schema offer slots; the tap-to-place bridge on the preview's existing address; offer cards in the web templates; and the admin panel (Vite + React + supabase-js, MFA, on its own Vercel project).
+  - **`docs/PRIVACY.md`** (DECISIONS #48): the DPDP Act 2023 and the Rules notified in November 2025 (the main duties start 13 May 2027). It covers who is responsible for which data, the EN/HI notices with consent records, a review of which fields we keep, the data-principal rights tools, the retention schedule, security safeguards, the breach runbook and children's data.
+  - **Pointers marked "planned"** in BACKEND, WEB_RENDERER, SHARED_DEFINITIONS, UX, ARCHITECTURE and TESTING.
+  - **CLAUDE.md:** two new rows in the doc map (OFFERS.md, PRIVACY.md).
+  - **Waiting on the user:** 8 decisions (STATUS.md).
+  - **Files:** `docs/OFFERS.md`, `docs/PRIVACY.md`, `docs/{BACKEND,WEB_RENDERER,SHARED_DEFINITIONS,UX,ARCHITECTURE,TESTING}.md`, `CLAUDE.md`.
+- **New requirements recorded** (2026-10-16):
+  - **Multi-company platform** (DECISIONS #47): each agent belongs to one insurance company; admins manage companies and offers in a separate web admin panel; agents place offers in slots (hero banner, Offers section) by tapping the on-device preview; custom offers carry a note; company logos are allowed with permission.
+  - **DPDP compliance** across the product (DECISIONS #48).
+  - **CLAUDE.md:** the branding rule is updated (no bundled insurer logos; permitted, admin-uploaded logos are allowed), and a privacy rule is added.
+  - **PRODUCT.md:** the audience is now insurance agents of any company, not only LIC.
+  - **Files:** `CLAUDE.md`, `docs/PRODUCT.md`, `docs/DECISIONS.md`, `docs/STATUS.md`.
+- **Phase 5: app foundation** (sub-agent `app-foundation`, Opus). It was stopped twice when sessions ended and resumed each time.
+  - **Data:**
+    - The supabase-kt client is built from the generated `AppConfig`, with a "not configured" screen when the keys are missing.
+    - A Room KMP read cache for `profiles` and `sites` (bundled SQLite driver, exported schema).
+    - `SyncEngine`: keyset-paged pulls of rows changed since the last sync, removal of deleted rows, and a sync position kept per table in DataStore.
+    - `Result`/`AppError` with `ErrorMapper` and EN/HI messages.
+  - **Platform seams:** `NetworkMonitor` (Android ConnectivityManager; iOS stub), `UrlLauncher`, `LocaleController`.
+  - **Features and navigation:**
+    - `FeatureRegistry`, plus `FeatureFlags` read from the cached `effective_flags()`.
+    - A gate that routes between Splash, Welcome, Onboarding and Main, with type-safe routes.
+    - The 4-tab `MainShell`, built from the registry, with the Customers | Dues segment shell.
+    - `DeepLinks` and an `agentpro://` intent filter.
+    - The offline banner.
+  - **Auth:** sign up, sign in, reset, check email, sign out.
+  - **Onboarding:** profile → template (from the generated `Templates.kt`) → link (`is_slug_available`, reserved slugs) → publish now or later.
+  - **Placeholders:** Home, Enquiries, Customers, Dues, Website and Settings.
+  - **New design-system components:** `AppNavigationBar`, `SegmentedControl`, `StepProgressBar`, `AvatarButton`, `AppBottomSheet`, and the password field type.
+  - **Bug fixed:** the "trial started" snackbar was cancelled too early; `NavSmokeTest` caught it.
+  - **Verified:** the orchestrator re-ran `./gradlew :build-logic:test verifyShared :androidApp:assembleDebug :androidApp:lint :composeApp:testAndroidHostTest --rerun-tasks -Proborazzi.test.verify=true`.
+    - BUILD SUCCESSFUL (104 tasks).
+    - 156 tests, 0 failures (60 build-logic, 96 app).
+    - 0 screenshot diffs across 84 baselines (24 new).
+    - The anon key appears only in the git-ignored `local.properties`.
+  - **Still needs a test against the live backend:** TESTING.md End to end #1.
+  - **User decisions on Phase 5 (2026-10-16):**
+    - add a Set new password screen;
+    - use appcompat for the language switch;
+    - encrypt the session with the Android Keystore;
+    - accept the other provisional choices.
+    These are recorded in PRODUCT.md and UX.md and are being implemented as the Phase 5 follow-up.
+  - **Files:**
+    - `mobile/build-logic/codegen/TemplatesKotlinGenerator.kt`
+    - `mobile/composeApp/**` (including `schemas/`), `mobile/androidApp/**`, `mobile/build.gradle.kts`
+    - `docs/ARCHITECTURE.md`, `TESTING.md`, `SHARED_DEFINITIONS.md`, `DESIGN_SYSTEM.md`, `UX.md`, `PRODUCT.md`
+    - `docs/DECISIONS.md` #43–#46
+- **SQL tests on Postgres 17:** with the user's approval, the `postgres:17` image was pulled and `PG_IMAGE=postgres:17 bash supabase/tests/run.sh` was run. Result: 226 passed, 0 failed. New Supabase projects run Postgres 17, so the migrations are now verified on both 15 and 17.
+  - **Files:** none changed; this was environment and verification only (`docs/STATUS.md`).
+- **Backend live on `AGENT_PRO` (Mumbai)** (2026-10-16).
+  - **Applied:** 7 migrations through the connector (schema, entitlement, rls, storage, realtime, catalog_sync, and the new `revoke_rls_auto_enable`). The user ran `rpcs` in the Dashboard SQL Editor, because the connector auto-declines it as destructive.
+  - **Verified:** functions and grants (`anon` can execute exactly the 4 public RPCs), RLS on all 14 tables, the policies, the 10 catalog CHECKs, the realtime publication and the `app_config` rows, plus spot checks.
+  - **Advisors:** no errors. Fixed: `rls_auto_enable` was executable through the API. Accepted: 11 WARNs for the intended SECURITY DEFINER RPCs (DECISIONS #42). Only INFO notices for unused indexes, as expected on an empty database.
+  - **Local tests:** `PG_IMAGE=postgres:17 bash supabase/tests/run.sh` passes 226/226 with the new migration.
+  - **Config:** `mobile/local.properties` (git-ignored) now has the URL and anon key.
+  - **Files:** `supabase/migrations/20261016035136_revoke_rls_auto_enable.sql`, `docs/BACKEND.md`, `docs/STATUS.md`, `docs/DECISIONS.md` #42.
+- **Supabase project (environment only; no repo files changed except docs):**
+  - The connector now reaches the user's **letssee** org (free plan).
+  - The user's empty Tokyo project `agent_Pro` was paused with their approval. The orchestrator created `agent-pro` in Mumbai (₹0) and applied 3 migrations to it (schema, entitlement, rls).
+  - The `rpcs` migration was declined twice by the connector.
+  - The user then set up **`AGENT_PRO`** (ref `rpqatijolcajehshoikc`, ap-south-1, Postgres 17.11). The temporary project and the Tokyo project no longer appear. `AGENT_PRO` was inspected read-only: it's empty.
+  - **Files:** `docs/STATUS.md`, `docs/BACKEND.md`.
+- **Recovery:** after the usage-limit stop, Phase 5 (`app-foundation`, Opus) was resumed from its saved progress.
+
 ## 2026-10-15
+- **Web follow-up** (sub-agent `web-followup`, Sonnet).
+  - **No more hard-coded definitions:** the renderer reads the supported locales (`catalog.locales`) and the template keys (`shared/templates/index.json`) from `shared/`. The accent fallback is the `--c-primary` token instead of a hex value. `scripts/test-web.mjs` loops over the shared lists.
+  - **Preview images:** added `preview.webp` (390×844, about 25 KB each) for classic, modern and minimal, taken with headless Chrome while holding the shared lock. The orchestrator viewed them.
+  - Added an empty `data:` favicon link to `web/index.html`.
+  - **Lighthouse mobile** (classic, EN, local mock data): Performance 90, Accessibility 100, Best practices 96, SEO 100. Open item: the Google Fonts CSS blocks rendering (STATUS.md).
+  - **Verified:** the orchestrator rebuilt in production mode (no mock files). 29 tests pass and the CSS lint passes.
+  - **Still hard-coded,** because `shared/` has no source for them: the form length limits and the phone rule, which mirror `submit_enquiry` in BACKEND.md.
+  - **Files:** `web/i18n.js`, `web/app.js`, `web/sections/index.js`, `web/index.html`, `web/templates/*/preview.webp`, `scripts/test-web.mjs`, `docs/WEB_RENDERER.md`, `docs/TESTING.md`.
+- **The user accepted the Phase 2 design choices** (DECISIONS #38, #39, #41) for now; they'll be reviewed before release.
+- **Phase 2: design system** (sub-agent `design-system`, Opus; resumed after a network outage).
+  - **Theme and tokens:**
+    - `AgentProTheme`: light and dark, with Material 3 roles mapped from the generated Tokens, plus `AppColors` for muted, the tones and the chart colours.
+    - Every Material 3 type slot maps onto 14, 23 or 39 sp at weights 400/500/600, with tabular figures and +2 sp line heights in Hindi.
+    - Shape, Spacing/Dimens, Motion (respects reduce-motion), and a Vico `ChartStyle`.
+  - **Every component in DESIGN_SYSTEM.md,** plus `FormRenderer`, `FormState` and `Validators`.
+  - **Supporting packages:** `core/format` (Money, Dates, Phone), `core/catalog` extensions and `core/ui` `UiState`.
+  - **Fonts:**
+    - Inter 4.1 static 400/500/600, from the rsms/inter release.
+    - The Noto Sans Devanagari variable font, from google/fonts@2bc5d43. The static Noto files have no Latin glyphs.
+    - OFL licences are in `composeResources/files/licenses/`.
+  - **Debug-only component gallery:** `androidApp/src/debug` `GalleryActivity`, with no launcher entry.
+  - **Assets and strings:** 16 more Material Symbols icons, and about 85 EN/HI UI strings.
+  - **Tests:**
+    - commonTest unit tests for Money, Phone, Dates, Validators, FormState and urgency.
+    - Robolectric UI tests for `FormRenderer` validation and the Undo snackbar.
+    - 60 Roborazzi screenshot baselines: 10 gallery sections × light/dark × EN/HI, plus EN and HI at 200% font scale.
+  - **Test-only libraries added:** Robolectric 4.17, JUnit 4.13.2, and androidx ui-test-junit4/manifest 1.12.1.
+  - **Verified:** the orchestrator re-ran `./gradlew :build-logic:test verifyShared :androidApp:assembleDebug :androidApp:lint :composeApp:testAndroidHostTest --rerun-tasks -Proborazzi.test.verify=true`.
+    - BUILD SUCCESSFUL, with 95 tests and 0 failures (57 build-logic, 38 composeApp).
+    - 0 screenshot diffs.
+    - Lint has 0 errors and the same 2 warnings as before: no launcher icon, and the targetSdk suggestion.
+    - Screenshots of the Hindi form and the dark status pills were inspected visually.
+  - **Gradle Metaspace:** raised from 512m to 768m (`mobile/gradle.properties`), because a run ran out of Metaspace and restarted the daemon.
+  - **Why:** roadmap Phase 2.
+  - **Files:**
+    - `mobile/composeApp/src/{commonMain,androidMain,iosMain,commonTest,androidHostTest}/**`
+    - `mobile/androidApp/src/debug/**`
+    - `mobile/composeApp/build.gradle.kts`, `mobile/build.gradle.kts`, `mobile/gradle/libs.versions.toml`, `mobile/gradle.properties`
+    - `docs/DESIGN_SYSTEM.md`, `TESTING.md`, `ARCHITECTURE.md`
+    - `docs/DECISIONS.md` #38–#41
+- **Catalog follow-ups** (sub-agent `catalog-followup`, Opus; resumed after a network outage). Covers flag overrides, reserved slugs, locales, more CHECK constraints and deprecated interests.
+  - **Flags (DECISIONS #35):**
+    - `app_config.flag_overrides` is seeded once, as `{}`.
+    - `public.effective_flags()` returns `flags` merged with the overrides. Only boolean overrides count, and an override wins.
+    - `private.flag_enabled` reads it.
+  - **Reserved slugs:** moved from SQL into `shared/catalog.json` `reservedSlugs` (59 slugs, provisional). `catalog_sync` emits `catalog_reserved_slugs()`, and `Catalog.kt` gets `ReservedSlugs.all`.
+  - **Locales:** a new catalog list `locales` (`en`, `hi`), with `locale.*` labels and the Kotlin enum `AppLocale`.
+  - **New CHECK constraints from the catalog:** `sites_template_key_check`, `sites_accent_check` (swatch keys), `sites_locale_check` and `profiles_preferred_language_check`. The catalog hash now also covers `templates/index.json`.
+  - **Deprecated interests:** `publish_site` uses the new `catalog_interest_keys_all()`, which includes deprecated keys. `submit_enquiry` keeps the active-only `catalog_interest_keys()`.
+  - **Migrations:**
+    - The schema, entitlement and RPC migrations were edited in place, because nothing has been applied anywhere.
+    - The unapplied `20261015152939_catalog_sync.sql` was replaced by `20261015163959_catalog_sync.sql`.
+    - The Python test fixture is retired; `run.sh` now requires the generated `catalog_sync`.
+  - **Verified:**
+    - `:build-logic:test` 57/57, and `verifyShared` passes.
+    - `bash supabase/tests/run.sh` passes 226/226. The orchestrator re-ran it. The 30 new checks include "re-applying `catalog_sync` leaves `flag_overrides` intact".
+    - `:composeApp:testAndroidHostTest` was blocked at the time by an in-progress `ChartStyle.kt` compile error in the Phase 2 work. It's re-checked with Phase 2.
+  - **Files:**
+    - `shared/catalog.json`, `shared/i18n/{en,hi}.json`
+    - `mobile/build-logic/**`
+    - `supabase/migrations/*`, `supabase/tests/*`
+    - `docs/ARCHITECTURE.md`, `BACKEND.md`, `SHARED_DEFINITIONS.md`, `TESTING.md`
+    - `docs/DECISIONS.md` #36, #37
+- **Phase 1 verified independently** (sub-agent `phase-verifier`, Sonnet; read-only). It found no blockers:
+  - every Phase 1 file and every `verifyShared` rule in SHARED_DEFINITIONS.md is present, and each rule has a test;
+  - the TESTING.md mobile command passes;
+  - the Python checks on `shared/` pass;
+  - all 9 negative cases (a missing Hindi key, raw `.dp` and `.sp`, a duplicate or removed key, low swatch contrast, a wrong type size, a stale `catalog_sync` hash, a missing Hindi string) fail with clear messages;
+  - the SQL tests pass 196/196 with the generated `catalog_sync`;
+  - no secrets are about to be committed, and there's no LIC artwork.
+  - Phase 1 is ticked in STATUS.md, and the scaffold line is corrected (there's no `androidMain` source set).
+- **Phase 1: mobile scaffold and code generation** (sub-agent `mobile-build`, Opus).
+  - **`mobile/`:**
+    - Gradle 9.7.1, AGP 9.3.3, Kotlin 2.4.20 and Compose Multiplatform 1.12.1.
+    - `:composeApp` uses the KMP Android library plugin, with Android, `iosArm64` and `iosSimulatorArm64` targets. `:androidApp` holds `AgentProApp` and `MainActivity`.
+    - A version catalog covers every library in ARCHITECTURE.md.
+  - **`mobile/build-logic`:**
+    - `generateShared` produces `Catalog.kt`, `Tokens.kt`, `SiteSchema.kt`, `AppConfig.kt`, `strings_catalog.xml` (en and hi) and the site-preview assets, plus the `catalog_sync` migration and the catalog keys lockfile.
+    - `verifyShared` is part of `check`.
+    - 47 unit tests.
+  - **First generated migration:** `supabase/migrations/20261015152939_catalog_sync.sql`. It matches the backend contract, and the 196 database checks pass with it.
+  - **Android SDK levels raised to compileSdk 37 and targetSdk 36** (user-approved, DECISIONS #33).
+  - Backup and data-extraction exclusion rules added in `androidApp/src/main/res/xml/`.
+  - **Verified:** `./gradlew :build-logic:test verifyShared :androidApp:assembleDebug :androidApp:lint :composeApp:testAndroidHostTest` → BUILD SUCCESSFUL. The debug APK is 11.7 MB, and lint has 0 errors and 2 warnings: no launcher icon yet, and lint's suggestion to target 37.
+  - **Negative check:** a raw `18.sp` makes `verifyShared` fail.
+  - The test command uses `:composeApp:testAndroidHostTest`, because `testDebugUnitTest` doesn't exist with the KMP library plugin.
+  - **Why:** roadmap Phase 1.
+  - **Files:**
+    - `mobile/**`
+    - `supabase/migrations/20261015152939_catalog_sync.sql`
+    - `docs/ARCHITECTURE.md`, `SHARED_DEFINITIONS.md`, `TESTING.md`, `DESIGN_SYSTEM.md`
+    - `docs/DECISIONS.md` #33–#35
+- **Phase 3: wrote the backend migrations and tested them locally; nothing is applied to Supabase** (sub-agent `backend-sql`, Opus; run in parallel).
+  - **Migrations** (`supabase/migrations/`):
+    - `20261015100000_schema.sql`: 14 tables, constraints, indexes and the `set_updated_at` triggers. Supabase's default grants to `anon` and `authenticated` are revoked, and internal helpers live in a `private` schema.
+    - `…100100_entitlement.sql`: `entitlement()`, `can_write()`, `my_entitlement()` and the signup trigger.
+    - `…100200_rls.sql`: RLS, grants and policies.
+    - `…100300_rpcs.sql`: every RPC.
+    - `…100400_storage.sql`: the `site-media` bucket.
+    - `…100500_realtime.sql`: the realtime publication.
+  - **Local test harness** (`supabase/tests/`): a shim of the Supabase auth, storage and realtime pieces the migrations use, local only; a generator for a test `catalog_sync`; `run.sh`; and 196 checks. They cover TESTING.md Database #1–5, lapse and entitlement, signup, storage and account deletion, plus a static review in the style of the Supabase advisors.
+  - **Verified:** the orchestrator re-ran `bash supabase/tests/run.sh`: 196 passed, 0 failed (on `postgres:15`).
+  - **Two bugs the tests caught and the agent fixed:** the reserved-slug trigger needs SECURITY DEFINER, and month-end due dates now use calendar months instead of `age()`.
+  - **Changes to the documented behaviour:**
+    - Select policies no longer hide soft-deleted rows, because hiding them breaks soft delete and sync. Clients filter them out instead (DECISIONS #27).
+    - `delete_my_account` requires the app to delete the agent's site media first, because SQL can't delete Storage files.
+  - **Contract aligned with the web renderer:**
+    - argument names without a prefix
+    - `submit_enquiry` returns `{ok:false, error:'rate_limited'|'unavailable'|'invalid', field}`
+    - field limits: name ≤ 80, email ≤ 120, message ≤ 500, Indian mobile numbers only
+    - the public payload now includes `canonical_host`
+  - **Still to do:** creating the Supabase project (needs cost approval), applying the migrations together with the generated `catalog_sync`, and the advisors report.
+  - **Why:** roadmap Phase 3.
+  - **Files:** `supabase/**`, `docs/BACKEND.md`, `docs/TESTING.md`, `docs/DECISIONS.md` #27–#31.
+- **Phase 4: built the public-site renderer and tested it locally; it isn't deployed** (sub-agent `web-renderer`, Sonnet; run in parallel with Phases 1 and 3).
+  - Added `web/`:
+    - the shell, `app.js`, `api.js`, `i18n.js`, `head.js`, `form.js` and `styles/base.css`
+    - 9 section partials driven by `site-schema.json`
+    - 3 templates, each with a `render()` function and layout-only CSS
+    - `vercel.json` and `config.example.js`
+  - Added `scripts/build-web.sh`, `gen-tokens.mjs` (`tokens.css` from `design-tokens.json`), `lint-web-css.mjs` and `test-web.mjs`, plus a root `.gitignore`.
+  - A mock backend for local development (`web/dev-mock.js` and `web/dev-fixtures/`) is copied only into `WEB_DEV=1` builds, and runs only on localhost with `?mock=1`.
+  - **Verified** (the orchestrator re-ran them):
+    - `node scripts/test-web.mjs`: 17 checks pass (3 templates × EN/HI, section order and hiding, XSS escaping, form validation, head tags).
+    - The CSS lint passes.
+    - JS and CSS per template is about 31 KB (14 KB gzipped), under the 50 KB budget.
+  - **Aligned with the final RPC contract** in BACKEND.md: the page uses `canonical_host` for the canonical link and `og:url`, and reads the exact `submit_enquiry` `error`/`field` values, showing per-field inline errors. Tests now cover 29 checks (re-run by the orchestrator).
+  - **Still to do:** the template `preview.webp` images and a Lighthouse run (both skipped because of low RAM), a test against a real backend, and host resolution on Vercel.
+  - **Why:** roadmap Phase 4.
+  - **Files:** `web/**`, `scripts/*`, `.gitignore`, `docs/WEB_RENDERER.md`, `docs/TESTING.md`, `docs/DECISIONS.md` #26.
+- **Phase 1: added the `shared/` definitions** (sub-agent `shared-defs`, Sonnet).
+  - `catalog.json` (12 lists plus `pricing`), `site-schema.json` (8 sections, 23 fields plus 12 list item fields), `design-tokens.json`, `templates/index.json` (classic, modern, minimal), and `i18n/en.json` and `i18n/hi.json` (157 keys each, identical key sets).
+  - 54 Material Symbols Rounded vector icons (from `@material-symbols/svg-400@0.48.0`), one per catalog or schema icon, in `mobile/composeApp/src/commonMain/composeResources/drawable/`.
+  - Validation passed: every JSON file parses, every label key is in en and hi, no duplicate keys, tones and icons are valid, every swatch has contrast ≥ 6.1:1 against white, and the type and space scales match.
+  - Values the docs left open are marked "(provisional)" in SHARED_DEFINITIONS.md. The user accepted them for now and will review them before release.
+  - **Why:** roadmap Phase 1.
+  - **Files:** `shared/**`, `mobile/composeApp/src/commonMain/composeResources/drawable/ic_*.xml`, `docs/SHARED_DEFINITIONS.md`, `docs/DECISIONS.md` (#23–#25).
+- **Workflow:** the work is now run by an orchestrator with parallel Sonnet and Opus sub-agents (DECISIONS #24). `catalog_sync` is generated only once schema migrations exist (DECISIONS #23, the user's choice).
 - **Switched to Kotlin Multiplatform + Compose Multiplatform, Android first.**
   - The project lives in `mobile/` (`composeApp`, `androidApp`, `iosApp` later, `build-logic`).
   - Platform APIs sit behind `core/platform` interfaces.

@@ -1,0 +1,391 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "key": "hero",
+      "labelKey": "section.hero",
+      "icon": "badge",
+      "pinned": true,
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "headline",
+          "type": "text",
+          "labelKey": "field.headline",
+          "required": true,
+          "maxLength": 70
+        },
+        {
+          "key": "subheadline",
+          "type": "multiline",
+          "labelKey": "field.subheadline",
+          "maxLength": 160
+        },
+        {
+          "key": "photo",
+          "type": "image",
+          "labelKey": "field.photo",
+          "aspect": "1:1"
+        },
+        {
+          "key": "ctaLabel",
+          "type": "text",
+          "labelKey": "field.cta_label",
+          "maxLength": 30,
+          "defaultKey": "site.cta_default"
+        }
+      ]
+    },
+    {
+      "key": "about",
+      "labelKey": "section.about",
+      "icon": "person",
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "bio",
+          "type": "multiline",
+          "labelKey": "field.bio",
+          "maxLength": 600
+        },
+        {
+          "key": "designation",
+          "type": "text",
+          "labelKey": "field.designation",
+          "maxLength": 60
+        },
+        {
+          "key": "yearsExperience",
+          "type": "number",
+          "labelKey": "field.years_experience",
+          "min": 0,
+          "max": 70
+        },
+        {
+          "key": "clientsServed",
+          "type": "number",
+          "labelKey": "field.clients_served",
+          "min": 0,
+          "max": 1000000
+        },
+        {
+          "key": "languagesSpoken",
+          "type": "multiSelect",
+          "labelKey": "field.languages_spoken",
+          "options": [
+            {
+              "key": "english",
+              "labelKey": "language.english"
+            },
+            {
+              "key": "hindi",
+              "labelKey": "language.hindi"
+            },
+            {
+              "key": "marathi",
+              "labelKey": "language.marathi"
+            },
+            {
+              "key": "gujarati",
+              "labelKey": "language.gujarati"
+            },
+            {
+              "key": "bengali",
+              "labelKey": "language.bengali"
+            },
+            {
+              "key": "tamil",
+              "labelKey": "language.tamil"
+            },
+            {
+              "key": "telugu",
+              "labelKey": "language.telugu"
+            },
+            {
+              "key": "kannada",
+              "labelKey": "language.kannada"
+            },
+            {
+              "key": "malayalam",
+              "labelKey": "language.malayalam"
+            },
+            {
+              "key": "punjabi",
+              "labelKey": "language.punjabi"
+            },
+            {
+              "key": "odia",
+              "labelKey": "language.odia"
+            },
+            {
+              "key": "urdu",
+              "labelKey": "language.urdu"
+            }
+          ]
+        },
+        {
+          "key": "showAgencyCode",
+          "type": "toggle",
+          "labelKey": "field.show_agency_code",
+          "default": false
+        }
+      ]
+    },
+    {
+      "key": "services",
+      "labelKey": "section.services",
+      "icon": "work",
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "offered",
+          "type": "multiSelect",
+          "labelKey": "field.offered",
+          "optionsFrom": "catalog.interests"
+        },
+        {
+          "key": "items",
+          "type": "list",
+          "labelKey": "field.service_items",
+          "maxItems": 8,
+          "itemFields": [
+            {
+              "key": "interest",
+              "type": "select",
+              "labelKey": "field.interest",
+              "required": true,
+              "optionsFrom": "catalog.interests"
+            },
+            {
+              "key": "description",
+              "type": "multiline",
+              "labelKey": "field.description",
+              "maxLength": 160
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "highlights",
+      "labelKey": "section.highlights",
+      "icon": "star",
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "items",
+          "type": "list",
+          "labelKey": "field.highlights",
+          "maxItems": 4,
+          "itemFields": [
+            {
+              "key": "icon",
+              "type": "select",
+              "labelKey": "field.icon",
+              "required": true,
+              "options": [
+                {
+                  "key": "shield",
+                  "icon": "shield",
+                  "labelKey": "highlight_icon.shield"
+                },
+                {
+                  "key": "verified_user",
+                  "icon": "verified_user",
+                  "labelKey": "highlight_icon.verified_user"
+                },
+                {
+                  "key": "support_agent",
+                  "icon": "support_agent",
+                  "labelKey": "highlight_icon.support_agent"
+                },
+                {
+                  "key": "schedule",
+                  "icon": "schedule",
+                  "labelKey": "highlight_icon.schedule"
+                },
+                {
+                  "key": "handshake",
+                  "icon": "handshake",
+                  "labelKey": "highlight_icon.handshake"
+                },
+                {
+                  "key": "savings",
+                  "icon": "savings",
+                  "labelKey": "highlight_icon.savings"
+                },
+                {
+                  "key": "favorite",
+                  "icon": "favorite",
+                  "labelKey": "highlight_icon.favorite"
+                },
+                {
+                  "key": "thumb_up",
+                  "icon": "thumb_up",
+                  "labelKey": "highlight_icon.thumb_up"
+                }
+              ]
+            },
+            {
+              "key": "title",
+              "type": "text",
+              "labelKey": "field.item_title",
+              "required": true,
+              "maxLength": 40
+            },
+            {
+              "key": "text",
+              "type": "multiline",
+              "labelKey": "field.item_text",
+              "maxLength": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "achievements",
+      "labelKey": "section.achievements",
+      "icon": "trophy",
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "items",
+          "type": "list",
+          "labelKey": "field.achievements",
+          "maxItems": 8,
+          "itemFields": [
+            {
+              "key": "title",
+              "type": "text",
+              "labelKey": "field.item_title",
+              "required": true,
+              "maxLength": 60
+            },
+            {
+              "key": "year",
+              "type": "number",
+              "labelKey": "field.year",
+              "min": 1950,
+              "max": 2100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "testimonials",
+      "labelKey": "section.testimonials",
+      "icon": "format_quote",
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "items",
+          "type": "list",
+          "labelKey": "field.testimonials",
+          "maxItems": 6,
+          "itemFields": [
+            {
+              "key": "name",
+              "type": "text",
+              "labelKey": "field.name",
+              "required": true,
+              "maxLength": 40
+            },
+            {
+              "key": "city",
+              "type": "text",
+              "labelKey": "field.city",
+              "maxLength": 30
+            },
+            {
+              "key": "quote",
+              "type": "multiline",
+              "labelKey": "field.quote",
+              "required": true,
+              "maxLength": 280
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "faq",
+      "labelKey": "section.faq",
+      "icon": "help",
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "items",
+          "type": "list",
+          "labelKey": "field.faq",
+          "maxItems": 8,
+          "itemFields": [
+            {
+              "key": "question",
+              "type": "text",
+              "labelKey": "field.question",
+              "required": true,
+              "maxLength": 120
+            },
+            {
+              "key": "answer",
+              "type": "multiline",
+              "labelKey": "field.answer",
+              "required": true,
+              "maxLength": 400
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "contact",
+      "labelKey": "section.contact",
+      "icon": "call",
+      "pinned": true,
+      "defaultVisible": true,
+      "fields": [
+        {
+          "key": "phone",
+          "type": "phone",
+          "labelKey": "field.phone",
+          "required": true
+        },
+        {
+          "key": "whatsapp",
+          "type": "phone",
+          "labelKey": "field.whatsapp"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "labelKey": "field.email"
+        },
+        {
+          "key": "officeAddress",
+          "type": "multiline",
+          "labelKey": "field.office_address",
+          "maxLength": 200
+        },
+        {
+          "key": "mapLink",
+          "type": "url",
+          "labelKey": "field.map_link"
+        },
+        {
+          "key": "officeHours",
+          "type": "text",
+          "labelKey": "field.office_hours",
+          "maxLength": 60
+        },
+        {
+          "key": "showEnquiryForm",
+          "type": "toggle",
+          "labelKey": "field.show_enquiry_form",
+          "default": true
+        }
+      ]
+    }
+  ]
+}

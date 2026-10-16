@@ -83,7 +83,10 @@ One theme is shared by the app and the agent websites. All values live in `share
   - The family follows the app language: `en` uses Inter, `hi` uses Noto Sans Devanagari, which also contains Latin glyphs.
   - Hindi words typed by the agent into the English UI fall back to the platform's Devanagari font.
   - Fonts are **bundled** as Compose Multiplatform resources (`composeResources/font`), subset to the needed weights. The app looks identical on both platforms, offline, and on first launch.
-- **Web:** `font-family: "Inter", "Noto Sans Devanagari", system-ui, sans-serif`, loaded from Google Fonts with `display=swap`.
+  - **Bundled files** (`composeApp/src/commonMain/composeResources/font/`, OFL licences in `composeResources/files/licenses/`):
+    - `inter_regular.ttf`, `inter_medium.ttf`, `inter_semibold.ttf`: the static TTFs from the rsms/inter release **v4.1** (`Inter-4.1.zip`, `extras/ttf/`). No 700: the app never uses `webHero`.
+    - `noto_sans_devanagari.ttf`: the **variable** font from google/fonts at commit `2bc5d431b584d89e646214bf6cfa75494e76ceea` (`ofl/notosansdevanagari/NotoSansDevanagari[wdth,wght].ttf`), instanced at 400/500/600 with `FontVariation`. This build covers Devanagari **and Latin, digits and ₹**; the static TTFs of the notofonts release have no Latin letters, so in `hi` English text would have fallen back to the system font.
+- **Web:** `font-family: "Inter", "Noto Sans Devanagari", system-ui, sans-serif`, **self-hosted** woff2 files in `web/fonts/` (fontsource 5.3.0: Inter latin + latin-ext 400/500/600/700, Noto Sans Devanagari 400/500/600), declared in `web/styles/fonts.css` with `font-display: swap`. No Google Fonts request.
 - **No other fonts are used** anywhere, including italics. Emphasis comes only from weight and colour.
 
 ### Type scale: 4 sizes, each 1.67× the previous one
@@ -148,7 +151,10 @@ Fixed **component dimensions** aren't spacing; they're constants inside `core/de
 - Never use fixed-width text containers.
 - Layouts must survive Hindi and 200% font scale. Rows grow taller rather than truncate, except for list titles, which truncate to one line with an ellipsis.
 
-**Enforcement:** `verifyShared` also scans Kotlin outside `core/designsystem` for raw `.dp` in `padding(`, `spacedBy(`, `Spacer(`/`height(`/`width(` calls used as spacing, and for raw `.sp` anywhere. Either fails the build. The web CSS lint does the same for raw `px`/`rem` in margin, padding and gap.
+**Enforcement:** `verifyShared` also scans Kotlin outside `core/designsystem` for raw `.dp` in `padding(`, `spacedBy(`, `Spacer(`/`height(`/`width(` calls used as spacing, and for raw `.sp` anywhere. Either fails the build.
+- The scan covers `composeApp/src` and `androidApp/src` and reports each problem as `file:line:col`.
+- It ignores comments and strings, `0.dp`, and other calls such as `size(48.dp)`.
+- Use `Tokens.Space.s|m|l` and `Tokens.Text`, which are generated from `design-tokens.json`. The web CSS lint does the same for raw `px`/`rem` in margin, padding and gap.
 
 ## Buttons
 | Kind | Style | Rule |
@@ -187,7 +193,7 @@ Charts follow the dataviz method: pick the form first, colour last, and validate
 | Component | Purpose / rules |
 |---|---|
 | `AppScaffold` | Top bar, offline banner slot, snackbar host, FAB or bottom action slot |
-| `AppTopBar` | Title, back, and at most 2 actions plus overflow |
+| `AppTopBar` | Title, back, and at most 2 actions plus overflow; a `trailing` slot (counts as one action) holds the Home avatar |
 | `OfflineBanner` | A thin grey bar: "Offline — showing saved data" |
 | `ScreenState` | Switches between loading (skeleton), empty, error and content |
 | `EmptyState` / `ErrorState` | Line icon, one sentence, one button |
@@ -204,14 +210,48 @@ Charts follow the dataviz method: pick the form first, colour last, and validate
 | `MoneyText` / `MoneyField` | Indian grouping, tabular figures |
 | `DateField` | Opens the Material date picker |
 | `MoreDetails` | An expandable group for optional form fields |
-| `BottomActionBar` | Sticky primary action |
+| `BottomActionBar` | Sticky primary action, with optional helper text ("Needs internet") and one optional text-button alternative (e.g. Publish now / Later) |
 | `AppSnackbarHost` | Includes Undo |
 | `ConfirmDialog` | Only for irreversible actions |
 | `PriceSummary` | Line items, the total "incl. GST", and the renewal note (used in checkout) |
 | `ProgressStepper` | Vertical steps with status (used for domain setup) |
 | `FormRenderer` | Renders `FieldSpec` lists; the only way to build forms |
+| `AppNavigationBar` | The 4-tab bottom bar: flat surface with a hairline on top, grey icons and labels, primary + `primaryContainer` indicator for the selected tab, optional count badge |
+| `SegmentedControl` | Single-choice segments, e.g. `[ Customers | Dues ]`; the selected one uses `primaryContainer` |
+| `StepProgressBar` | The thin progress bar at the top of each onboarding step; TalkBack reads "Step 2 of 3" |
+| `AvatarButton` | The Home avatar that opens Settings (48dp touch target around the 40dp `Avatar`) |
+| `AppBottomSheet` | Modal sheet with a title (radius 16 top corners, elevated surface), e.g. the setup checklist |
 
 A debug-only **Component gallery** shows every component in light, dark, EN, HI and at 200% font scale. It's the baseline for the Roborazzi screenshot tests.
+- It lives in `core/designsystem/gallery/` and has switches for Dark, Hindi and 200% text.
+- It's reachable only in debug builds: `androidApp/src/debug` declares `GalleryActivity` with no launcher entry. Open it with `adb shell am start -n com.sledje.agentpro/com.sledje.agentpro.android.debug.GalleryActivity`.
+
+## Implementation (`composeApp/.../core/designsystem`)
+| File | Contains |
+|---|---|
+| `Theme.kt` | `AgentProTheme(themeMode = System \| Light \| Dark)` and `AgentProTheme(darkTheme)`; `AgentProTheme.colors`, `.text`, `.tone(tone)`; `currentAppLocale()` (catalog `AppLocale`) picks the font family and line heights |
+| `Color.kt` | Light and dark M3 `ColorScheme`s mapped from `Tokens`, and `AppColors` (muted, card, cardBorder, elevatedSurface, chart series and ramp, tones). Roles the tokens don't define are derived from token values: secondary/tertiary = primary, secondaryContainer = primaryContainer, surfaceVariant = surfaceContainer, surfaceContainerHighest = surfaceContainerHigh, surfaceTint = surface (no tonal tint), inverse roles = the other theme's surface/onSurface/primary, error container = the `danger` tone |
+| `Type.kt` | `AppTextStyles` (`body`, `bodyMuted`, `label`, `strong`, `title`, `number`, `display`) and the M3 `Typography` (display → l; headline and title → m 600; body → s 400; label → s 500). `number` and `MoneyText` use `tnum`. `hi`: +2sp line heights |
+| `Shape.kt` | `AppShapes.sm/md/lg/sheet/full` and the M3 `Shapes` |
+| `Spacing.kt` | `Spacing.s/m/l` (= `Tokens.Space`) and `Dimens`: the fixed component dimensions (touch 48, button 48, rows 72/56, icon 24, pill icon 18, pill 32, avatar 40, hairline 1, swatch 40, image slot 96, chart 200, chart marks, the site QR code 200) |
+| `Motion.kt` | Standard easing, 150/250ms specs, shared-axis X, fade-through, `rememberReduceMotion()` (the platform's `MotionDurationScale` is 0), `rememberSuccessHaptic()` |
+| `ChartStyle.kt` | `AppChart(ChartData)` over Vico: `ChartKind.Column/Line/Ordinal`, at most 2 series, compact ₹ when `money`, tooltip on tap, legend and a direct label of the latest values for 2 series |
+| `AppLocale.kt` | `LocalAppLocale` (expect/actual): overrides the language inside a composition (used by the gallery; the iOS `LocaleController` later) |
+| `components/` | Every component in the table above, plus `PrimaryButton`/`SecondaryButton`/`TertiaryButton`/`DestructiveButton`, `AppFab`, `AppCard`, `HairlineDivider`, `Avatar`, `AppTextField`, `FieldFrame`, `PickerField`, `SelectField`, `ChoiceChips`, `ToggleRow`, `SwatchPicker`, `ImagePickerSlot`, `NetworkImage` (Coil 3 remote image, centre-cropped in its slot; Phase 8), `AppSnackbar`, `DiscardChangesDialog` and `CardSkeleton` |
+| `gallery/ComponentGallery.kt` | The component gallery (sections, `GalleryFrame` variants) |
+
+Component behaviour that the tables above leave to the implementation:
+- **Field layout:** the label sits above the field (`label` style, `space.s` gap), with one line of error or helper text below. Multiline fields with a `maxLength` show a counter (`12/160`); other fields don't. Required fields aren't marked; validation says "Required".
+- **Password fields** (`FieldType.Password`, app forms only, never a site-schema type) are masked with a show/hide icon button and are never trimmed; `FieldSpec.minLength` (app forms only) adds "At least 8 characters".
+- **`FormRenderer`** shows all fields when there are 6 or fewer. Otherwise it shows every required field plus the first optional ones up to 6 (schema order), and the rest go under **More details**; a screen can pass `visibleKeys` instead. Required fields are never hidden, and More details opens by itself when a hidden field has an error. A list item is titled "Item 1", "Item 2"…, with Remove and an Add button up to `maxItems`. The image field is a slot with "Add photo"; the screen wires the MediaPicker through `onPickImage`.
+- **App-only form fields** (never site-schema types, like `FieldType.Password`): `FieldType.Money` renders a `MoneyField` and returns a `Double` (≤ 2 decimals, `min`/`max` checked); `FieldSpec.suggestions` gives a text field an autocomplete dropdown (up to 5 case-insensitive matches, prefix matches first, any text still allowed; used for `planSuggestions`); `FieldSpec.segmented` shows a select as a `SegmentedControl` (the premium mode).
+- **`ListRow(unseenLabel = …)`** puts an 8dp primary dot (`Dimens.unseenDot`) before the title, with that TalkBack label (unseen enquiries).
+- **`UrgencyChip`** tone and icon come from the catalog `dueBuckets`. Labels: "Overdue 3d"; "Due today"; "Due in 5d" inside the first upcoming bucket (this week); "Due 15 Jan" after that.
+- **`FilterChipRow`** is single choice, with an "All" chip first; counts read "New · 3".
+- **`Money.compact`** truncates to one decimal (₹1,25,000 → ₹1.2L, never rounded up) and shows the full amount below 1 lakh. L/Cr are used in Hindi too.
+- **Pills** use 18dp icons so a pill stays one line tall; other icons are 24dp.
+- **Dialogs, menus and the date picker** are white in light and `surfaceContainerHigh` in dark; the snackbar uses the inverse colours.
+- **Undo snackbars** last exactly 5 seconds (`showUndo`).
 
 ## Website theme
 - Agent sites follow the same principles: a white background, the same fonts, and the **same 4 type sizes and 3 spacing values** (exported to `tokens.css` as `--text-s|m|l|xl` and `--space-s|m|l`). Sections are separated by multiples of `--space-l`, and there's one call to action per section.

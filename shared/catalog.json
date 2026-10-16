@@ -1,0 +1,748 @@
+{
+  "version": 1,
+  "enquiryStatuses": [
+    {
+      "key": "new",
+      "labelKey": "enquiry_status.new",
+      "icon": "fiber_new",
+      "tone": "info",
+      "order": 1,
+      "terminal": false
+    },
+    {
+      "key": "contacted",
+      "labelKey": "enquiry_status.contacted",
+      "icon": "call_made",
+      "tone": "neutral",
+      "order": 2,
+      "terminal": false
+    },
+    {
+      "key": "follow_up",
+      "labelKey": "enquiry_status.follow_up",
+      "icon": "event",
+      "tone": "warning",
+      "order": 3,
+      "terminal": false
+    },
+    {
+      "key": "converted",
+      "labelKey": "enquiry_status.converted",
+      "icon": "how_to_reg",
+      "tone": "success",
+      "order": 4,
+      "terminal": true
+    },
+    {
+      "key": "closed",
+      "labelKey": "enquiry_status.closed",
+      "icon": "block",
+      "tone": "neutral",
+      "order": 5,
+      "terminal": true
+    }
+  ],
+  "interests": [
+    {
+      "key": "term",
+      "labelKey": "interest.term",
+      "icon": "shield",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "endowment",
+      "labelKey": "interest.endowment",
+      "icon": "savings",
+      "tone": "neutral",
+      "order": 2
+    },
+    {
+      "key": "money_back",
+      "labelKey": "interest.money_back",
+      "icon": "payments",
+      "tone": "neutral",
+      "order": 3
+    },
+    {
+      "key": "child",
+      "labelKey": "interest.child",
+      "icon": "child_care",
+      "tone": "neutral",
+      "order": 4
+    },
+    {
+      "key": "pension",
+      "labelKey": "interest.pension",
+      "icon": "elderly",
+      "tone": "neutral",
+      "order": 5
+    },
+    {
+      "key": "health",
+      "labelKey": "interest.health",
+      "icon": "health_and_safety",
+      "tone": "neutral",
+      "order": 6
+    },
+    {
+      "key": "ulip",
+      "labelKey": "interest.ulip",
+      "icon": "trending_up",
+      "tone": "neutral",
+      "order": 7
+    },
+    {
+      "key": "other",
+      "labelKey": "interest.other",
+      "icon": "more_horiz",
+      "tone": "neutral",
+      "order": 8
+    }
+  ],
+  "enquirySources": [
+    {
+      "key": "website",
+      "labelKey": "enquiry_source.website",
+      "icon": "language",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "walk_in",
+      "labelKey": "enquiry_source.walk_in",
+      "icon": "directions_walk",
+      "tone": "neutral",
+      "order": 2
+    },
+    {
+      "key": "referral",
+      "labelKey": "enquiry_source.referral",
+      "icon": "group_add",
+      "tone": "neutral",
+      "order": 3
+    },
+    {
+      "key": "phone",
+      "labelKey": "enquiry_source.phone",
+      "icon": "call",
+      "tone": "neutral",
+      "order": 4
+    },
+    {
+      "key": "other",
+      "labelKey": "enquiry_source.other",
+      "icon": "more_horiz",
+      "tone": "neutral",
+      "order": 5
+    }
+  ],
+  "premiumModes": [
+    {
+      "key": "yearly",
+      "labelKey": "premium_mode.yearly",
+      "icon": "calendar_month",
+      "tone": "neutral",
+      "order": 1,
+      "months": 12
+    },
+    {
+      "key": "half_yearly",
+      "labelKey": "premium_mode.half_yearly",
+      "icon": "date_range",
+      "tone": "neutral",
+      "order": 2,
+      "months": 6
+    },
+    {
+      "key": "quarterly",
+      "labelKey": "premium_mode.quarterly",
+      "icon": "event_repeat",
+      "tone": "neutral",
+      "order": 3,
+      "months": 3
+    },
+    {
+      "key": "monthly",
+      "labelKey": "premium_mode.monthly",
+      "icon": "today",
+      "tone": "neutral",
+      "order": 4,
+      "months": 1
+    }
+  ],
+  "policyStatuses": [
+    {
+      "key": "active",
+      "labelKey": "policy_status.active",
+      "icon": "check_circle",
+      "tone": "success",
+      "order": 1
+    },
+    {
+      "key": "lapsed",
+      "labelKey": "policy_status.lapsed",
+      "icon": "event_busy",
+      "tone": "danger",
+      "order": 2
+    },
+    {
+      "key": "matured",
+      "labelKey": "policy_status.matured",
+      "icon": "verified",
+      "tone": "info",
+      "order": 3
+    },
+    {
+      "key": "surrendered",
+      "labelKey": "policy_status.surrendered",
+      "icon": "assignment_return",
+      "tone": "neutral",
+      "order": 4
+    }
+  ],
+  "dueBuckets": [
+    {
+      "key": "overdue",
+      "labelKey": "due_bucket.overdue",
+      "icon": "error",
+      "tone": "danger",
+      "order": 1,
+      "minDays": null,
+      "maxDays": -1
+    },
+    {
+      "key": "this_week",
+      "labelKey": "due_bucket.this_week",
+      "icon": "today",
+      "tone": "warning",
+      "order": 2,
+      "minDays": 0,
+      "maxDays": 7
+    },
+    {
+      "key": "this_month",
+      "labelKey": "due_bucket.this_month",
+      "icon": "calendar_month",
+      "tone": "info",
+      "order": 3,
+      "minDays": 8,
+      "maxDays": 30
+    },
+    {
+      "key": "next_3_months",
+      "labelKey": "due_bucket.next_3_months",
+      "icon": "date_range",
+      "tone": "neutral",
+      "order": 4,
+      "minDays": 31,
+      "maxDays": 90
+    }
+  ],
+  "planStatuses": [
+    {
+      "key": "trial",
+      "labelKey": "plan_status.trial",
+      "icon": "hourglass_empty",
+      "tone": "info",
+      "order": 1
+    },
+    {
+      "key": "active",
+      "labelKey": "plan_status.active",
+      "icon": "verified",
+      "tone": "success",
+      "order": 2
+    },
+    {
+      "key": "grace",
+      "labelKey": "plan_status.grace",
+      "icon": "autorenew",
+      "tone": "warning",
+      "order": 3
+    },
+    {
+      "key": "lapsed",
+      "labelKey": "plan_status.lapsed",
+      "icon": "timer_off",
+      "tone": "danger",
+      "order": 4
+    }
+  ],
+  "domainStatuses": [
+    {
+      "key": "pending_dns",
+      "labelKey": "domain_status.pending_dns",
+      "icon": "dns",
+      "tone": "info",
+      "order": 1
+    },
+    {
+      "key": "verifying",
+      "labelKey": "domain_status.verifying",
+      "icon": "sync",
+      "tone": "info",
+      "order": 2
+    },
+    {
+      "key": "active",
+      "labelKey": "domain_status.active",
+      "icon": "check_circle",
+      "tone": "success",
+      "order": 3
+    },
+    {
+      "key": "renew_soon",
+      "labelKey": "domain_status.renew_soon",
+      "icon": "autorenew",
+      "tone": "warning",
+      "order": 4
+    },
+    {
+      "key": "expired",
+      "labelKey": "domain_status.expired",
+      "icon": "event_busy",
+      "tone": "danger",
+      "order": 5
+    },
+    {
+      "key": "failed",
+      "labelKey": "domain_status.failed",
+      "icon": "error",
+      "tone": "danger",
+      "order": 6
+    }
+  ],
+  "planSuggestions": [
+    "Jeevan Anand",
+    "Jeevan Labh",
+    "Jeevan Umang",
+    "Jeevan Lakshya",
+    "Tech Term",
+    "Bima Jyoti",
+    "Jeevan Shanti",
+    "Amritbaal",
+    "New Endowment Plan",
+    "Saral Pension"
+  ],
+  "reservedSlugs": [
+    "a",
+    "s",
+    "www",
+    "api",
+    "app",
+    "apps",
+    "admin",
+    "administrator",
+    "root",
+    "auth",
+    "login",
+    "logout",
+    "signup",
+    "signin",
+    "register",
+    "account",
+    "accounts",
+    "settings",
+    "dashboard",
+    "billing",
+    "pay",
+    "payment",
+    "payments",
+    "checkout",
+    "help",
+    "support",
+    "contact",
+    "about",
+    "terms",
+    "privacy",
+    "policy",
+    "legal",
+    "blog",
+    "news",
+    "mail",
+    "email",
+    "static",
+    "assets",
+    "cdn",
+    "media",
+    "img",
+    "images",
+    "files",
+    "download",
+    "downloads",
+    "docs",
+    "status",
+    "test",
+    "demo",
+    "example",
+    "null",
+    "undefined",
+    "agentpro",
+    "agent-pro",
+    "lic",
+    "licindia",
+    "official",
+    "team",
+    "staff"
+  ],
+  "accentSwatches": [
+    {
+      "key": "indigo",
+      "labelKey": "swatch.indigo",
+      "hex": "#1F4AA8",
+      "order": 1
+    },
+    {
+      "key": "navy",
+      "labelKey": "swatch.navy",
+      "hex": "#16325C",
+      "order": 2
+    },
+    {
+      "key": "teal",
+      "labelKey": "swatch.teal",
+      "hex": "#0F6E66",
+      "order": 3
+    },
+    {
+      "key": "green",
+      "labelKey": "swatch.green",
+      "hex": "#1E6B34",
+      "order": 4
+    },
+    {
+      "key": "maroon",
+      "labelKey": "swatch.maroon",
+      "hex": "#8C1D3F",
+      "order": 5
+    },
+    {
+      "key": "plum",
+      "labelKey": "swatch.plum",
+      "hex": "#5B2A86",
+      "order": 6
+    },
+    {
+      "key": "rust",
+      "labelKey": "swatch.rust",
+      "hex": "#9A4A00",
+      "order": 7
+    },
+    {
+      "key": "slate",
+      "labelKey": "swatch.slate",
+      "hex": "#37474F",
+      "order": 8
+    }
+  ],
+  "locales": [
+    {
+      "key": "en",
+      "labelKey": "locale.en",
+      "order": 1
+    },
+    {
+      "key": "hi",
+      "labelKey": "locale.hi",
+      "order": 2
+    }
+  ],
+  "features": [
+    {
+      "key": "siteBuilder",
+      "labelKey": "feature.siteBuilder",
+      "icon": "web",
+      "order": 1,
+      "default": true
+    },
+    {
+      "key": "enquiries",
+      "labelKey": "feature.enquiries",
+      "icon": "inbox",
+      "order": 2,
+      "default": true
+    },
+    {
+      "key": "customers",
+      "labelKey": "feature.customers",
+      "icon": "group",
+      "order": 3,
+      "default": true
+    },
+    {
+      "key": "policies",
+      "labelKey": "feature.policies",
+      "icon": "description",
+      "order": 4,
+      "default": true
+    },
+    {
+      "key": "dues",
+      "labelKey": "feature.dues",
+      "icon": "event_upcoming",
+      "order": 5,
+      "default": true
+    },
+    {
+      "key": "insights",
+      "labelKey": "feature.insights",
+      "icon": "bar_chart",
+      "order": 6,
+      "default": true
+    },
+    {
+      "key": "reminders",
+      "labelKey": "feature.reminders",
+      "icon": "notifications",
+      "order": 7,
+      "default": true
+    },
+    {
+      "key": "csvExport",
+      "labelKey": "feature.csvExport",
+      "icon": "download",
+      "order": 8,
+      "default": true
+    },
+    {
+      "key": "servicePlan",
+      "labelKey": "feature.servicePlan",
+      "icon": "workspace_premium",
+      "order": 9,
+      "default": true
+    },
+    {
+      "key": "payments",
+      "labelKey": "feature.payments",
+      "icon": "payments",
+      "order": 10,
+      "default": true
+    },
+    {
+      "key": "customDomains",
+      "labelKey": "feature.customDomains",
+      "icon": "public",
+      "order": 11,
+      "default": true
+    }
+  ],
+  "privacyNotices": [
+    {
+      "key": "agent_signup",
+      "labelKey": "privacy.agent_signup.title",
+      "order": 1,
+      "version": 1,
+      "textKeys": [
+        "privacy.agent_signup.consent",
+        "privacy.agent_signup.title",
+        "privacy.agent_signup.intro",
+        "privacy.notice.col_data",
+        "privacy.notice.col_purpose",
+        "privacy.notice.col_kept",
+        "privacy.agent_signup.account_data",
+        "privacy.agent_signup.account_purpose",
+        "privacy.agent_signup.account_kept",
+        "privacy.agent_signup.profile_data",
+        "privacy.agent_signup.profile_purpose",
+        "privacy.agent_signup.profile_kept",
+        "privacy.agent_signup.website_data",
+        "privacy.agent_signup.website_purpose",
+        "privacy.agent_signup.website_kept",
+        "privacy.agent_signup.billing_data",
+        "privacy.agent_signup.billing_purpose",
+        "privacy.agent_signup.billing_kept",
+        "privacy.agent_signup.registrant_data",
+        "privacy.agent_signup.registrant_purpose",
+        "privacy.agent_signup.registrant_kept",
+        "privacy.agent_signup.session_data",
+        "privacy.agent_signup.session_purpose",
+        "privacy.agent_signup.session_kept",
+        "privacy.agent_signup.customers_data",
+        "privacy.agent_signup.customers_purpose",
+        "privacy.agent_signup.customers_kept",
+        "privacy.agent_signup.customers_note",
+        "privacy.agent_signup.lapsed",
+        "privacy.agent_signup.no_ads",
+        "privacy.agent_signup.processors",
+        "privacy.agent_signup.rights",
+        "privacy.agent_signup.withdraw",
+        "privacy.agent_signup.grievance",
+        "privacy.agent_signup.board"
+      ]
+    },
+    {
+      "key": "enquiry_form",
+      "labelKey": "privacy.enquiry_form.title",
+      "order": 2,
+      "version": 1,
+      "textKeys": [
+        "privacy.enquiry_form.consent",
+        "privacy.enquiry_form.link",
+        "privacy.enquiry_form.title",
+        "privacy.enquiry_form.what",
+        "privacy.enquiry_form.why",
+        "privacy.enquiry_form.who",
+        "privacy.enquiry_form.how_long",
+        "privacy.enquiry_form.rights"
+      ]
+    },
+    {
+      "key": "agent_customer_duty",
+      "labelKey": "privacy.agent_customer_duty.title",
+      "order": 3,
+      "version": 1,
+      "textKeys": [
+        "privacy.agent_customer_duty.title",
+        "privacy.agent_customer_duty.text",
+        "privacy.agent_customer_duty.action"
+      ]
+    },
+    {
+      "key": "guardian_consent",
+      "labelKey": "privacy.guardian_consent.title",
+      "order": 4,
+      "version": 1,
+      "textKeys": [
+        "privacy.guardian_consent.title",
+        "privacy.guardian_consent.notice",
+        "privacy.guardian_consent.consent"
+      ]
+    }
+  ],
+  "dataRequestKinds": [
+    {
+      "key": "withdraw_consent",
+      "labelKey": "data_request_kind.withdraw_consent",
+      "icon": "block",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "access",
+      "labelKey": "data_request_kind.access",
+      "icon": "visibility",
+      "tone": "neutral",
+      "order": 2
+    },
+    {
+      "key": "correction",
+      "labelKey": "data_request_kind.correction",
+      "icon": "edit",
+      "tone": "neutral",
+      "order": 3
+    },
+    {
+      "key": "erasure",
+      "labelKey": "data_request_kind.erasure",
+      "icon": "close",
+      "tone": "neutral",
+      "order": 4
+    },
+    {
+      "key": "grievance",
+      "labelKey": "data_request_kind.grievance",
+      "icon": "support_agent",
+      "tone": "neutral",
+      "order": 5
+    }
+  ],
+  "dataRequestStatuses": [
+    {
+      "key": "open",
+      "labelKey": "data_request_status.open",
+      "icon": "hourglass_empty",
+      "tone": "warning",
+      "order": 1,
+      "terminal": false
+    },
+    {
+      "key": "done",
+      "labelKey": "data_request_status.done",
+      "icon": "check_circle",
+      "tone": "success",
+      "order": 2,
+      "terminal": true
+    },
+    {
+      "key": "not_genuine",
+      "labelKey": "data_request_status.not_genuine",
+      "icon": "block",
+      "tone": "neutral",
+      "order": 3,
+      "terminal": true
+    }
+  ],
+  "pricing": {
+    "service": {
+      "purchaseInr": 499,
+      "renewalInr": 299,
+      "taxInclusive": true,
+      "trialDays": 14,
+      "graceDays": 15,
+      "renewWindowDays": 60,
+      "reminderDays": [
+        30,
+        7,
+        1
+      ],
+      "graceReminderDays": [
+        1,
+        7,
+        14
+      ]
+    },
+    "domain": {
+      "source": "registrar_live",
+      "serviceFeeInr": 99,
+      "feeAppliesTo": [
+        "purchase",
+        "renewal"
+      ],
+      "connectInr": 0,
+      "requiresPaidPlan": true,
+      "allowedTlds": [
+        ".in",
+        ".co.in",
+        ".com"
+      ],
+      "quoteValidMinutes": 15,
+      "renewWindowDays": 60,
+      "reminderDays": [
+        30,
+        7,
+        1
+      ]
+    }
+  },
+  "retention": {
+    "softDeletedDays": 30,
+    "erasedTombstoneDays": 30,
+    "lapsedAccount": {
+      "deleteAfterMonths": 12,
+      "noticeDaysBefore": [
+        30,
+        7,
+        2
+      ]
+    },
+    "unconfirmedSignupDays": 7,
+    "billingRecordsYearsAfterFinancialYear": 8,
+    "registrantContactsDaysAfterLastDomain": 90,
+    "domainQuotesDays": 30,
+    "siteDailyViewsMonths": 25,
+    "consentsYearsAfterData": 1,
+    "dataRequests": {
+      "keepYearsAfterClose": 3,
+      "responseDays": 30,
+      "reminderDays": [
+        7,
+        21
+      ],
+      "escalateAfterDays": 30
+    },
+    "auditLogMonths": 13,
+    "orphanMediaDays": 30,
+    "endedPolicySuggestDeleteYears": 3
+  }
+}

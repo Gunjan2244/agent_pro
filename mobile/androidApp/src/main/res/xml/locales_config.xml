@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's languages for Android 13+'s per-app language settings (DECISIONS #45). Must list
+     exactly catalog.locales from shared/catalog.json; composeApp's LocalesConfigTest fails otherwise. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="hi" />
+</locale-config>

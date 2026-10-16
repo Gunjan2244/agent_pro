@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android-only resources: the launcher label must be an Android string resource. All other app copy
+     lives in composeApp's Compose resources. -->
+<resources>
+    <string name="app_name">Agent PRO</string>
+</resources>

@@ -1,7 +1,7 @@
 # Product
 
 ## Who it's for
-Agent PRO is for LIC agents: independent insurance advisors in India, mostly working from a phone, often in the field with patchy network. They need to:
+Agent PRO is for insurance agents in India (LIC and other insurers; each agent belongs to one company, DECISIONS #47): independent insurance advisors, mostly working from a phone, often in the field with patchy network. They need to:
 - look credible online,
 - capture leads,
 - remember follow-ups and premium due dates, and
@@ -56,7 +56,7 @@ Agent PRO is for LIC agents: independent insurance advisors in India, mostly wor
 - Integration with official LIC systems.
 
 ## Constraints
-- **No LIC logo or trademark artwork** anywhere. The agent enters their own designation (for example "LIC Agent · Club Member"), and site footers say "Independent insurance advisor".
+- **No insurer logo or trademark artwork is bundled** in templates or app assets. Company logos appear only as admin-uploaded content, with the company's permission (DECISIONS #47). The agent enters their own designation (for example "LIC Agent · Club Member"), and site footers say "Independent insurance advisor".
 - The app must comply with Play Store policy: in-app account deletion, a privacy policy, and a sensible moment to ask for the notification permission.
 
 ## Requirement log
@@ -73,3 +73,21 @@ Add new requirements here, with the date, before implementing them.
   - Domain price: **registrar price plus a fixed fee**.
 - 2026-10-15: the theme must favour ease of use and professionalism, be close to white, and keep screens well planned and uncluttered. This replaces the earlier "Trust & Warmth" theme.
 - 2026-10-15: use 3 standard spacing values, a defined font, and at most 4 font sizes, each 1.67× the previous. Implemented as 8/16/24 dp and 14/23/39/65 sp, with Inter and Noto Sans Devanagari (DECISIONS #19).
+- 2026-10-15: the user asked that the work be split across parallel sub-agents run by an orchestrator, using Sonnet or Opus depending on how complex each task is (DECISIONS #24).
+- 2026-10-15: website enquiries accept **Indian mobile numbers only**. A premium payment **can be undone only if it's the latest one**. **Account deletion runs through a server-side function** that also removes the agent's uploaded media (DECISIONS #31, #32).
+- 2026-10-16: a password-reset link must open a **Set new password** screen (UX.md). The app's language switch must use Android's per-app language (AppCompat), as ARCHITECTURE.md says. The **login session must be encrypted at rest** with an Android Keystore key, behind the `SecureSettings` seam (DECISIONS #44).
+- 2026-10-16: **multiple insurance companies and their offers** (user request):
+  - An agent may be connected to one or more insurance companies (LIC and others).
+  - Each company is a separate entity with its own **ongoing offers**.
+  - Offers are entered and updated by an **admin**, in a **separate admin terminal** where the admin also adds and updates companies.
+  - The agent chooses which offers to display on their website and **where**, and can also add **custom offers** of their own.
+  - **It must be super easy:** the template is kept on the agent's device; the agent taps the part of the site where an offer should appear, then picks one from the list of ongoing offers.
+- 2026-10-16 (answers on companies and offers, DECISIONS #47):
+  - The platform serves agents of **many insurance companies**, and **each agent belongs to exactly one company**.
+  - The admin terminal is a **separate web admin panel**.
+  - Offers go into **slots**: a featured offer in the hero, plus an Offers section the agent can place anywhere. The agent taps the slot on the on-device preview, then picks an offer.
+  - **Company logos are allowed**, uploaded by the admin only for companies that have given permission.
+  - Custom offers stay, with a "Details provided by the agent" note (provisional).
+- 2026-10-16: **the whole product must comply with India's DPDP Act 2023 (Digital Personal Data Protection) and its Rules** (user request). This covers the app, the agent websites and their enquiry form, the backend, and the admin panel. The design goes in `docs/PRIVACY.md` (DECISIONS #48); it isn't legal advice, and counsel should review it before launch.
+- 2026-10-17: **auth emails (sign-up confirmation, password reset) must allow at least 100 per hour.** Supabase's built-in sender allows only about 2 per hour and blocked a test sign-up. This needs custom SMTP through a transactional email provider (already approved, DECISIONS #54), after which the limit is raised in Supabase Auth → Rate Limits.
+- 2026-10-17: the website enquiry form's "Interested in" must start on a blank "Select…" option rather than "Other" (user request). Interest stays optional.

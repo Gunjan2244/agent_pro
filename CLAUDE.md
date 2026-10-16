@@ -37,6 +37,8 @@ Every change is documented **in the same change** — not later, not "at the end
 | Public site renderer, templates, hosting | `docs/WEB_RENDERER.md` |
 | Service plan, trial, entitlement, payments, receipts | `docs/BILLING.md` |
 | Custom domains | `docs/DOMAINS.md` |
+| Companies, offers, offer slots, admin panel | `docs/OFFERS.md` |
+| Personal data: notices, consent, retention, data-principal rights, breach handling | `docs/PRIVACY.md` |
 | Tests, verification steps | `docs/TESTING.md` |
 | Progress, next steps, blockers, environment | `docs/STATUS.md` (always) |
 
@@ -57,5 +59,6 @@ Every change is documented **in the same change** — not later, not "at the end
   - Public access goes only through the `SECURITY DEFINER` RPCs listed in `docs/BACKEND.md`.
   - Run Supabase advisors after each migration.
   - Never commit keys: they live in `mobile/local.properties` and `web/config.js` (template only).
-- **Branding:** never use the LIC logo or trademark artwork in templates or app assets.
+- **Branding:** never bundle the LIC logo or any insurer's logo or trademark artwork in templates or app assets. Company logos may appear only as admin-uploaded content for companies that have given permission (DECISIONS #47).
+- **Privacy:** every feature must comply with India's DPDP Act 2023 and Rules (DECISIONS #48, `docs/PRIVACY.md`): notice and consent, purpose limitation, data minimisation, data-principal rights, breach handling, and retention and erasure.
 - **Outward-facing actions need the user's explicit approval each time.** These include creating or paying for cloud projects, deploying, pushing, and buying domains.

@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "enquiryStatuses": [
+    { "key": "new", "labelKey": "enquiry_status.new", "icon": "fiber_new", "tone": "info", "order": 1, "terminal": false },
+    { "key": "follow_up", "labelKey": "enquiry_status.follow_up", "icon": "event", "tone": "warning", "order": 2, "terminal": false },
+    { "key": "converted", "labelKey": "enquiry_status.converted", "icon": "how_to_reg", "tone": "success", "order": 3, "terminal": true }
+  ],
+  "interests": [
+    { "key": "term", "labelKey": "interest.term", "icon": "shield", "tone": "neutral", "order": 1 },
+    { "key": "money_back", "labelKey": "interest.money_back", "icon": "payments", "tone": "neutral", "order": 2 }
+  ],
+  "enquirySources": [
+    { "key": "website", "labelKey": "enquiry_source.website", "icon": "language", "tone": "neutral", "order": 1 }
+  ],
+  "premiumModes": [
+    { "key": "yearly", "labelKey": "premium_mode.yearly", "icon": "calendar_month", "tone": "neutral", "order": 1, "months": 12 },
+    { "key": "half_yearly", "labelKey": "premium_mode.half_yearly", "icon": "date_range", "tone": "neutral", "order": 2, "months": 6 }
+  ],
+  "policyStatuses": [
+    { "key": "active", "labelKey": "policy_status.active", "icon": "check_circle", "tone": "success", "order": 1 }
+  ],
+  "dueBuckets": [
+    { "key": "overdue", "labelKey": "due_bucket.overdue", "icon": "error", "tone": "danger", "order": 1, "minDays": null, "maxDays": -1 },
+    { "key": "next_3_months", "labelKey": "due_bucket.next_3_months", "icon": "date_range", "tone": "neutral", "order": 2, "minDays": 31, "maxDays": 90 }
+  ],
+  "planStatuses": [
+    { "key": "trial", "labelKey": "plan_status.trial", "icon": "hourglass_empty", "tone": "info", "order": 1 }
+  ],
+  "domainStatuses": [
+    { "key": "pending_dns", "labelKey": "domain_status.pending_dns", "icon": "dns", "tone": "info", "order": 1 },
+    { "key": "active", "labelKey": "domain_status.active", "icon": "check_circle", "tone": "success", "order": 2 }
+  ],
+  "planSuggestions": ["Jeevan Anand", "Agent's \"Best\" Plan"],
+  "reservedSlugs": ["admin", "agent-pro"],
+  "accentSwatches": [
+    { "key": "indigo", "labelKey": "swatch.indigo", "hex": "#1F4AA8", "order": 1 },
+    { "key": "slate", "labelKey": "swatch.slate", "hex": "#37474F", "order": 2 }
+  ],
+  "locales": [
+    { "key": "en", "labelKey": "locale.en", "order": 1 },
+    { "key": "hi", "labelKey": "locale.hi", "order": 2 }
+  ],
+  "features": [
+    { "key": "siteBuilder", "labelKey": "feature.siteBuilder", "icon": "web", "order": 1, "default": true },
+    { "key": "customDomains", "labelKey": "feature.customDomains", "icon": "public", "order": 2, "default": false }
+  ],
+  "pricing": {
+    "service": { "purchaseInr": 499, "taxInclusive": true, "reminderDays": [30, 7, 1] },
+    "domain": { "source": "registrar_live", "allowedTlds": [".in", ".com"] }
+  }
+}

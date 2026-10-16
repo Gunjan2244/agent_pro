@@ -18,7 +18,7 @@ It's available in English and Hindi.
 ## Repo layout
 ```
 mobile/               Kotlin Multiplatform project: composeApp (shared code), androidApp, iosApp (later), build-logic
-web/                  Static public-site renderer (templates), deployed to Vercel
+web/                  Static public-site renderer (templates), deployed to Cloudflare Workers (static assets)
 shared/               Single source of truth: catalog, site schema, design tokens, i18n, templates registry
 supabase/migrations/  Database schema, RLS, RPCs
 scripts/              build-web.sh and helpers

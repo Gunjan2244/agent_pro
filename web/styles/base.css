@@ -1,0 +1,53 @@
+/* Shared component styles. Layout spacing: only --space-s|m|l (and multiples via calc). Text: only --text-s|m|l|xl. */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--c-background);color:var(--c-onSurface);font:400 var(--text-s)/var(--line-s) Inter,"Noto Sans Devanagari",system-ui,sans-serif}
+h1,h2,h3,p,ul,blockquote,figure{margin:0;padding:0}
+ul{list-style:none}
+a{color:var(--accent)}
+img{max-width:100%;height:auto;display:block}
+.state{max-width:480px;margin:calc(var(--space-l)*2) auto;padding:0 var(--space-m);text-align:center;color:var(--c-onSurfaceVariant)}
+.state h1{font-size:var(--text-m);line-height:var(--line-m);color:var(--c-onSurface);margin-bottom:var(--space-s)}
+.tpl{--tint:color-mix(in srgb,var(--accent) 10%,#fff);--on-accent:#fff}
+.sec{max-width:880px;margin:0 auto;padding:calc(var(--space-l)*2) var(--space-m)}
+.sec+.sec{border-top:1px solid var(--c-outlineVariant)}
+h1{font-size:var(--text-l);line-height:var(--line-l);font-weight:700;overflow-wrap:anywhere}
+h2{font-size:var(--text-m);line-height:var(--line-m);font-weight:600;margin-bottom:var(--space-m)}
+h3{font-size:var(--text-s);line-height:var(--line-s);font-weight:600}
+@media(min-width:1024px){h1{font-size:var(--text-xl);line-height:var(--line-xl)}}
+.eyebrow{color:var(--accent);font-weight:600;margin-bottom:var(--space-s)}
+.lead{font-size:var(--text-m);line-height:var(--line-m);color:var(--c-onSurfaceVariant);margin-top:var(--space-m);white-space:pre-line}
+.meta{color:var(--c-muted);margin-top:var(--space-s)}
+.prose{white-space:pre-line;color:var(--c-onSurfaceVariant)}
+.hero-photo{width:160px;height:160px;border-radius:50%;object-fit:cover}
+.hero-text .btn{margin-top:var(--space-l)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:var(--space-s) var(--space-m);border:1px solid var(--accent);border-radius:var(--shape-sm);background:var(--accent);color:var(--on-accent);font-family:inherit;font-weight:600;font-size:var(--text-s);line-height:var(--line-s);text-decoration:none;cursor:pointer;overflow-wrap:anywhere}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.6;cursor:default}
+a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stats,.chips,.actions{display:flex;flex-wrap:wrap;gap:var(--space-s);margin-top:var(--space-m)}
+.stats li{font-weight:600}
+.chips li{padding:var(--space-s) var(--space-m);border-radius:var(--shape-lg);background:var(--tint);color:var(--c-onPrimaryContainer)}
+.cards{display:grid;gap:var(--space-m)}
+.card{padding:var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surface)}
+.card p,.card h3+p{margin-top:var(--space-s);color:var(--c-onSurfaceVariant)}
+.card .ico{color:var(--accent);margin-bottom:var(--space-s)}
+.card blockquote{white-space:pre-line}
+.list li{display:flex;justify-content:space-between;gap:var(--space-m);padding:var(--space-s) 0;border-bottom:1px solid var(--c-outlineVariant)}
+.list .meta{margin:0}
+.faq details{border-bottom:1px solid var(--c-outlineVariant);padding:var(--space-m) 0}
+.faq summary{font-weight:600;cursor:pointer}
+.faq .prose{margin-top:var(--space-s)}
+.contact-grid{display:grid;gap:var(--space-l)}
+.contact-info p{margin-top:var(--space-m)}
+.contact-info .actions{margin-top:0}
+.enq{display:grid;gap:var(--space-m);padding:var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surfaceContainerLow)}
+.enq.done{gap:var(--space-m);justify-items:start}
+.fld label{display:block;font-weight:500;margin-bottom:var(--space-s)}
+.fld input,.fld select,.fld textarea{width:100%;min-height:48px;padding:var(--space-s) var(--space-m);border:1px solid var(--c-outline);border-radius:var(--shape-sm);background:var(--c-background);color:inherit;font:inherit}
+.fld [aria-invalid=true]{border-color:var(--c-error)}
+.err{color:var(--c-error);margin-top:var(--space-s)}
+.err[hidden]{display:none}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.foot{max-width:880px;margin:0 auto;padding:var(--space-l) var(--space-m) calc(var(--space-l)*2);border-top:1px solid var(--c-outlineVariant);text-align:center;color:var(--c-muted)}
+@media(min-width:720px){.cards{grid-template-columns:repeat(2,1fr)}.contact-grid{grid-template-columns:1fr 1fr}}

@@ -1,0 +1,137 @@
+{
+ "template_key": "classic",
+ "accent": "indigo",
+ "locale": "hi",
+ "published_content": {
+  "sectionOrder": [
+   "hero",
+   "about",
+   "services",
+   "highlights",
+   "achievements",
+   "testimonials",
+   "faq",
+   "contact"
+  ],
+  "hidden": [],
+  "hero": {
+   "headline": "आपके परिवार के लिए बीमा, सरल तरीके से",
+   "subheadline": "टर्म, हेल्थ और बचत योजनाओं पर ईमानदार सलाह, एक स्थानीय सलाहकार से जिसे आप कभी भी कॉल कर सकते हैं।",
+   "photo": "http://localhost:8080/dev-fixtures/avatar.svg",
+   "ctaLabel": ""
+  },
+  "about": {
+   "bio": "मैं पिछले दस वर्षों से पुणे के परिवारों को सुरक्षा और बचत की योजना बनाने में मदद कर रहा हूँ।\nहर सलाह आपके लक्ष्यों से शुरू होती है, किसी प्रोडक्ट से नहीं।",
+   "designation": "बीमा सलाहकार",
+   "yearsExperience": 12,
+   "clientsServed": 850,
+   "languagesSpoken": [
+    "english",
+    "hindi",
+    "marathi"
+   ],
+   "showAgencyCode": true
+  },
+  "services": {
+   "offered": [
+    "term",
+    "health",
+    "pension"
+   ],
+   "items": [
+    {
+     "interest": "term",
+     "description": "कम खर्च में पूरी सुरक्षा।"
+    },
+    {
+     "interest": "health",
+     "description": "अस्पताल के बिलों के लिए कवर।"
+    },
+    {
+     "interest": "child",
+     "description": ""
+    }
+   ]
+  },
+  "highlights": {
+   "items": [
+    {
+     "icon": "shield",
+     "title": "पहले सुरक्षा",
+     "text": "आपकी ज़रूरत के अनुसार योजनाएँ।"
+    },
+    {
+     "icon": "support_agent",
+     "title": "हमेशा उपलब्ध",
+     "text": "कभी भी कॉल या व्हाट्सऐप करें।"
+    },
+    {
+     "icon": "handshake",
+     "title": "क्लेम में मदद",
+     "text": ""
+    },
+    {
+     "icon": "schedule",
+     "title": "समय पर याद दिलाना",
+     "text": ""
+    }
+   ]
+  },
+  "achievements": {
+   "items": [
+    {
+     "title": "मिलियन डॉलर राउंड टेबल क्वालिफायर",
+     "year": 2022
+    },
+    {
+     "title": "सर्वश्रेष्ठ नए एजेंट",
+     "year": 2014
+    }
+   ]
+  },
+  "testimonials": {
+   "items": [
+    {
+     "name": "Rohit S.",
+     "city": "Pune",
+     "quote": "साफ़ सलाह और क्लेम में तुरंत मदद।"
+    },
+    {
+     "name": "Meera K.",
+     "city": "",
+     "quote": "कभी ऐसा प्लान नहीं थोपा जिसकी ज़रूरत नहीं थी।"
+    }
+   ]
+  },
+  "faq": {
+   "items": [
+    {
+     "question": "मुझे कितना कवर चाहिए?",
+     "answer": "आम नियम है सालाना आय का 10 से 15 गुना।"
+    },
+    {
+     "question": "क्या मैं ऑनलाइन ले सकता हूँ?",
+     "answer": "हाँ, मैं आपको हर कदम पर मार्गदर्शन दूँगा।"
+    }
+   ]
+  },
+  "contact": {
+   "phone": "98765 43210",
+   "whatsapp": "9876543210",
+   "email": "asha@example.com",
+   "officeAddress": "12 एमजी रोड, पुणे 411001",
+   "mapLink": "https://maps.google.com/?q=Pune",
+   "officeHours": "सोम–शनि, सुबह 10 – शाम 6",
+   "showEnquiryForm": true
+  }
+ },
+ "profile": {
+  "full_name": "आशा वर्मा",
+  "designation": "बीमा सलाहकार",
+  "city": "पुणे",
+  "photo_url": "http://localhost:8080/dev-fixtures/avatar.svg",
+  "phone": "9876543210",
+  "agency_code": "123456"
+ },
+ "canonical_host": "asha-verma.example"
+}

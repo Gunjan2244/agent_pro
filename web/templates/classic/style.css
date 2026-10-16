@@ -1,0 +1,7 @@
+/* Trust: centred portrait hero, stacked sections */
+.tpl-classic .hero-in{display:grid;justify-items:center;text-align:center}
+.tpl-classic .hero-photo{margin-bottom:var(--space-l)}
+.tpl-classic .sec{text-align:left}
+.tpl-classic .sec-hero{text-align:center;padding-top:calc(var(--space-l)*2)}
+.tpl-classic .cards{grid-template-columns:1fr}
+@media(min-width:720px){.tpl-classic .sec-highlights .cards{grid-template-columns:repeat(2,1fr)}}

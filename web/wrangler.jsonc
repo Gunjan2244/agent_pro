@@ -1,0 +1,14 @@
+// Cloudflare Worker serving the public-site renderer as static assets only (no Worker script).
+// Build first: sh scripts/build-web.sh  (writes web/dist). Deploy (needs the user's approval):
+//   npx wrangler@4.151.1 deploy --config web/wrangler.jsonc
+{
+  "name": "agentpro-sites",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    // every unknown path (e.g. /a/<slug>) serves /index.html with 200
+    "not_found_handling": "single-page-application"
+  }
+  // No routes / custom domains yet: the platform domain is not bought (DECISIONS #59).
+}

@@ -1,0 +1,11 @@
+# Secrets and machine-specific paths (template: local.properties.example)
+local.properties
+# Build output
+build/
+.gradle/
+.kotlin/
+# IDE
+*.iml
+.idea/
+.DS_Store
+captures/

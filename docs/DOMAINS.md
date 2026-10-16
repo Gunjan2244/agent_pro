@@ -27,20 +27,20 @@ App ──JWT──▶ Edge Function `domains`   search (live quotes) · quote �
     ──JWT──▶ Edge Function `billing`   create-order {kind: domain_purchase|domain_renewal, quote_id} · verify
 Razorpay ──▶ `razorpay-webhook` ──▶ fulfil(domain_*)
                                      ├─ Registrar: register / renew / set DNS  (idempotency key = order id)
-                                     ├─ Vercel: add domain to renderer project (auto SSL)
+                                     ├─ Cloudflare: create custom hostname on the platform zone (auto SSL)
                                      └─ DB: orders, site_domains (service role)
 pg_cron ──▶ `cron`  every 10 min: DNS/SSL status · daily: expiry reminders, status changes
 ```
 ```ts
-interface Registrar {               // first impl: TBD (ResellerClub or Vercel Domains) — open question
+interface Registrar {               // first impl: TBD (ResellerClub or another) — open question
   check(domains: string[]): Promise<{ domain: string; available: boolean;
                                        priceInr: number; renewPriceInr: number; currency: string }[]>
   register(domain: string, years: 1, contact: RegistrantContact, idempotencyKey: string): Promise<{ ref: string; expiresAt: string }>
   renew(domain: string, years: 1, idempotencyKey: string): Promise<{ expiresAt: string }>
   setDns(domain: string, records: DnsRecord[]): Promise<void>
 }
-interface HostingAttach {           // impl: Vercel
-  addDomain(hostname: string): Promise<{ verification: DnsRecord[] }>
+interface HostingAttach {           // impl: Cloudflare for SaaS custom hostnames (DECISIONS #59)
+  addDomain(hostname: string): Promise<{ verification: DnsRecord[] }>   // POST /zones/{zone}/custom_hostnames; returns the CNAME to our fallback origin + any TXT validation records
   status(hostname: string): Promise<'pending_dns' | 'verifying' | 'active' | 'failed'>
 }
 ```
@@ -57,7 +57,7 @@ interface HostingAttach {           // impl: Vercel
 3. **Pay and verify,** as described in BILLING.md.
 4. **Fulfil.** Each step updates `orders.step`, which the app follows over realtime:
    - `registering`: `Registrar.register`.
-   - `configuring`: `Registrar.setDns` (pointing at Vercel), then `HostingAttach.addDomain`.
+   - `configuring`: `Registrar.setDns` (a CNAME to our Cloudflare fallback origin), then `HostingAttach.addDomain`.
    - `ssl_pending`: the cron job polls `HostingAttach.status`.
    - `live`: upsert `site_domains` (`custom`, `active`, `expires_at`, `purchased_in_app = true`), set `sites.primary_domain_id`, and notify the agent.
 5. **Failure.**
@@ -74,7 +74,13 @@ interface HostingAttach {           // impl: Vercel
 ### Connect own domain (free, paid plan required)
 1. `POST domains/connect {hostname}` calls `HostingAttach.addDomain` and inserts `site_domains` (`custom`, `pending_dns`, `purchased_in_app = false`).
 2. It returns the DNS records, which the app shows with copy buttons.
-3. The cron job or **Check now** moves the status on to `active`.
+3. The cron job or **Check now** polls the custom hostname (hostname status and certificate status) and maps it to `site_domains.status`: `pending` to `pending_dns`, `pending` with a certificate in validation to `verifying`, `active` with an active certificate to `active`, `blocked`/`moved`/`deleted` or a validation timeout to `failed`.
+
+### Cloudflare setup
+- A Cloudflare zone for the platform domain (to be bought), with Cloudflare for SaaS enabled and a **fallback origin** (a proxied DNS record pointing at the `agentpro-sites` Worker). Agents CNAME their hostname to that fallback origin (apex domains use the CNAME-flattening or ALIAS option their DNS host offers; the app shows the exact record).
+- Cloudflare issues and renews the certificate automatically (DCV by HTTP once the CNAME resolves).
+- Pricing (checked 2026-10-17): the first 100 custom hostnames are free, then $0.10 per hostname per month.
+- The registrar stays separate (open question below); Cloudflare is only hosting and certificates.
 
 ## Data (columns in BACKEND.md)
 - `domain_quotes`: domain, kind (`purchase|renewal`), registrar_price_inr, renew_estimate_inr, service_fee_inr, total_inr, currency_source, expires_at, used_by_order_id.
@@ -87,10 +93,10 @@ interface HostingAttach {           // impl: Vercel
 - On a trial or lapsed plan, the Custom domain section shows "Available on the paid plan" with **See plan**.
 
 ## Secrets
-`REGISTRAR_API_KEY` (plus a reseller ID if needed), `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`. Razorpay secrets are in BILLING.md.
+`REGISTRAR_API_KEY` (plus a reseller ID if needed), `CLOUDFLARE_API_TOKEN` (scoped to custom hostnames on the platform zone), `CLOUDFLARE_ZONE_ID`. Razorpay secrets are in BILLING.md.
 
 ## Open questions (also in STATUS.md)
-1. **Registrar:** ResellerClub (India, INR, `.in`) vs Vercel Domains vs another. It needs API support for live pricing, register, renew and DNS.
+1. **Registrar:** ResellerClub (India, INR, `.in`) vs another. It needs API support for live pricing, register, renew and DNS.
 2. **Fee amount:** confirm ₹99, including GST, for both purchase and renewal.
 3. **Registrant:** the agent (assumed) vs the business.
 4. **Play Billing policy** for domain sales (see BILLING.md, Compliance).

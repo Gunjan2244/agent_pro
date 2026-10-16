@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AppCompatActivity needs an AppCompat theme (DECISIONS #45). Compose draws the whole UI
+         (AgentProTheme) edge to edge; DayNight only keeps the window background from flashing
+         white in dark mode before the first frame. -->
+    <style name="Theme.AgentPro" parent="Theme.AppCompat.DayNight.NoActionBar" />
+</resources>

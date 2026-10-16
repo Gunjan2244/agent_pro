@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plain app UI copy. Every key must also exist in values-hi/ (verifyShared). The cat_ prefix is
+     reserved for the generated catalog strings (strings_catalog.xml). Compose resources format:
+     apostrophes are written literally, placeholders are %1$s / %1$d. -->
+<resources>
+    <string name="app_name">Agent PRO</string>
+
+    <!-- Design system: common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_more_options">More options</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+    <string name="action_see_all">See all</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_add">Add</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_keep_editing">Keep editing</string>
+
+    <!-- Design system: connectivity and states -->
+    <string name="offline_banner">Offline — showing saved data</string>
+    <string name="needs_internet">Needs internet</string>
+    <string name="back_online">Back online</string>
+    <string name="error_generic">Something went wrong</string>
+    <string name="loading">Loading</string>
+
+    <!-- Design system: components -->
+    <string name="more_details">More details</string>
+    <string name="fewer_details">Fewer details</string>
+    <string name="search_hint">Search</string>
+    <string name="filter_all">All</string>
+    <string name="filter_chip_count">%1$s · %2$d</string>
+    <string name="chart_view_table">View as table</string>
+    <string name="chart_view_chart">View as chart</string>
+    <string name="chart_empty">No data yet</string>
+    <string name="chart_table_period">Period</string>
+    <string name="kpi_delta_up">Up</string>
+    <string name="kpi_delta_down">Down</string>
+    <string name="price_total">Total (incl. GST)</string>
+    <string name="stepper_done">Done</string>
+    <string name="stepper_current">In progress</string>
+    <string name="stepper_pending">Pending</string>
+    <string name="stepper_failed">Failed</string>
+    <string name="discard_title">Discard changes?</string>
+    <string name="discard_message">Your changes will be lost.</string>
+    <string name="selected">Selected</string>
+
+    <!-- Due urgency (UrgencyChip): "Overdue 3d", "Due in 5d", "Due 15 Jan" -->
+    <string name="urgency_overdue">Overdue %1$dd</string>
+    <string name="urgency_due_in">Due in %1$dd</string>
+    <string name="urgency_due_today">Due today</string>
+    <string name="urgency_due_on">Due %1$s</string>
+
+    <!-- Short month names for dates ("15 Oct 2026") -->
+    <string name="month_short_1">Jan</string>
+    <string name="month_short_2">Feb</string>
+    <string name="month_short_3">Mar</string>
+    <string name="month_short_4">Apr</string>
+    <string name="month_short_5">May</string>
+    <string name="month_short_6">Jun</string>
+    <string name="month_short_7">Jul</string>
+    <string name="month_short_8">Aug</string>
+    <string name="month_short_9">Sep</string>
+    <string name="month_short_10">Oct</string>
+    <string name="month_short_11">Nov</string>
+    <string name="month_short_12">Dec</string>
+
+    <!-- Forms (FormRenderer, Validators) -->
+    <string name="validation_required">Required</string>
+    <string name="validation_max_length">Max %1$d characters</string>
+    <string name="validation_range">Enter %1$s–%2$s</string>
+    <string name="validation_min">At least %1$s</string>
+    <string name="validation_max">At most %1$s</string>
+    <string name="validation_number">Enter a number</string>
+    <string name="validation_phone">Enter a 10-digit mobile number</string>
+    <string name="validation_email">Enter a valid email</string>
+    <string name="validation_url">Start with https://</string>
+    <string name="validation_slug">3–30 small letters, numbers or -</string>
+    <string name="validation_slug_reserved">This link isn't available</string>
+    <string name="validation_max_items">Up to %1$d items</string>
+    <string name="validation_option">Choose from the list</string>
+    <string name="form_item_title">Item %1$d</string>
+    <string name="form_add_photo">Add photo</string>
+    <string name="form_change_photo">Change photo</string>
+    <string name="form_photo_added">Photo added</string>
+    <string name="form_choose">Choose</string>
+    <string name="form_pick_date">Pick a date</string>
+    <string name="form_character_count">%1$d/%2$d</string>
+
+    <!-- Debug component gallery (debug builds only) -->
+    <string name="gallery_title">Component gallery</string>
+    <string name="gallery_dark">Dark</string>
+    <string name="gallery_hindi">Hindi</string>
+    <string name="gallery_large_text">200% text</string>
+
+    <!-- Errors (core/data AppError) -->
+    <string name="error_offline">No internet connection</string>
+    <string name="error_unauthorized">Please sign in again</string>
+    <string name="error_read_only">Renew to make changes</string>
+    <string name="error_validation">Check the details and try again</string>
+    <string name="error_conflict">Couldn't save. Refresh and try again</string>
+    <string name="error_rate_limited">Too many tries. Wait a minute and try again</string>
+
+    <!-- Forms (password fields) -->
+    <string name="validation_min_length">At least %1$d characters</string>
+    <string name="form_show_password">Show password</string>
+    <string name="form_hide_password">Hide password</string>
+
+    <!-- App shell -->
+    <string name="not_configured">This app isn't connected to a server yet</string>
+    <string name="startup_error">Couldn't load your data</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_enquiries">Enquiries</string>
+    <string name="tab_customers">Customers</string>
+    <string name="tab_website">Website</string>
+    <string name="segment_customers">Customers</string>
+    <string name="segment_dues">Dues</string>
+    <string name="action_settings">Settings</string>
+
+    <!-- Auth (feature/auth) -->
+    <string name="welcome_tagline">Your website, enquiries and customers — in one place</string>
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_sign_in">Sign in</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_forgot_password">Forgot password?</string>
+    <string name="auth_error_credentials">Wrong email or password</string>
+    <string name="auth_error_not_confirmed">Confirm your email first</string>
+    <string name="auth_error_weak_password">Choose a stronger password</string>
+    <string name="auth_error_exists">An account with this email already exists</string>
+    <string name="auth_check_email_title">Check your email</string>
+    <string name="auth_check_email_text">Check your email to confirm. We sent a link to %1$s</string>
+    <string name="auth_resend">Resend</string>
+    <string name="auth_resent">Email sent again</string>
+    <string name="auth_open_email">Open email app</string>
+    <string name="auth_no_email_app">No email app found</string>
+    <string name="auth_reset_title">Reset password</string>
+    <string name="auth_send_reset">Send reset link</string>
+    <string name="auth_reset_sent_title">Reset link sent</string>
+    <string name="auth_reset_sent_text">Open the link we sent to %1$s</string>
+    <string name="auth_back_to_sign_in">Back to sign in</string>
+    <string name="auth_set_password_title">Set new password</string>
+    <string name="auth_new_password">New password</string>
+    <string name="auth_save_password">Save password</string>
+    <string name="auth_password_updated">Password updated</string>
+    <string name="auth_error_same_password">Choose a password different from your old one</string>
+    <string name="auth_link_expired_title">This link has expired</string>
+    <string name="auth_link_expired_text">Reset links work once and only for a short time. Ask for a new one.</string>
+    <string name="auth_send_new_link">Send a new link</string>
+
+    <!-- Onboarding (feature/onboarding) -->
+    <string name="onboarding_step_of">Step %1$d of %2$d</string>
+    <string name="onboarding_profile_title">Your profile</string>
+    <string name="onboarding_template_title">Pick a design</string>
+    <string name="onboarding_link_title">Your link</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_use_template">Use this template</string>
+    <string name="onboarding_publish_now">Publish now</string>
+    <string name="onboarding_later">Later</string>
+    <string name="onboarding_link_label">Link</string>
+    <string name="onboarding_link_checking">Checking…</string>
+    <string name="onboarding_link_available">Available</string>
+    <string name="onboarding_link_taken">This link is taken</string>
+    <string name="onboarding_link_preview">Your site: %1$s</string>
+    <string name="onboarding_trial_started">Your %1$d-day free trial has started</string>
+    <string name="onboarding_template_position">%1$d of %2$d</string>
+    <string name="profile_mobile">Mobile</string>
+    <string name="profile_agency_code">Agency code</string>
+    <string name="profile_branch">Branch</string>
+
+    <!-- Home and placeholder tabs (Phases 6–13 replace them) -->
+    <string name="home_greeting">Namaste, %1$s</string>
+    <string name="home_greeting_plain">Namaste</string>
+    <string name="home_nothing_due">Nothing due today</string>
+    <string name="home_setup_row">Finish setup · %1$d of %2$d</string>
+    <string name="setup_title">Finish setup</string>
+    <string name="setup_profile">Fill in your profile</string>
+    <string name="setup_publish">Publish your website</string>
+    <string name="setup_share">Share your link</string>
+    <string name="setup_customer">Add your first customer</string>
+    <string name="setup_done">Done</string>
+    <string name="setup_todo">To do</string>
+    <string name="enquiries_empty">Share your website to get enquiries</string>
+    <string name="dues_empty">All caught up</string>
+    <string name="website_none">No website yet</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_sign_out">Sign out</string>
+</resources>

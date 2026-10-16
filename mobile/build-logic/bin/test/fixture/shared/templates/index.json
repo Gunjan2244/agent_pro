@@ -1,0 +1,4 @@
+{ "version": 1, "templates": [
+  { "key": "classic", "nameKey": "template.classic.name", "descriptionKey": "template.classic.description",
+    "sections": ["hero", "about", "services"], "defaultAccent": "indigo", "preview": "web/templates/classic/preview.webp", "order": 1 }
+] }

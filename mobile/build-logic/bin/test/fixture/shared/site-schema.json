@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "sections": [
+    { "key": "hero", "labelKey": "section.hero", "icon": "badge", "pinned": true, "defaultVisible": true,
+      "fields": [
+        { "key": "headline", "type": "text", "labelKey": "field.headline", "required": true, "maxLength": 70 },
+        { "key": "photo", "type": "image", "labelKey": "field.photo", "aspect": "1:1" },
+        { "key": "ctaLabel", "type": "text", "labelKey": "field.cta_label", "maxLength": 30, "defaultKey": "site.cta_default" }
+      ] },
+    { "key": "about", "labelKey": "section.about", "icon": "person", "defaultVisible": true,
+      "fields": [
+        { "key": "yearsExperience", "type": "number", "labelKey": "field.years_experience", "min": 0, "max": 70 },
+        { "key": "showAgencyCode", "type": "toggle", "labelKey": "field.show_agency_code", "default": false }
+      ] },
+    { "key": "services", "labelKey": "section.services", "icon": "work", "defaultVisible": true,
+      "fields": [
+        { "key": "offered", "type": "multiSelect", "labelKey": "field.offered", "optionsFrom": "catalog.interests" },
+        { "key": "items", "type": "list", "labelKey": "field.highlights", "maxItems": 4,
+          "itemFields": [
+            { "key": "icon", "type": "select", "labelKey": "field.icon", "required": true,
+              "options": [ { "key": "shield", "icon": "shield", "labelKey": "highlight_icon.shield" } ] },
+            { "key": "title", "type": "text", "labelKey": "field.item_title", "required": true, "maxLength": 40 }
+          ] }
+      ] }
+  ]
+}

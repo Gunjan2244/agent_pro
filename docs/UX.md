@@ -9,6 +9,7 @@ Every screen follows the **calm-screen rules** in DESIGN_SYSTEM.md. In short:
 ```
 Splash ─ no session ──→ Welcome → Sign in ⇄ Create account → Check your email
        │                           └→ Forgot password → Reset sent
+       └ reset link (agentpro://auth-callback) ──→ Set new password → Home
        ├ session, no profile → Onboarding: 1 Profile → 2 Template → 3 Your link → Done
        └ ready ─────────────→ Main
 Main bottom bar (4):  Home · Enquiries (badge: new) · Customers (badge: overdue) · Website
@@ -90,9 +91,23 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
 - **Create account:** next comes "Check your email to confirm", with Resend and Open email app.
 - **Forgot password:** sends a reset email and shows "Reset link sent".
 
+### Set new password
+- **Opened by** the reset link in the email (`agentpro://auth-callback`, a recovery session). It's never reachable any other way.
+- **One field:** new password, with a show/hide toggle and the same rules as sign-up (at least 8 characters).
+- **One primary button:** "Save password". On success, go to Home and show a snackbar, "Password updated".
+- **If the link has expired or is invalid:** show "This link has expired", with one button, **Send a new link**, which opens Forgot password.
+- **If the agent leaves without saving,** they stay signed in. The password can still be changed later in Settings → Change password.
+- **Details:**
+  - While the link's session is being read, the Splash shows. The flow covers whatever screen was open.
+  - Back (the top-bar arrow) leaves the flow. Leaving Reset sent ("Back to sign in") also leaves it.
+  - The button is disabled while saving and offline ("Needs internet"). Errors are inline: "Choose a stronger password", and "Choose a password different from your old one".
+  - If the reset session has run out by the time the agent saves, "This link has expired" shows.
+  - The expired screen's text: "Reset links work once and only for a short time. Ask for a new one."
+
 ### Onboarding (3 steps)
 Each step has a progress bar at the top and one primary button at the bottom.
 1. **Profile:** name, mobile, designation and city. Photo, agency code and branch are under More details.
+   - The photo uses the same picker, centred square crop and WebP upload as the hero photo (Phase 8); Continue waits while it uploads.
 2. **Template:** a full-height pager rendering the agent's own content in each template. The template name sits below it, with **Use this template**.
 3. **Your link:** a slug suggested from the name, with live validation and an availability check, and a preview of the full URL. Then **Publish now** (primary) or **Later** (text button).
 
@@ -137,7 +152,11 @@ Home has at most 3 blocks, top to bottom:
   - **Supporting line:** interest and relative time.
   - **Trailing:** a `StatusPill`.
 - **FAB:** an icon-only `+`, labelled "Add enquiry" for TalkBack. It opens a short form with name, phone and interest, and source and message under More details.
-- **Empty state:** "Share your website to get enquiries" with **Share link**.
+- **Empty state:** "Share your website to get enquiries" with **Share link** (the system share sheet with the site link; hidden until a site exists).
+- **As built (Phase 6):**
+  - Every chip shows its count ("New · 3", "All · 9"). The search icon opens a search field under the top bar; it matches name, email and message, and phone digits once 3 or more are typed. A search or filter that matches nothing says "No enquiries match".
+  - The sort icon opens a sheet: Newest first (default) · Oldest first · Name. The filter and sort are remembered.
+  - The Enquiries tab badge counts unseen enquiries.
 
 ### Enquiry detail
 Top to bottom:
@@ -152,6 +171,14 @@ Top to bottom:
 
 Opening the screen sets `seen_at`. The overflow menu has Copy details and Delete (with Undo).
 
+**As built (Phase 6):**
+- The header line is the date the enquiry arrived (absolute, "16 Oct 2026") and its source. Call and SMS are disabled without a phone, Email without an email.
+- A status change applies at once and shows "Status: Contacted" with **Undo** (5 s). The Follow-up sheet has a date field, a 24-hour time (default 10:00, Asia/Kolkata) and **Set follow-up**; opened from the Follow-up row it also has **Remove follow-up**. Setting a date on an open enquiry makes it a Follow-up. Only `follow_up_at` is stored; reminders are Phase 12.
+- **Delete** soft-deletes at once and shows "Enquiry deleted" with **Undo**; when the snackbar ends the screen closes.
+- The notes editor saves 800 ms after typing stops and again when it closes ("Saving…" / "Saved" under the field).
+- **Convert to customer** opens the customer form prefilled with the name, mobile and email. **Save** creates the customer (linked by `source_enquiry_id`), sets the enquiry's `customer_id` and status Converted, and opens the new customer. A retry after a failed second step reuses that customer. Back on the enquiry, the bar reads **View customer**.
+- Offline, Convert and the status, follow-up and delete actions are disabled ("Needs internet").
+
 ### Customers tab — `[ Customers | Dues ]`
 There's a segmented control at the top. Dues lives here so the bottom bar stays at 4 tabs.
 
@@ -159,12 +186,14 @@ There's a segmented control at the top. Dues lives here so the bottom bar stays 
 - Search and filter chips: All · Overdue · Due this month · No policy.
 - **Each row:** name, "2 policies · ₹45,000/yr", and a trailing `UrgencyChip`.
 - **FAB `+`:** a sheet offering Add manually or Pick from contacts. The system contact picker needs no permission.
+- **As built (Phase 7):** the search field is always shown above the chips (name, city, phone digits). Every chip shows its count. "Overdue" uses the catalog bucket; "Due this month" means a premium due in the next 30 days (the `this_week` and `this_month` buckets); a row's chip is the earliest due date of the customer's **active** policies, and the yearly amount counts active policies only. A picked contact opens the customer form prefilled (the number normalised to +91 when it's an Indian mobile). The Customers tab badge counts customers with an overdue premium. Empty state: "Add your first customer" with **Add customer**.
 
 **Dues**
 - Chips from `dueBuckets`: Overdue (n) · This week · This month · Next 3 months.
 - One summary line: "₹1,24,500 due · 9 policies".
 - Rows grouped by date. **Each row:** customer, plan, amount and `UrgencyChip`. Tapping opens Policy detail; a trailing Call icon is the one quick action.
 - **Empty state:** "All caught up".
+- **As built (Phase 7):** "All" is every bucket (up to 90 days); only **active** policies count. Each date group's header shows the date and its `UrgencyChip`, so a row keeps a single trailing element (Call): the row reads the customer, then "plan · ₹amount". `agentpro://dues?bucket=` opens this segment with that chip selected.
 
 ### Customer detail
 - **Header:** name, phone and city, with an outlined action row: Call · SMS · Edit.
@@ -173,6 +202,7 @@ There's a segmented control at the top. Dues lives here so the bottom bar stays 
   - **Details:** plain label and value pairs.
   - **Activity:** a timeline of the source enquiry and payments.
 - **Overflow menu:** Delete, with a confirm dialog that states how many policies go with it.
+- **As built (Phase 7):** the tabs are a `SegmentedControl`. **Add policy** (the bottom bar) shows on the Policies tab only. A policy row reads the plan, then "No. 123 · ₹12,000 · Quarterly", with the `UrgencyChip` (or the status pill when the policy isn't active). Activity lists payments, "Customer added" and the source enquiry, newest first. Delete soft-deletes the customer and its policies, then closes the screen. The Policies tab is hidden when the `policies` flag is off.
 
 ### Customer form
 Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and notes are under More details.
@@ -181,6 +211,7 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
 - **Always shown:** plan name\* (autocomplete), policy number\*, premium\*, mode\* (segmented control), start date\*.
 - **Under More details:** sum assured, a next due date override (otherwise calculated automatically), status and notes.
 - **Live summary** above Save: "₹12,000 every quarter · next due 15 Jan 2027".
+- **As built (Phase 7):** the summary reads "₹12,000 · Quarterly · next due 15 Jan 2027" (the mode's catalog label, pending the user's confirmation). Plan name suggests up to 5 matching `planSuggestions` as you type. Mode defaults to the first catalog mode, status to Active. Without an override, the next due date is the first date on the schedule (start + whole periods) after the start date that is today or later: a policy started on 15 Oct 2026, quarterly, is next due on 15 Jan 2027.
 
 ### Policy detail
 - A summary (plan, number, premium, mode, next due, status) and the payment history list.
@@ -188,6 +219,7 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
   - amount (prefilled) and date (today),
   - and the line "Next due becomes 15 Apr 2027".
   - **Record** saves it and shows Undo.
+- **As built (Phase 7):** "Next due becomes …" uses the same rule as `mark_premium_paid` (`DueDateCalculator`). After **Record** the sheet closes and "Premium recorded" shows with **Undo** (5 s), which calls `undo_premium_payment`; if a newer payment exists the app says "Only the latest payment can be undone". **Record premium paid** is disabled offline and when the policy has no due date ("No due date set"). Edit is in the overflow menu; the customer is a row that opens Customer detail.
 
 ### Website tab (hub)
 - **No site yet:** one sentence and **Create your website**.
@@ -201,27 +233,38 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
   - **Link & domain:** the current address, or "Get your own domain".
   - **Stats:** "120 views this week".
 - **Sticky bar** whenever the draft differs from the published version: "Unpublished changes" with **Preview** (text button) and **Publish** (primary).
+- **As built (Phase 8):**
+  - The status is **Draft** until the first publish, **Unpublished changes** while `draft_content` differs from `published_content`, otherwise **Live** (with an icon each: hourglass / sync / check).
+  - "7 sections" counts the visible sections; "120 views this week" is the last 7 days including today (Asia/Kolkata).
+  - **Share** opens the system share sheet with the full link and ticks "Share your link" on Home's setup checklist. **Copy link** shows "Link copied"; **Open** opens the live link in the browser; **Show QR code** opens the Share / QR sheet (the QR code, the address, "Customers can scan this to open your website", Share and Copy link).
+  - **Publish** shows "Your website is live". If `publish_site` refuses the draft, the Content screen opens with "Fix the marked sections, then publish again", each affected row says "Needs a fix before publishing" (error icon), and a snackbar says "Fix N things before publishing".
+  - Save and Publish are disabled offline ("Needs internet").
 
 **Content screen**
 - One row per section from the schema: icon, title, summary and a visibility switch. Hero and Contact are pinned on.
 - **Reorder** in the top bar enables drag handles.
+- **As built:** the switch saves the draft at once. In Reorder mode, Hero stays first and Contact last (no handle); the other rows get a drag handle (TalkBack: Move up / Move down actions), and **Done** saves the new order. Summaries: the section's first text ("Ramesh Kumar"), else "3 added" for list/multi-select content, else "Not filled in yet" ("Always shown" for an empty pinned section), or "Hidden".
 
 **Section editor:** a schema-driven `FormRenderer`.
 - List fields show as rows with an "Add …" button, up to `maxItems`.
 - Images go through the photo picker, a square crop and WebP at 1024px or less, then upload.
 - Saving writes only the draft.
+- **As built:** Save (sticky, "Needs internet" offline) validates every field first (required, maxLength, min/max, phone/email/url, maxItems); the editor then closes. Leaving with unsaved changes (back arrow or system Back) asks "Discard changes?". Opened after a refused publish, it lists the server's errors on top ("Fix before publishing · Headline: Required") and shows every field error at once. The photo is a **centred** square crop (no manual crop step); "Uploading photo…" shows while it uploads, and an unusable file says "This photo couldn't be used. Try another one." Content over the 64 KB limit says "Your website has too much text. Shorten a section and try again."
 
 **Appearance screen**
 - Template (opens the picker), an accent row of 8 swatches, and Site language (English / हिन्दी).
 - **Template picker:** a full-height pager of the agent's real content in each template, with **Use this template**.
+- **As built:** each choice is saved at once (no Save button). Template, accent and site language are columns the live site reads directly, so the screen says "Changes here show on your live website straight away." The picker renders the draft through `SitePreview` in each template (the `preview.webp` images aren't used in the app). Onboarding step 2 uses the same live render of the starter content.
 
 **Preview:** a full-screen WebView of the draft, with **Publish** in the top bar.
 
 **Stats screen:** Views, Enquiries and Visit → enquiry %, plus one views chart.
+- **As built:** a `7 days | 30 days` segmented control (the last N days including today), Views and Enquiries tiles, a Visit → enquiry tile ("—" without views), and a "Views per day" column chart with its table view. It works offline from the cache. Enquiries count website enquiries only.
 
 ### Link & domain
 This screen has two sections.
 1. **Free link:** `agentpro.site/a/{slug}`, with **Change link** (text button). The dialog validates and checks availability live, and warns that old links and QR codes will stop working.
+   - **As built (Phase 8):** below the link, the Share / QR content (QR code, Share, Copy link). The dialog checks the format and reserved words as you type, then `is_slug_available` after a 300 ms pause; **Change link** is enabled only for a new, available slug and shows "Link changed". A slug taken meanwhile shows "This link is taken". The custom-domain section (2) comes with Phase 10.
 2. **Custom domain.** What it shows depends on the state:
    - **Trial or lapsed plan:** "Your own domain is available on the paid plan", with **See plan**.
    - **None (paid plan):**
@@ -296,6 +339,22 @@ This screen has two sections.
 
 - **Notifications:** toggles for New enquiries, Follow-ups, Premium dues, and Plan & domain renewal. Plus a lead time of 3 / 7 / 15 days, and the digest time (default 9:00).
 - **Export:** checkboxes and an optional date range, then **Export**. It saves a zip through the system file picker, or can be shared.
+
+### Planned screens (designed, not built)
+The full specs are in OFFERS.md ("Screens") and PRIVACY.md; they move into the sections above as they're built.
+- **Companies and offers (OFFERS.md):**
+  - Onboarding stays 3 steps: step 1 Profile gains a required **Company** picker (with "My company isn't listed"; choosing a company makes Agency code required), also in Settings → Profile. **An admin verifies the link** (DECISIONS #53): the agent uses the app at once with custom offers only, and Settings → Profile shows the status (Waiting for confirmation · Confirmed · Not confirmed with the reason and **Try again** · No longer linked). One notification when the link is approved or rejected.
+  - Website hub: a new **Offers** `NavRow` ("2 on your site") opens **Place offers**, a full-height preview in slot mode ("Tap a highlighted spot to add an offer") with a **List** action for the accessible path.
+  - Tapping a slot opens the **Offers picker** sheet (the company's live and upcoming offers, the agent's own offers, **Add your own offer**, Remove, and the section's Position row). Choosing saves the draft with Undo.
+  - **Custom offer form** (6 fields, including the confirmation toggle), shown on the site with "Details provided by the agent".
+  - Ended offers: greyed in the preview, an "Ended" pill in the editor, one Today row on Home ("1 offer on your site has ended"), a digest line, and a "Published · 1 ended offer isn't shown · Fix" snackbar.
+- **Privacy (PRIVACY.md):**
+  - Create account: an unticked, required checkbox, "I'm 18 or older, and I agree to the Terms and the Privacy notice".
+  - The first time a customer, contact or manual enquiry is added: a one-time "You're responsible for your customers' data" sheet; on the customer form, a guardian-consent toggle when the date of birth gives an age under 18.
+  - Customer and Enquiry detail overflow: **Share privacy note**, **Export this person's data**, **Erase permanently** (a confirm dialog, like deleting a customer).
+  - A **Privacy requests** list (from the website's request form), with due dates and the actions above.
+  - Enquiries tab overflow: **Clear old enquiries** (closed or not converted, older than a chosen age; count, confirm, bulk erase). Nothing is deleted automatically: the agent decides (DECISIONS #54).
+  - Settings gains **Your data** (Download my data, Nominate someone, Contact the grievance officer, Delete account) under Data, and About gains **Privacy & grievance**. The CSV export warns that the file contains customers' personal data.
 
 ## Notifications UX
 | Channel | When | Text | Tap |

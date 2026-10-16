@@ -1,0 +1,28 @@
+# Cloudflare Workers static assets headers (docs/WEB_RENDERER.md). Max 100 rules.
+# CSP: fonts are self-hosted (web/fonts/), no third-party font origins. Supabase origin is wildcarded so no project URL is committed.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+
+# filenames are not hashed: short cache + revalidate; config.js is never cached.
+# "! Cache-Control" detaches the /* value so these paths get exactly one Cache-Control.
+/config.js
+  ! Cache-Control
+  Cache-Control: no-store
+
+/index.html
+  ! Cache-Control
+  Cache-Control: no-cache
+
+# The page shell (served for / and every /a/<slug> via the single-page-application fallback)
+/
+  ! Cache-Control
+  Cache-Control: no-cache
+
+/a/*
+  ! Cache-Control
+  Cache-Control: no-cache

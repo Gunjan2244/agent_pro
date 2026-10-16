@@ -1,0 +1,137 @@
+{
+ "template_key": "classic",
+ "accent": "indigo",
+ "locale": "en",
+ "published_content": {
+  "sectionOrder": [
+   "hero",
+   "about",
+   "services",
+   "highlights",
+   "achievements",
+   "testimonials",
+   "faq",
+   "contact"
+  ],
+  "hidden": [],
+  "hero": {
+   "headline": "Insurance made simple for your family",
+   "subheadline": "Honest advice on term, health and savings plans from a local advisor you can call anytime.",
+   "photo": "http://localhost:8080/dev-fixtures/avatar.svg",
+   "ctaLabel": ""
+  },
+  "about": {
+   "bio": "I have helped families in Pune plan for protection and savings for over a decade.\nEvery recommendation starts with your goals, not a product.",
+   "designation": "Insurance Advisor",
+   "yearsExperience": 12,
+   "clientsServed": 850,
+   "languagesSpoken": [
+    "english",
+    "hindi",
+    "marathi"
+   ],
+   "showAgencyCode": true
+  },
+  "services": {
+   "offered": [
+    "term",
+    "health",
+    "pension"
+   ],
+   "items": [
+    {
+     "interest": "term",
+     "description": "Pure protection at low cost."
+    },
+    {
+     "interest": "health",
+     "description": "Cover for hospital bills."
+    },
+    {
+     "interest": "child",
+     "description": ""
+    }
+   ]
+  },
+  "highlights": {
+   "items": [
+    {
+     "icon": "shield",
+     "title": "Protection first",
+     "text": "Plans matched to your needs."
+    },
+    {
+     "icon": "support_agent",
+     "title": "Always reachable",
+     "text": "Call or WhatsApp any time."
+    },
+    {
+     "icon": "handshake",
+     "title": "Claim help",
+     "text": ""
+    },
+    {
+     "icon": "schedule",
+     "title": "On-time reminders",
+     "text": ""
+    }
+   ]
+  },
+  "achievements": {
+   "items": [
+    {
+     "title": "Million Dollar Round Table qualifier",
+     "year": 2022
+    },
+    {
+     "title": "Best new agent",
+     "year": 2014
+    }
+   ]
+  },
+  "testimonials": {
+   "items": [
+    {
+     "name": "Rohit S.",
+     "city": "Pune",
+     "quote": "Clear advice and quick claim support."
+    },
+    {
+     "name": "Meera K.",
+     "city": "",
+     "quote": "Never pushed a plan I did not need."
+    }
+   ]
+  },
+  "faq": {
+   "items": [
+    {
+     "question": "How much cover do I need?",
+     "answer": "A common rule is 10 to 15 times your yearly income."
+    },
+    {
+     "question": "Can I buy online?",
+     "answer": "Yes, I can guide you step by step."
+    }
+   ]
+  },
+  "contact": {
+   "phone": "98765 43210",
+   "whatsapp": "9876543210",
+   "email": "asha@example.com",
+   "officeAddress": "12 MG Road, Pune 411001",
+   "mapLink": "https://maps.google.com/?q=Pune",
+   "officeHours": "Mon–Sat, 10am–6pm",
+   "showEnquiryForm": true
+  }
+ },
+ "profile": {
+  "full_name": "Asha Verma",
+  "designation": "Insurance Advisor",
+  "city": "Pune",
+  "photo_url": "http://localhost:8080/dev-fixtures/avatar.svg",
+  "phone": "9876543210",
+  "agency_code": "123456"
+ },
+ "canonical_host": null
+}
