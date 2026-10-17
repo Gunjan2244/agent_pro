@@ -384,6 +384,12 @@
           "type": "toggle",
           "labelKey": "field.show_enquiry_form",
           "default": true
+        },
+        {
+          "key": "showInstallButton",
+          "type": "toggle",
+          "labelKey": "field.show_install_button",
+          "default": true
         }
       ]
     }

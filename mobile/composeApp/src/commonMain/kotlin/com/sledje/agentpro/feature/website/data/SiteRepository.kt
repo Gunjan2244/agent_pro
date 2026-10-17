@@ -160,4 +160,10 @@ object SiteLinks {
     /** The short display form without the scheme, e.g. `agentpro.site/a/ramesh`. */
     fun display(slug: String, base: String = AppConfig.SITE_BASE_URL): String =
         url(slug, base).removePrefix("https://").removePrefix("http://")
+
+    /**
+     * Website tab → Add to home screen (DECISIONS #65): the site's app start page with `?install=1`,
+     * which opens the install sheet and isn't counted as a view.
+     */
+    fun installUrl(slug: String, base: String = AppConfig.SITE_BASE_URL): String = url(slug, base) + "/?install=1"
 }

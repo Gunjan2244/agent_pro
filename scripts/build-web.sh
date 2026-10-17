@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds web/dist: web/ + shared/, config.js from env, generated tokens.css.
+# Builds web/dist: web/ + shared/, config.js from env, generated tokens.css and icons/. web/worker.js is not copied: wrangler bundles it.
 # Env: RELEASE=1 (fails while privacy-notices.json releaseBlockers or any {UPPER_CASE} i18n placeholder remains; otherwise only warns), SUPABASE_URL, SUPABASE_ANON_KEY, SITE_BASE_URL (default http://localhost:8080), WEB_DEV=1 (local only: adds mock backend + fixtures)
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,13 +12,14 @@ if [ -n "$LEFT" ]; then
 fi
 rm -rf "$OUT"; mkdir -p "$OUT"
 cd "$ROOT/web"
-for f in index.html app.js api.js i18n.js head.js form.js route.js privacy.js legal.js _headers sections styles templates fonts; do cp -R "$f" "$OUT/"; done
+for f in index.html app.js api.js i18n.js head.js form.js route.js privacy.js legal.js manifest.js install.js _headers sections styles templates fonts; do cp -R "$f" "$OUT/"; done
 cp -R "$ROOT/shared" "$OUT/shared"
 if [ "${WEB_DEV:-}" = "1" ]; then
   cp dev-mock.js "$OUT/"; cp -R dev-fixtures "$OUT/dev-fixtures"
   echo "WARNING: dev build (mock backend included). Never deploy this." >&2
 fi
 node "$ROOT/scripts/gen-tokens.mjs" "$OUT/tokens.css"
+node "$ROOT/scripts/gen-icons.mjs" "$OUT/icons"  # manifest icons, one per accent swatch (DECISIONS #65)
 esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 cat > "$OUT/config.js" <<EOF
 window.AGENTPRO_CONFIG = {

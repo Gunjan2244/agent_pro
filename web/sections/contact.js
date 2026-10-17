@@ -31,6 +31,8 @@ export function contact(d, ctx) {
   if (has(d.officeAddress)) info.push(`<p><strong>${esc(t("site.office_address"))}</strong><br><span class="prose">${esc(d.officeAddress)}</span>${map ? ` <a href="${map}" rel="noopener">${esc(t("site.view_map"))}</a>` : ""}</p>`);
   else if (map) info.push(`<p><a href="${map}" rel="noopener">${esc(t("site.view_map"))}</a></p>`);
   if (has(d.officeHours)) info.push(`<p><strong>${esc(t("site.office_hours"))}</strong><br>${esc(d.officeHours)}</p>`);
+  // "Add to home screen": hidden until install.js knows this browser can install (DECISIONS #65).
+  if (d.showInstallButton !== false) info.push(`<div class="install" id="install" hidden><button class="btn ghost" type="button" id="install-btn">${esc(t("site.install_button"))}</button><p class="hint" id="install-how" hidden></p></div>`);
   return `<h2>${esc(t("section.contact"))}</h2>
 <div class="contact-grid"><div class="contact-info">${rows.length ? `<div class="actions">${rows.join("")}</div>` : ""}${info.join("")}</div>
 ${d.showEnquiryForm !== false ? form(ctx) : ""}</div>`;

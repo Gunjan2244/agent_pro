@@ -1,14 +1,20 @@
-// Cloudflare Worker serving the public-site renderer as static assets only (no Worker script).
+// Cloudflare Worker serving the public-site renderer (docs/WEB_RENDERER.md). Static assets, plus a small
+// Worker script (worker.js) that runs ONLY for /manifest.webmanifest (DECISIONS #65); every other path is
+// served straight from web/dist without invoking it.
 // Build first: sh scripts/build-web.sh  (writes web/dist). Deploy (needs the user's approval):
 //   npx wrangler@4.151.1 deploy --config web/wrangler.jsonc
 {
   "name": "agentpro-sites",
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
+  // Reads Supabase settings from dist/config.js at request time, so no keys live in this file.
+  "main": "./worker.js",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     // every unknown path (e.g. /a/<slug>) serves /index.html with 200
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/manifest.webmanifest"]
   }
   // No routes / custom domains yet: the platform domain is not bought (DECISIONS #59).
 }

@@ -560,3 +560,35 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
   - **"Terms"** opens the web `/terms` page, because there's no in-app terms text.
   - **Guardian consent** is recorded after the customer exists on the server, and a retry doesn't create a duplicate.
 - **Status:** Accepted, provisional until the user's review.
+
+### #65 — 2026-10-17 — Agent sites installable as web apps ("Add to home screen")
+- **Decision:**
+  - **Manifest per site from a Worker:** every agent's site gets a web app manifest at `/manifest.webmanifest` (`?s=<slug>` on the free link; by host on a custom domain). A small Worker script (`web/worker.js`) builds it from `get_public_site` / `get_public_site_by_host`. It runs **only** for that path (`assets.run_worker_first`); every other request is still served straight from static assets. An unpublished, unknown or lapsed site gets a 404, so it can't be installed.
+  - **Scope and identity:** `id` = `start_url` = `scope` = `/a/<slug>/` (or `/` on a custom domain), so each agent's site is a separate app on the shared origin. The page moves `/a/<slug>` to `/a/<slug>/` with `history.replaceState`, so the page itself is inside the scope. The canonical URL stays without the slash.
+  - **Icons:** 192 and 512 **PNGs**, generated at build time by `scripts/gen-icons.mjs`, one per `catalog.accentSwatches` colour: a white head-and-shoulders figure inside the maskable safe zone. No insurer artwork. The agent's photo isn't used yet, because photos are stored as WebP, and every source checked names PNG as the safe format for Android's WebAPK. A follow-up can have the app upload a PNG copy of the photo.
+  - **No service worker.** Chrome no longer needs one to install a site (checked 2026-10-17, web.dev install criteria), and a cache could keep showing a lapsed or changed site.
+  - **The Worker gets no secrets in config:** it reads `SUPABASE_URL` and the anon key from the deployed `config.js` asset, which is public anyway, so `wrangler.jsonc` holds no keys.
+  - **On the page:** a ghost "Add to home screen" button in the contact section, shown on phones (and on desktops once the browser offers a prompt). Agents turn it off with the schema toggle `contact.showInstallButton` (default on), which lives in content, so there's no table change. Tapping it uses Chrome's prompt (`beforeinstallprompt`) when there is one, and otherwise shows the steps (the ⋮ menu, or the iOS Share sheet). The page always takes over `beforeinstallprompt`, so Chrome's mini-infobar never appears. Nothing is stored in the browser.
+  - **From the app:** Website tab → ⋮ → **Add to home screen** opens `<site>/?install=1` in the default browser (not a Custom Tab, which can't install). That shows a sheet with **Install** (or the steps) whatever the toggle says, and the visit isn't counted as a view. It's shown only once the site has been published.
+- **Why:** a native app can't trigger a browser's install for a website; only the page can. A real manifest gives a proper app icon and a full-screen window, rather than a browser bookmark. Customers keep the agent one tap away.
+- **Alternatives considered:**
+  - Android pinned shortcuts (`ShortcutManagerCompat.requestPinShortcut`): one tap, but it's a bookmark that opens in the browser, it may carry an Agent PRO badge, and there's no iOS equivalent. Kept as a possible fallback.
+  - A client-built manifest (blob URL): Android's WebAPK service can't fetch it.
+  - Echoing query parameters into a manifest: anyone could mint an installable app with any name on our origin.
+  - The agent's WebP photo as the icon: not confirmed to work with WebAPK.
+- **Status:** Accepted (the user chose the installable site plus a customer button that agents can turn off, 2026-10-17). Changes #59: the hosting is no longer "static only", but the Worker runs only for the manifest path.
+
+### #66 — 2026-10-17 — App icon: generated vector, primary colour written into the asset
+- **Decision:**
+  - **The icon:** the app icon is the "A with a rising chart line" concept the user picked. It is redrawn as geometry in `design/app-icon/build_icon.py`, which generates the Android vector layers and the store PNGs. Nobody edits a raster or the path data by hand.
+  - **Colour:** the background colour `#1F4AA8` is written directly into `ic_launcher_background.xml` and the script. No Android colour resource is generated from `shared/design-tokens.json`.
+- **Why:**
+  - The vector stays sharp at every launcher size.
+  - One even-odd outline serves the monochrome themed-icon layer too.
+  - The geometry stays editable and is checked against the safe zone.
+  - Adding an XML colour generator to the codegen for one static asset isn't worth it. The icon is brand artwork rather than UI code, so the "no hard-coded colours in UI code" rule doesn't apply.
+- **Trade-off:** if the `primary` token changes, these two places must be updated by hand. Both carry a comment pointing to the token.
+- **Alternatives considered:**
+  - shipping the AI-generated PNG as is (it's raster, has no monochrome layer and isn't safe-zone checked);
+  - generating a `colors.xml` from tokens.
+- **Status:** Accepted.

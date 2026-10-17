@@ -110,6 +110,8 @@ class AppFoundationTest {
         assertEquals("https://agentpro.site/a/ramesh", SiteLinks.url("ramesh", "https://agentpro.site/"))
         assertEquals("agentpro.site/a/ramesh", SiteLinks.display("ramesh", "https://agentpro.site"))
         assertEquals("/a/ramesh", SiteLinks.display("ramesh", ""))
+        // Add to home screen: the app scope's start page (/a/<slug>/) with the install sheet (DECISIONS #65)
+        assertEquals("https://agentpro.site/a/ramesh/?install=1", SiteLinks.installUrl("ramesh", "https://agentpro.site/"))
     }
 
     private class CountingTable : SyncTable {

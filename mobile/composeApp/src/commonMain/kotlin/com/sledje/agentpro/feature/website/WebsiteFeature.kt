@@ -184,6 +184,11 @@ private class SiteActions(private val host: FeatureHost, private val snackbar: S
     fun open(slug: String) {
         host.deps.urlLauncher.openUrl(SiteLinks.url(slug))
     }
+
+    /** Opens the site in the browser (not a Custom Tab, which can't install) with its install sheet. */
+    fun addToHomeScreen(slug: String) {
+        host.deps.urlLauncher.openUrl(SiteLinks.installUrl(slug))
+    }
 }
 
 @Composable
@@ -242,6 +247,7 @@ private fun HubRoute(host: FeatureHost) {
         onShare = { slug?.let { scope.launch { actions.share(it) } } },
         onCopy = { slug?.let { scope.launch { actions.copyLink(it) } } },
         onOpen = { slug?.let(actions::open) },
+        onAddToHome = { slug?.let(actions::addToHomeScreen) },
         onShowQr = { showQr = true },
         onPreview = { host.nav.navigate(WebsitePreviewRoute) },
         onPublish = hub::publish,

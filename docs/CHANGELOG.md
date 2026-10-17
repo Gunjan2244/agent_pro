@@ -3,6 +3,13 @@
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
 ## 2026-10-17
+- **App launcher icon added** (the user supplied an AI-generated concept image).
+  - **The design:** a rounded white "A" whose crossbar is a rising chart line ending in a dot, on flat `primary` #1F4AA8. It has no insurer artwork and nothing resembling the LIC emblem.
+  - **How it's built:** the concept was redrawn as a vector by `design/app-icon/build_icon.py`. The script merges the strokes into one even-odd outline, asserts the glyph stays inside the 66dp safe zone, and keeps the path under lint's `VectorPath` limit.
+  - **Android:** an adaptive icon with foreground, background and monochrome (themed icon) layers. The manifest now sets `android:icon` and `android:roundIcon`.
+  - **Also generated:** the Play Store 512 PNG, an opaque iOS 1024 PNG, master SVGs and a mask/size preview.
+  - **Verified:** `:androidApp:assembleDebug :androidApp:lint` passes, with 0 errors and 2 warnings (`OldTargetApi`, and `UnusedAttribute` for `localeConfig`). The `MissingApplicationIcon` warning is gone.
+  - **Files:** `design/app-icon/*`, `mobile/androidApp/src/main/res/{drawable,mipmap-anydpi}/ic_launcher*`, `AndroidManifest.xml`, `docs/DESIGN_SYSTEM.md`, `ARCHITECTURE.md`, `DECISIONS.md` (#66), `STATUS.md`.
 - **P1 released to `AGENT_PRO` and the Cloudflare preview** (user-approved).
   - **Database:** the user ran `20261016220600_privacy.sql` and then `20261016220836_catalog_sync.sql` in the SQL Editor; the connector was disconnected.
   - **Verified through the public API:** `submit_enquiry` refuses a missing or fake consent; `submit_data_request` validates its input; public sites load.

@@ -114,7 +114,7 @@ class WebsiteScreenshotTest {
         "WebsiteHub" to {
             WebsiteHubScreen(
                 site = UiState.Content(site), display = { SiteLinks.display(it.slug, base) }, rows = hubRows(), publishing = false,
-                snackbar = remember { SnackbarHostState() }, onShare = {}, onCopy = {}, onOpen = {}, onShowQr = {}, onPreview = {}, onPublish = {}, onRetry = {},
+                snackbar = remember { SnackbarHostState() }, onShare = {}, onCopy = {}, onOpen = {}, onAddToHome = {}, onShowQr = {}, onPreview = {}, onPublish = {}, onRetry = {},
             )
         },
         "WebsiteContent" to {

@@ -53,6 +53,7 @@ _Last updated: 2026-10-17. This file was rebuilt on that date after an orchestra
   - **Before real users:** delete these demo accounts.
   - **The built-in email limit (about 2 per hour) shows a transactional email provider is needed** before launch (approved, DECISIONS #54).
 - **New scope designed (2026-10-16; the docs match the user's decisions):** a multi-company platform with admin-managed offers and a web admin panel (`docs/OFFERS.md`, DECISIONS #47, #49–#53), and DPDP compliance (`docs/PRIVACY.md`, DECISIONS #48, #54). **Nothing of either is built yet.**
+- **App icon (2026-10-17):** the adaptive launcher icon is in (DESIGN_SYSTEM.md, App icon; DECISIONS #66). It's an "A" with a rising chart line, on primary blue. The Play Store 512 and iOS 1024 PNGs are in `design/app-icon/`. The test APK in `~/AgentPRO-test/` predates the icon, so rebuild it to see it on a phone.
 - **Nothing is committed yet.** On 2026-10-15 the user said not to commit yet; ask again before committing.
 
 - **Test APK (2026-10-17 10:04):** a debug build pointed at `AGENT_PRO` and the preview site (`SITE_BASE_URL` set in the git-ignored `local.properties`). A copy is at `~/AgentPRO-test/AgentPRO-test-2026-10-17.apk`. It's waiting for the user to install it on a phone (USB with adb, or sideload). It's for testing only, not a release.
@@ -154,7 +155,6 @@ Tick items as they're done and add the date.
 - **Platform domain:** not bought yet. It's needed for free links (`<domain>/a/<slug>`) and for Cloudflare for SaaS. Buying it needs the user's explicit approval.
 - **Content:** domain terms, privacy policy and terms pages (drafts are part of P2).
 - **Provisional values in `shared/` and in the UI copy:** the user should review them before release. They're marked "(provisional)" in SHARED_DEFINITIONS.md and listed in DECISIONS #41, #43, #53.
-- **Launcher icon:** none exists yet (lint warning `MissingApplicationIcon`). It needs a design; insurer logos must never be bundled.
 - **Small follow-ups:**
   - the site footer's "Independent insurance advisor" may be wrong for agents tied to one insurer, so review the copy;
   - `profiles.branch` is unused, so remove it or justify it (PRIVACY.md);

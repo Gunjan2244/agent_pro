@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon background: the `primary` token (#1F4AA8, shared/design-tokens.json). Static asset,
+     so the colour is written here; keep it in step with the token (DECISIONS #66). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#1F4AA8" />
+</shape>

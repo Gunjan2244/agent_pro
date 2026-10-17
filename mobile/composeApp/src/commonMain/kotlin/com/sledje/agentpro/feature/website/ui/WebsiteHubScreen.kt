@@ -47,6 +47,7 @@ import com.sledje.agentpro.resources.action_more_options
 import com.sledje.agentpro.resources.ic_more_vert
 import com.sledje.agentpro.resources.needs_internet
 import com.sledje.agentpro.resources.tab_website
+import com.sledje.agentpro.resources.website_add_to_home
 import com.sledje.agentpro.resources.website_copy_link
 import com.sledje.agentpro.resources.website_none
 import com.sledje.agentpro.resources.website_open
@@ -66,8 +67,8 @@ const val HUB_PUBLISH_BAR_TAG = "website_publish_bar"
 
 /**
  * The Website tab (docs/UX.md, Website tab (hub)): one status card (address, status pill, Share, and
- * an overflow with Copy link, Open and Show QR code), the NavRows from the registry, and a sticky bar
- * with Preview and Publish whenever the draft differs from what's live.
+ * an overflow with Copy link, Open, Add to home screen (once published) and Show QR code), the NavRows
+ * from the registry, and a sticky bar with Preview and Publish whenever the draft differs from what's live.
  */
 @Composable
 fun WebsiteHubScreen(
@@ -79,6 +80,7 @@ fun WebsiteHubScreen(
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onOpen: () -> Unit,
+    onAddToHome: () -> Unit,
     onShowQr: () -> Unit,
     onPreview: () -> Unit,
     onPublish: () -> Unit,
@@ -112,7 +114,7 @@ fun WebsiteHubScreen(
                 skeleton = { Column(Modifier.padding(Spacing.m)) { CardSkeleton() } },
             ) { s ->
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    StatusCard(s, display(s), onShare, onCopy, onOpen, onShowQr, Modifier.padding(Spacing.m))
+                    StatusCard(s, display(s), onShare, onCopy, onOpen, onAddToHome, onShowQr, Modifier.padding(Spacing.m))
                     rows.forEachIndexed { i, row ->
                         if (i > 0) HairlineDivider()
                         NavRow(row.title, row.onClick, supporting = row.supporting, icon = row.icon, modifier = Modifier.testTag("hub_${row.key}"))
@@ -130,6 +132,7 @@ private fun StatusCard(
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onOpen: () -> Unit,
+    onAddToHome: () -> Unit,
     onShowQr: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -140,11 +143,13 @@ private fun StatusCard(
                 SiteStatusPill(site.status)
             }
             CardOverflow(
-                listOf(
-                    stringResource(Res.string.website_copy_link) to onCopy,
-                    stringResource(Res.string.website_open) to onOpen,
-                    stringResource(Res.string.website_show_qr) to onShowQr,
-                ),
+                buildList {
+                    add(stringResource(Res.string.website_copy_link) to onCopy)
+                    add(stringResource(Res.string.website_open) to onOpen)
+                    // A never-published site isn't installable (its manifest is a 404).
+                    if (site.isPublished) add(stringResource(Res.string.website_add_to_home) to onAddToHome)
+                    add(stringResource(Res.string.website_show_qr) to onShowQr)
+                },
             )
         }
         PrimaryButton(stringResource(Res.string.website_share), onShare, Modifier.fillMaxWidth().padding(top = Spacing.m))

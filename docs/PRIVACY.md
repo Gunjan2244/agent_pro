@@ -128,7 +128,7 @@ Rule 4 (from 13 November 2026) lets data principals manage consent through a reg
 | `auth.audit_log_entries` (Supabase; sign-in events with IP) | Keep 13 months | Security logging (Rule 6); purged by the retention job |
 | Edge Function and app logs | No personal data | Log ids and error codes only, never names, phones, emails or tokens |
 | Device | — | Room cache in app-private storage (Android file-based encryption; not encrypted by the app — accepted risk, to record as a decision); backup and device transfer off (exists); session Keystore-encrypted (#44). The CSV export shows "This file contains your customers' personal data. Keep it safe." before saving |
-| Web | — | No cookies, no analytics, no third-party scripts; one `sessionStorage` key to de-duplicate views. No cookie banner is needed (counsel) |
+| Web | — | No cookies, no analytics, no third-party scripts; one `sessionStorage` key to de-duplicate views. No cookie banner is needed (counsel). "Add to home screen" (DECISIONS #65) stores nothing in the browser and has no service worker or cache. Its manifest is built only from the published site's public fields (name, headline, locale, accent), and installing sends nothing to us |
 
 ## Data principal rights
 **Rules:** access to a summary of the data and the processors it's shared with (Section 11), correction, completion, updating and erasure (12), grievance redressal (13) answered within **90 days** (Rule 14(3)), nomination of someone to act on death or incapacity (14), and the fiduciary's published process and contact details (Rule 9). Agent PRO's own response target is **30 days** (provisional).

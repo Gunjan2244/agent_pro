@@ -145,6 +145,10 @@ try {
     console.log(`SIZE ${tpl}: ${(raw / 1024).toFixed(1)} KB raw, ${(gz / 1024).toFixed(1)} KB gzip`);
     assert.ok(raw < 50 * 1024, tpl + " over 50KB");
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
+    // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
+    const later = [...shared, `templates/${tpl}/render.js`, `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
+    if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
+    assert.ok(later < 60 * 1024, tpl + " + install modules over 60KB");
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
@@ -156,13 +160,15 @@ try {
 } catch (e) { if (e.code === "ENOENT") console.log("SIZE skipped (run build first)"); else throw e; }
 // hosting config (Cloudflare Workers static assets, DECISIONS #59)
 import { existsSync } from "node:fs";
-ok("wrangler.jsonc: SPA static assets only", () => {
+ok("wrangler.jsonc: SPA static assets; the Worker runs only for the manifest (DECISIONS #65)", () => {
   const raw = readFileSync(new URL("../web/wrangler.jsonc", import.meta.url), "utf8");
   const strip = raw.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
   const w = JSON.parse(strip);
   assert.equal(w.name, "agentpro-sites"); assert.equal(w.assets.directory, "./dist");
   assert.equal(w.assets.not_found_handling, "single-page-application");
-  assert.ok(!w.main && !w.routes, "static only, no routes yet");
+  assert.equal(w.main, "./worker.js"); assert.equal(w.assets.binding, "ASSETS");
+  assert.deepEqual(w.assets.run_worker_first, ["/manifest.webmanifest"]);
+  assert.ok(!w.routes && !w.vars, "no routes yet; no keys in the config");
 });
 if (existsSync(dist + "index.html")) ok("dist: _headers present, no vercel.json, no secrets in _headers", () => {
   assert.ok(existsSync(dist + "_headers")); assert.ok(!existsSync(dist + "vercel.json"));
@@ -387,4 +393,5 @@ import { spawnSync } from "node:child_process";
     ok("release gate: preview build only warns and succeeds", () => { const r = sh({}); assert.equal(r.status, 0, r.stderr); assert.ok(r.stderr.includes("preview build; release blockers remain")); });
   } else ok("release gate: no blockers left, RELEASE=1 builds", () => assert.equal(sh({ RELEASE: "1" }).status, 0));
 }
+await import("./test-web-install.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 console.log(`\n${n} checks passed`);

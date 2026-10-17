@@ -167,6 +167,22 @@ Fixed **component dimensions** aren't spacing; they're constants inside `core/de
 ## Iconography
 Use **Material Symbols Rounded**, outlined weight 400, in `onSurfaceVariant` grey. Icons take the primary colour only when they're selected.
 
+## App icon
+- **Design:** a bold, rounded white "A" (for Agent). Its crossbar is a rising chart line that ends in a dot just past the right leg, standing for growth and the app's charts. A gap in the background colour separates the line from the legs. It sits on flat `primary` (#1F4AA8).
+  - Only these two colours are used, with no gradients, shadows, text or ₹ symbol.
+  - It has no lamp, flame, hands or blue-and-yellow pairing, so it can't be mistaken for the LIC emblem, and it uses no insurer artwork (DECISIONS #47).
+- **Source:** `design/app-icon/build_icon.py` defines the geometry on the 108×108dp adaptive-icon canvas. It merges the strokes into one flat even-odd outline, so the same path serves the coloured foreground and the monochrome layer.
+  - The script asserts the glyph stays inside the 66dp safe circle.
+  - It keeps the path under lint's 800-character `VectorPath` limit by drawing curves as 16-gons, which are under 0.4px off at the largest launcher size.
+  - **Never edit the outputs by hand.** Change the script and re-run it from the repo root: `python design/app-icon/build_icon.py`. It needs `shapely`, `cairosvg` and `pillow`, for example in a throwaway venv.
+- **Outputs:**
+  - **Android:** `res/drawable/ic_launcher_foreground.xml` and `ic_launcher_monochrome.xml` (Android 13+ themed icons). `ic_launcher_background.xml` is a solid `primary` shape, written by hand.
+    - `res/mipmap-anydpi/ic_launcher{,_round}.xml` combine the three layers.
+    - minSdk is 26, so no PNG mipmaps are needed.
+  - **Stores:** `design/app-icon/play-store-512.png` (Play listing) and `app-store-1024.png` (iOS later; opaque, no alpha). Both are the visible middle 72dp, full-bleed square, with no corner rounding; the stores apply their own masks.
+  - **Master:** `agent-pro-icon.svg` and `agent-pro-glyph.svg`.
+  - **Check:** `preview.png` shows the icon in circle and squircle masks and at 96, 48 and 24 px.
+
 ## Motion
 - Subtle and quick, with Material 3 standard easing: 150ms for state changes, 250ms for navigation.
 - Shared-axis X for forward and back navigation, fade-through for tab switches, no bouncy effects.

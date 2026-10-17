@@ -99,9 +99,27 @@ async function boot() {
   if (!site) return unavailable(lang);
   if (target.page === "privacy") return showPrivacy(site, target).catch(() => unavailable(site.locale || lang, true));
   const ctx = await show(site, target);
-  applyHead(headData(site, { origin: location.origin, path: location.pathname + (target.slug && !location.pathname.startsWith("/a/") ? "?s=" + encodeURIComponent(target.slug) : ""), canonicalHost: target.host || site.canonical_host || null }));
+  const path = location.pathname.replace(/(.)\/$/, "$1"); // /a/<slug>/ (the installed app's start page) is canonical without the slash
+  applyHead(headData(site, { origin: location.origin, path: path + (target.slug && !location.pathname.startsWith("/a/") ? "?s=" + encodeURIComponent(target.slug) : ""), canonicalHost: target.host || site.canonical_host || null }));
   wireForm(root, Object.assign(ctx, { submit: backend.submitEnquiry }));
-  recordView(target);
+  installable(site, target, ctx.t).catch(() => {}); // never breaks the page
+  // ?install=1 is the agent coming from the app (Website tab: Add to home screen), so it isn't a visitor's view.
+  if (q.get("install") !== "1") recordView(target);
+}
+
+// Add to home screen (DECISIONS #65): the manifest (built by worker.js), icons, and the install button/sheet.
+// Loaded after the page renders, so it doesn't count against first paint.
+async function installable(site, target, t) {
+  const [{ manifestHref, appNames, swatchFor, iconPath }, { wireInstall }] = await Promise.all([import("./manifest.js"), import("./install.js")]);
+  // The manifest's scope is /a/<slug>/, so the page itself must be inside it.
+  if (target.slug && /^\/a\/[^/]+$/.test(location.pathname)) history.replaceState(history.state, "", location.pathname + "/" + location.search + location.hash);
+  const link = (rel, href) => { const e = document.head.querySelector(`link[rel="${rel}"]`) || document.head.appendChild(Object.assign(document.createElement("link"), { rel })); e.href = href; };
+  const meta = (name, content) => { const e = document.head.querySelector(`meta[name="${name}"]`) || document.head.appendChild(Object.assign(document.createElement("meta"), { name })); e.content = content; };
+  link("manifest", manifestHref(target));
+  const swatch = swatchFor((await loadShared())[1], site.accent);
+  if (swatch) { link("icon", iconPath(swatch.key, 192)); link("apple-touch-icon", iconPath(swatch.key, 192)); }
+  meta("apple-mobile-web-app-title", appNames(site).short);
+  wireInstall({ t, name: (site.profile || {}).full_name || "", forced: q.get("install") === "1" });
 }
 
 function recordView(target) {

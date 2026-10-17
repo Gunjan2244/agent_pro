@@ -4,12 +4,13 @@ There's one static site for **every** agent. Content is fetched at runtime, so a
 
 ## Hosting
 - **Current deployment (2026-10-17):** a preview at `https://agentpro-sites.sledjesoftwares.workers.dev` (demo data only), built with `SITE_BASE_URL` set to that URL. `_headers` uses `! Cache-Control` so `/config.js` (`no-store`) and `/a/*` (`no-cache`) get exactly one value.
-- **Cloudflare Workers static assets** (DECISIONS #59): a Worker named `agentpro-sites`, config in `web/wrangler.jsonc`, assets served from `web/dist`. There is no Worker script. Agents' own domains attach as Cloudflare for SaaS custom hostnames (DOMAINS.md). The platform domain is not bought yet, so there are no routes or custom domains in the config; the preview lives at `agentpro-sites.<account-subdomain>.workers.dev` (`workers_dev = true`).
+- **Cloudflare Workers static assets** (DECISIONS #59): a Worker named `agentpro-sites`, config in `web/wrangler.jsonc`, assets served from `web/dist`. A small Worker script, `web/worker.js` (bundled by wrangler, not copied into `dist`), runs **only** for `/manifest.webmanifest` (`assets.run_worker_first`, DECISIONS #65); every other request is served straight from the assets without invoking it. Agents' own domains attach as Cloudflare for SaaS custom hostnames (DOMAINS.md). The platform domain is not bought yet, so there are no routes or custom domains in the config; the preview lives at `agentpro-sites.<account-subdomain>.workers.dev` (`workers_dev = true`).
 - **Build:**
   - `sh scripts/build-web.sh` copies `web/` and `shared/` into `web/dist/`.
   - It writes `web/dist/config.js` from the `SUPABASE_URL` and `SUPABASE_ANON_KEY` environment variables.
   - It generates `tokens.css` from `design-tokens.json`.
-- **SPA routing:** `assets.not_found_handling = "single-page-application"` serves `/index.html` for any path that is not a real file, so `/a/<slug>` works.
+  - It generates `icons/<swatch>-192.png` and `-512.png` for every `catalog.accentSwatches` entry (`scripts/gen-icons.mjs`, the web app manifest icons).
+- **SPA routing:** `assets.not_found_handling = "single-page-application"` serves `/index.html` for any path that is not a real file, so `/a/<slug>` works. Because `run_worker_first` is an array, the routing is explicit: only `/manifest.webmanifest` reaches the Worker.
 - **Headers:** `web/_headers` (copied into `dist/`, not served as an asset) sets `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a minimal `Permissions-Policy` and a CSP (`self` + `*.supabase.co` for `connect-src`/`img-src` ; `style-src 'self' 'unsafe-inline'`, `font-src 'self'`: no third-party font origins, the fonts are self-hosted). Filenames are not hashed, so assets get `max-age=300, stale-while-revalidate=86400`; `/index.html` is `no-cache` and `/config.js` is `no-store`. `_headers` allows 100 rules and applies only to static-asset responses.
 - **Preview deploy (user approval each time; the user logs in once):** `sh scripts/build-web.sh` (real env, never `WEB_DEV=1`), then `npx wrangler@4.151.1 login` once, then `npx wrangler@4.151.1 deploy --config web/wrangler.jsonc`. Check config without deploying: `npx wrangler@4.151.1 deploy --dry-run --config web/wrangler.jsonc`. Public launch waits for the P1 privacy items; until then the preview shows demo data only.
 - Build env: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SITE_BASE_URL` (the primary host, default `http://localhost:8080`). `web/dist/` and `web/config.js` are git-ignored.
@@ -21,6 +22,9 @@ web/
   index.html          shell: loading state, <main id="root">, noscript; links tokens.css + styles/base.css
   app.js              resolve site -> fetch -> pick template -> render -> wire form -> record view; window.renderSite(json)
   api.js              plain fetch() to {SUPABASE_URL}/rest/v1/rpc/* with the anon key (no SDK); normalizeSite()
+  manifest.js         pure manifestFor(site, target, {catalog, tokens}), manifestHref, appNames, swatchFor, iconPath, parseConfig (Add to home screen)
+  install.js          wireInstall(): the contact-section button, the ?install=1 sheet, beforeinstallprompt (lazy-imported after render)
+  worker.js           Cloudflare Worker: GET /manifest.webmanifest only; not copied into dist (wrangler bundles it)
   i18n.js             loads shared/i18n/{locale}.json; t(key, params); localeKeys(catalog)/pickLocale (supported locales from catalog.locales, first = default)
   head.js             pure headData() (title, description, canonical, OG, JSON-LD) + applyHead()
   form.js             enquiry validation (same rules as submit_enquiry) + wireForm()
@@ -38,9 +42,11 @@ web/
   package.json        {"type":"module"} only, so Node can import the pure render code in tests; no dependencies
 scripts/
   build-web.sh        copies web/ + shared/ into web/dist, writes config.js, generates tokens.css (gen-tokens.mjs)
+  gen-icons.mjs       catalog.accentSwatches -> dist/icons/<swatch>-{192,512}.png (dependency-free PNG encoder)
   gen-tokens.mjs      shared/design-tokens.json -> tokens.css (--c-*, --accent, --text-s|m|l|xl, --line-*, --space-s|m|l, --shape-*, --motion-*)
   lint-web-css.mjs    fails on raw px/rem/em in margin/padding/gap/font-size
   test-web.mjs        Node checks of the pure renderer, validation, head data and per-template size budget
+  test-web-install.mjs  Add to home screen checks (manifest, Worker with a fake ASSETS binding, icons, button, install.js), run by test-web.mjs
 ```
 The sections are rendered from the data in `site-schema.json` (default CTA via `defaultKey`, option labels for languages and highlight icons, the pinned sections). Interests come from `catalog.json`; the accent hex comes from `catalog.accentSwatches`; supported locales from `catalog.locales`; valid template keys from `shared/templates/index.json`. `app.js` loads site-schema, catalog and the templates registry at runtime; nothing in `web/` hard-codes them (the accent fallback is `var(--c-primary)`). `tokens` passed to `render` is `{ accent, schema, catalog }`.
 
@@ -85,7 +91,23 @@ export function render(site, t, tokens) { return htmlString }
   - Fonts are **self-hosted** (DECISIONS #54): `web/styles/fonts.css` declares `@font-face` rules (`font-display: swap`, fontsource `unicode-range`s) for files in `web/fonts/` (copied to `dist/fonts/` by `build-web.sh`). Source: npm `@fontsource/inter@5.3.0` (latin + latin-ext, 400/500/600/700; latin-ext carries the rupee sign U+20B9) and `@fontsource/noto-sans-devanagari@5.3.0` (devanagari, 400/500/600), woff2 only, with the OFL licence files. Only the Inter latin 400 file is preloaded; the browser fetches other files when the text needs them (latin 94.5 KB for all four weights, Devanagari 154 KB for Hindi pages). No request leaves the origin for fonts. To upgrade, re-pack the fontsource packages and replace the files and `fonts.css`.
   - The enquiry form's "Interested in" select starts on a blank placeholder (`site.form_interest_placeholder`, value `""`); left blank, no interest is sent (`null`), it is never defaulted to "other".
   - Target Lighthouse mobile scores of 90 or more for Performance, Accessibility and SEO.
-- **Analytics:** one `record_site_view` call per page load, debounced per session with `sessionStorage`.
+- **Analytics:** one `record_site_view` call per page load, debounced per session with `sessionStorage`. A visit with `?install=1` (the agent coming from the app) isn't counted.
+- **Add to home screen (DECISIONS #65):** every published site can be installed as an app.
+  - **Manifest:** after render, `app.js` adds `<link rel="manifest" href="/manifest.webmanifest?s=<slug>">` (just `/manifest.webmanifest` on a custom domain). The Worker resolves the target with the same `resolveTarget` as the page, calls `get_public_site` / `get_public_site_by_host` with the anon key, and returns `manifestFor(...)`:
+    - `id` = `start_url` = `scope` = `/a/<slug>/` (`/` on a custom domain), so each agent is a separate app on the shared origin;
+    - `name` is the agent's name (≤ 45 characters), and `short_name` is that name or, when it's over 12 characters, the first name;
+    - `description` is the same as the meta description, and `lang` is the site's locale;
+    - `display: standalone`; `background_color` and `theme_color` are `design-tokens.json` light `background` and `surface`;
+    - `icons`: `/icons/<accent>-192.png` and `-512.png`, each as `any` and `maskable`; `prefer_related_applications: false`.
+    - **Responses:** `200 application/manifest+json`, `max-age=300`; **404** for an unknown, unpublished or lapsed site, or a malformed slug (so it can't be installed); **503** `no-store` if the backend fails; 405 for anything but GET/HEAD.
+    - **Config:** the Worker reads `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SITE_BASE_URL` from the deployed `config.js` asset (`parseConfig`), so `wrangler.jsonc` holds no keys and there's no `--var` step.
+  - **Scope:** on `/a/<slug>`, the page swaps the URL to `/a/<slug>/` (`history.replaceState`), so it's inside the app's scope. The canonical URL drops the slash.
+  - **Head:** `link rel="icon"` and `rel="apple-touch-icon"` point to the accent's 192 PNG; `meta apple-mobile-web-app-title` is the short name.
+  - **Button:** the contact section renders a hidden ghost button, "Add to home screen" (`site.install_button`), unless `contact.showInstallButton` is `false` (default on). `install.js` shows it on touch devices, and on desktops only once the browser offers a prompt. Tapping it calls the saved `beforeinstallprompt` event's `prompt()`. With no prompt (iOS, or Chrome before its engagement check of about 30 seconds and one tap), it shows the steps: `site.install_ios` (Share → Add to Home Screen) or `site.install_menu` (⋮ → Install app / Add to Home screen). It hides after `appinstalled`.
+  - **Sheet:** `?install=1` (the app's Website tab) opens a bottom sheet inside `.tpl` (so it has the accent): "Add {name} to your home screen", the text, **Install** when a prompt is available (otherwise the steps), and **Close**. It opens whatever the toggle says.
+  - **Always:** the page calls `preventDefault()` on `beforeinstallprompt`, so Chrome's own mini-infobar never shows; the agent's toggle therefore means no install promotion at all. Inside the installed app (`display-mode: standalone`) nothing is wired. Nothing is stored in the browser.
+  - **No service worker:** Chrome no longer requires one to install, and caching could show a lapsed or changed site. Offline, the installed app shows the browser's own offline page.
+  - **iOS:** Safari reads the manifest (16.4+) and the apple-touch-icon; there's no prompt API, so the button and sheet show the Share-sheet steps.
 
 ### Planned (designed, not built)
 - **Offers (OFFERS.md, Phase 8b):** a featured-offer banner in the hero (no image), a new `offers` section (partials `sections/offer.js` and `sections/offers.js`), rendered only from the payload's resolved `offers`; ended offers are hidden by the RPC and again on the client. Company offers and logos come only from the payload, which includes them only once an admin has approved the agent's company link (`company.logo_url`, admin-uploaded with permission), at a fixed 24px height; custom offers carry "Details provided by the agent". No `Offer` JSON-LD. A **slot mode** for the in-app preview only (`?preview=1` plus `renderSite(json, {slots: true})`) draws tap targets and posts messages through `preview-bridge.js`, which never loads on public pages. On Android the preview already loads from `https://appassets.androidplatform.net`, so the bridge uses `addWebMessageListener` restricted to that origin.
@@ -111,16 +133,17 @@ export function render(site, t, tokens) { return htmlString }
 - `WEB_DEV=1 sh scripts/build-web.sh && python3 -m http.server -d web/dist 8080` then open `http://localhost:8080/?mock=1&s=demo`.
 - Mock mode needs all three of: host `localhost`/`127.0.0.1`, `?mock=1`, and `dev-mock.js` present. `dev-mock.js` and `dev-fixtures/` are copied only when `WEB_DEV=1`, so a normal (production) build cannot activate it.
 - Slugs: `demo` (EN), `demo-hi` (HI), `xss` (escaping test), `minimal-empty` (hidden/ordering), `unpublished` (unavailable), `error` (RPC failure). `&t=classic|modern|minimal` overrides the template. A phone ending `0000` simulates rate limiting, `1111` a transport error, `2222` `unavailable`, `3333` `invalid` (email). Fixture `demo-hi` has a `canonical_host`.
-- `python3 -m http.server` does not rewrite `/a/{slug}`; use `?s=`. Test `/a/{slug}` on the `*.workers.dev` preview.
+- `python3 -m http.server` does not rewrite `/a/{slug}` and doesn't run the Worker, so `/manifest.webmanifest` is a 404 there; use `?s=`. To run the Worker locally, build with real env vars and run `npx wrangler@4.151.1 dev --config web/wrangler.jsonc` (it serves `web/dist` plus the Worker on port 8787; build with `SITE_BASE_URL=http://localhost:8787` so the host matches). Test `/a/{slug}` and installing on the `*.workers.dev` preview.
 - `node scripts/test-web.mjs` (after a build, for sizes) and `node scripts/lint-web-css.mjs`.
 
 ## Measured size (JS + CSS actually loaded for one template, incl. tokens.css and base.css)
+Measured 2026-10-17 (after the privacy pages and Add to home screen):
 | template | raw | gzip |
 |---|---|---|
-| classic | 32.1 KB | 14.2 KB |
-| modern | 32.6 KB | 14.4 KB |
-| minimal | 32.2 KB | 14.2 KB |
-Budget is 50 KB. Font files (woff2, self-hosted, loaded on demand) and `fonts.css` (2 KB) are extra; the budget covers JS and CSS only.
+| classic | 45.5 KB | 17.7 KB |
+| modern | 46.0 KB | 17.9 KB |
+| minimal | 45.6 KB | 17.7 KB |
+Budget is 50 KB for first paint. `manifest.js` and `install.js` (6.3 KB) are imported after the site renders, so they're outside it; the test also caps first paint plus those two at 60 KB (classic: 51.8 KB). Font files (woff2, self-hosted, loaded on demand) and `fonts.css` (2 KB) are extra; the budget covers JS and CSS only.
 
 ## Preview images and Lighthouse
 - `web/templates/{classic,modern,minimal}/preview.webp`: 390x844 phone screenshots (25 KB, 25 KB, 28 KB) of fixture `demo` (EN), taken with headless Chrome (`--window-size=390,844 --virtual-time-budget=5000`) against a `WEB_DEV=1` build served on port 8080 (it must be 8080 so the host matches `SITE_BASE_URL`), then PNG -> WebP with Pillow. Regenerate them whenever a template's look changes.

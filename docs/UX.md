@@ -229,7 +229,7 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
 - **Status card**, the only card on the screen:
   - the site URL (or custom domain) with a `StatusPill` (Live / Draft / Unpublished changes),
   - **Share** as the primary button,
-  - and an overflow menu with Copy link, Open, Show QR code.
+  - and an overflow menu with Copy link, Open, Add to home screen (only once the site has been published), Show QR code.
 - **`NavRow` list:**
   - **Content:** "7 sections".
   - **Appearance:** template name and accent.
@@ -239,9 +239,10 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
 - **As built (Phase 8):**
   - The status is **Draft** until the first publish, **Unpublished changes** while `draft_content` differs from `published_content`, otherwise **Live** (with an icon each: hourglass / sync / check).
   - "7 sections" counts the visible sections; "120 views this week" is the last 7 days including today (Asia/Kolkata).
-  - **Share** opens the system share sheet with the full link and ticks "Share your link" on Home's setup checklist. **Copy link** shows "Link copied"; **Open** opens the live link in the browser; **Show QR code** opens the Share / QR sheet (the QR code, the address, "Customers can scan this to open your website", Share and Copy link).
+  - **Share** opens the system share sheet with the full link and ticks "Share your link" on Home's setup checklist. **Copy link** shows "Link copied"; **Open** opens the live link in the browser; **Add to home screen** (DECISIONS #65) opens `<link>/?install=1` in the default browser (not a Custom Tab, which can't install), where a sheet offers **Install** or, when the browser has no prompt yet, the steps (⋮ → Install app; on iPhone, Share → Add to Home Screen); **Show QR code** opens the Share / QR sheet (the QR code, the address, "Customers can scan this to open your website", Share and Copy link).
   - **Publish** shows "Your website is live". If `publish_site` refuses the draft, the Content screen opens with "Fix the marked sections, then publish again", each affected row says "Needs a fix before publishing" (error icon), and a snackbar says "Fix N things before publishing".
   - Save and Publish are disabled offline ("Needs internet").
+- **On the public site (Add to home screen, DECISIONS #65):** the Contact section has a ghost button, "Add to home screen", shown on phones (and on desktops once the browser offers to install). The agent turns it off in Content → Contact → **Show "Add to home screen" button** (default on). The installed app is named after the agent and opens full-screen at their site. The icon is a white head-and-shoulders figure on the site's accent colour. WEB_RENDERER.md has the details.
 
 **Content screen**
 - One row per section from the schema: icon, title, summary and a visibility switch. Hero and Contact are pinned on.
