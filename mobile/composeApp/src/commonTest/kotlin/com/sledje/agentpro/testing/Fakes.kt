@@ -22,6 +22,8 @@ import com.sledje.agentpro.core.platform.NetworkMonitor
 import com.sledje.agentpro.core.platform.UrlLauncher
 import com.sledje.agentpro.feature.auth.data.AuthRepository
 import com.sledje.agentpro.feature.auth.data.AuthState
+import com.sledje.agentpro.feature.auth.data.NewAccount
+import com.sledje.agentpro.feature.auth.data.SignUpOutcome
 import com.sledje.agentpro.feature.settings.data.Profile
 import com.sledje.agentpro.feature.settings.data.ProfileInput
 import com.sledje.agentpro.feature.settings.data.ProfileRepository
@@ -87,7 +89,7 @@ fun testSite(slug: String = "ramesh-kumar", published: Boolean = false) = Site(
 class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthRepository {
     override val state = MutableStateFlow(initial)
     var signInResult: AppResult<Unit> = Result.Ok(Unit)
-    var signUpResult: AppResult<Unit> = Result.Ok(Unit)
+    var signUpResult: AppResult<SignUpOutcome> = Result.Ok(SignUpOutcome.ConfirmEmail)
     var resetResult: AppResult<Unit> = Result.Ok(Unit)
     var resendResult: AppResult<Unit> = Result.Ok(Unit)
     var updatePasswordResult: AppResult<Unit> = Result.Ok(Unit)
@@ -102,11 +104,24 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
 
     /** The consent each sign-up sent (`data.consent` in the real call). */
     val signUpConsents = mutableListOf<NoticeConsent>()
+    val signUpAccounts = mutableListOf<NewAccount>()
 
-    override suspend fun signUp(email: String, password: String, consent: NoticeConsent): AppResult<Unit> {
-        calls += "signUp:$email"
+    /** Whether [signInAfterConfirmation] finds the email confirmed. */
+    var emailConfirmed = false
+
+    override suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome> {
+        calls += "signUp:${account.email}"
+        signUpAccounts += account
         signUpConsents += consent
-        return signUpResult
+        val result = signUpResult
+        if (result is Result.Ok && result.value == SignUpOutcome.SignedIn) state.value = AuthState.SignedIn(TEST_USER, account.email)
+        return result
+    }
+
+    override suspend fun signInAfterConfirmation(): Boolean {
+        calls += "signInAfterConfirmation"
+        if (emailConfirmed) state.value = AuthState.SignedIn(TEST_USER, signUpAccounts.lastOrNull()?.email)
+        return emailConfirmed
     }
     override suspend fun resendConfirmation(email: String): AppResult<Unit> { calls += "resend:$email"; return resendResult }
     override suspend fun sendPasswordReset(email: String): AppResult<Unit> { calls += "reset:$email"; return resetResult }

@@ -4,7 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,9 +24,9 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormMode
 import com.sledje.agentpro.feature.auth.ui.AuthFormScreen
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.auth.ui.CheckEmailScreen
-import com.sledje.agentpro.feature.auth.ui.CheckEmailViewModel
 import com.sledje.agentpro.feature.auth.ui.LinkExpiredScreen
 import com.sledje.agentpro.feature.auth.ui.RecoveryStep
+import com.sledje.agentpro.feature.auth.ui.ResendEmailViewModel
 import com.sledje.agentpro.feature.auth.ui.ResetSentScreen
 import com.sledje.agentpro.feature.auth.ui.SetNewPasswordScreen
 import com.sledje.agentpro.feature.auth.ui.SetNewPasswordViewModel
@@ -37,7 +42,8 @@ object AuthRoutes {
 
     /** The in-app privacy notice, opened from the Create account consent line. */
     @Serializable data object Notice
-    @Serializable data class CheckEmail(val email: String)
+    /** [sendNow]: opened from Sign in for an unconfirmed email, so the confirmation is sent on open. */
+    @Serializable data class CheckEmail(val email: String, val sendNow: Boolean = false)
     @Serializable data object ForgotPassword
     @Serializable data class ResetSent(val email: String)
 
@@ -64,7 +70,8 @@ fun AuthNavHost(deps: AppDependencies) {
             AuthForm(deps, AuthFormMode.SignIn, onBack = { nav.popBackStack() },
                 onSwitchMode = { nav.navigate(AuthRoutes.SignUp) { popUpTo(AuthRoutes.Welcome) } },
                 onForgotPassword = { nav.navigate(AuthRoutes.ForgotPassword) },
-                onSent = {})
+                onSent = {},
+                onResendConfirmation = { email -> nav.navigate(AuthRoutes.CheckEmail(email, sendNow = true)) })
         }
         composable<AuthRoutes.SignUp> {
             AuthForm(deps, AuthFormMode.SignUp, onBack = { nav.popBackStack() },
@@ -81,8 +88,14 @@ fun AuthNavHost(deps: AppDependencies) {
         }
         composable<AuthRoutes.CheckEmail> { entry ->
             val route = entry.toRoute<AuthRoutes.CheckEmail>()
-            val vm = viewModel { CheckEmailViewModel(route.email, deps.auth) }
+            val vm = viewModel { ResendEmailViewModel(route.email, deps.auth::resendConfirmation, sendOnOpen = route.sendNow) }
             val state by vm.state.collectAsState()
+            // Back from the email app or browser after confirming: sign in with the details just typed,
+            // so the gate moves on to onboarding. The first resume is this screen opening, so skip it.
+            var opened by remember { mutableStateOf(false) }
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+                if (opened) scope.launch { deps.auth.signInAfterConfirmation() } else opened = true
+            }
             CheckEmailScreen(
                 email = route.email,
                 state = state,
@@ -94,8 +107,7 @@ fun AuthNavHost(deps: AppDependencies) {
             )
         }
         composable<AuthRoutes.ResetSent> { entry ->
-            val route = entry.toRoute<AuthRoutes.ResetSent>()
-            ResetSentScreen(route.email, onBackToSignIn = { nav.popBackStack() })
+            ResetSentRoute(deps, entry.toRoute<AuthRoutes.ResetSent>().email, onBackToSignIn = { nav.popBackStack() })
         }
     }
 }
@@ -136,10 +148,24 @@ fun PasswordRecoveryNavHost(
                 onSent = { email -> nav.navigate(AuthRoutes.ResetSent(email)) { popUpTo(AuthRoutes.LinkExpired) } })
         }
         composable<AuthRoutes.ResetSent> { entry ->
-            val route = entry.toRoute<AuthRoutes.ResetSent>()
-            ResetSentScreen(route.email, onBackToSignIn = onClose)
+            ResetSentRoute(deps, entry.toRoute<AuthRoutes.ResetSent>().email, onBackToSignIn = onClose)
         }
     }
+}
+
+/** "Reset link sent" with Resend (the reset email again, after the countdown). */
+@Composable
+private fun ResetSentRoute(deps: AppDependencies, email: String, onBackToSignIn: () -> Unit) {
+    val vm = viewModel { ResendEmailViewModel(email, deps.auth::sendPasswordReset) }
+    val state by vm.state.collectAsState()
+    ResetSentScreen(
+        email = email,
+        state = state,
+        onResend = vm::resend,
+        onResentShown = vm::onResentShown,
+        onErrorShown = vm::onErrorShown,
+        onBackToSignIn = onBackToSignIn,
+    )
 }
 
 @Composable
@@ -151,6 +177,7 @@ private fun AuthForm(
     onForgotPassword: () -> Unit,
     onSent: (String) -> Unit,
     onOpenNotice: () -> Unit = {},
+    onResendConfirmation: (String) -> Unit = {},
 ) {
     val vm = viewModel(key = mode.name) { AuthFormViewModel(mode, deps.auth) }
     val state by vm.state.collectAsState()
@@ -171,5 +198,6 @@ private fun AuthForm(
                 AuthFormViewModel.LINK_TERMS -> PrivacyLinks.terms()?.let { deps.urlLauncher.openUrl(it) } ?: onOpenNotice()
             }
         },
+        onResendConfirmation = { (vm.form.values()[AuthFormViewModel.EMAIL] as? String)?.trim()?.let(onResendConfirmation) },
     )
 }

@@ -28,8 +28,11 @@ sealed interface AppGate {
 
     data object SignedOut : AppGate
 
-    /** Session, but profile or site missing. [profileDone] starts onboarding at step 2. */
-    data class Onboarding(val profileDone: Boolean) : AppGate
+    /**
+     * Session, but profile or site missing. Onboarding always opens on step 1: sign-up already filled the
+     * name and mobile, so step 1 shows them with Edit and asks only for the rest (docs/UX.md, Onboarding).
+     */
+    data object Onboarding : AppGate
 
     data object Ready : AppGate
 
@@ -55,12 +58,12 @@ fun resolveGate(
         AuthState.Loading -> AppGate.Loading
         AuthState.SignedOut -> AppGate.SignedOut
         is AuthState.SignedIn -> when {
-            onboardingActive -> AppGate.Onboarding(profileDone = profile?.isComplete == true)
+            onboardingActive -> AppGate.Onboarding
             profile == null -> if (sync == SyncStatus.Failed) AppGate.Error else AppGate.Loading
             profile.isComplete && site != null -> AppGate.Ready
             // The site may simply not have synced yet: wait for the first refresh to finish.
             site == null && profile.isComplete && (sync == SyncStatus.Idle || sync == SyncStatus.Running) -> AppGate.Loading
-            else -> AppGate.Onboarding(profileDone = profile.isComplete)
+            else -> AppGate.Onboarding
         }
     }
 }

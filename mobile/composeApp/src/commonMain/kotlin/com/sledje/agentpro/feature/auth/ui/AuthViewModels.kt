@@ -5,20 +5,29 @@ import androidx.lifecycle.viewModelScope
 import com.sledje.agentpro.core.catalog.AppLocale
 import com.sledje.agentpro.core.catalog.PrivacyNotice
 import com.sledje.agentpro.core.data.AppError
+import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.Result
+import com.sledje.agentpro.core.data.map
 import com.sledje.agentpro.core.forms.FieldLink
 import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.feature.auth.data.AuthRepository
 import com.sledje.agentpro.feature.auth.data.AuthRules
+import com.sledje.agentpro.feature.auth.data.NewAccount
+import com.sledje.agentpro.feature.auth.data.SignUpOutcome
 import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.resources.auth_confirm_password
 import com.sledje.agentpro.resources.auth_email
+import com.sledje.agentpro.resources.auth_full_name
 import com.sledje.agentpro.resources.auth_new_password
 import com.sledje.agentpro.resources.auth_password
+import com.sledje.agentpro.resources.profile_mobile
 import com.sledje.agentpro.resources.cat_privacy_agent_signup_consent
 import com.sledje.agentpro.resources.cat_privacy_agent_signup_link_notice
 import com.sledje.agentpro.resources.cat_privacy_agent_signup_link_terms
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,13 +59,17 @@ fun AppError.toAuthFormError(): AuthFormError = when {
 data class AuthFormUiState(
     val submitting: Boolean = false,
     val error: AuthFormError? = null,
-    /** Set when sign-up or the reset email succeeded: the screen moves on to "Check your email" / "Reset sent". */
+    /**
+     * Set when the reset email went, or sign-up needs the email confirmed: the screen moves on to
+     * "Reset sent" / "Check your email". A sign-up that started a session needs no navigation.
+     */
     val sentTo: String? = null,
 )
 
 /**
- * Sign in, create account and forgot password: email (+ password) built by FormRenderer. Sign-in success
- * needs no navigation: the auth state flips and the gate moves on.
+ * Sign in, create account and forgot password, built by FormRenderer: email (+ password); Create account
+ * also asks for the full name, mobile and the password twice. Sign-in success needs no navigation: the
+ * auth state flips and the gate moves on.
  */
 class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository) : ViewModel() {
     val form = FormState(fieldsFor(mode))
@@ -75,14 +88,19 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
         val password = values[PASSWORD] as? String
         _state.update { it.copy(submitting = true, error = null) }
         viewModelScope.launch {
-            val result = when (mode) {
-                AuthFormMode.SignIn -> auth.signIn(email, password.orEmpty())
-                AuthFormMode.SignUp -> auth.signUp(email, password.orEmpty(), PrivacyNotice.AgentSignup.consent(locale))
-                AuthFormMode.ResetPassword -> auth.sendPasswordReset(email)
+            // Ok(true): move on to "Check your email" / "Reset sent".
+            val result: AppResult<Boolean> = when (mode) {
+                AuthFormMode.SignIn -> auth.signIn(email, password.orEmpty()).map { false }
+                AuthFormMode.SignUp -> {
+                    // validateAll normalised the mobile to +91XXXXXXXXXX.
+                    val account = NewAccount(values[NAME] as String, values[MOBILE] as String, email, password.orEmpty())
+                    auth.signUp(account, PrivacyNotice.AgentSignup.consent(locale)).map { it == SignUpOutcome.ConfirmEmail }
+                }
+                AuthFormMode.ResetPassword -> auth.sendPasswordReset(email).map { true }
             }
             _state.update {
                 when (result) {
-                    is Result.Ok -> it.copy(submitting = false, sentTo = if (mode == AuthFormMode.SignIn) null else email)
+                    is Result.Ok -> it.copy(submitting = false, sentTo = if (result.value) email else null)
                     is Result.Err -> it.copy(submitting = false, error = result.error.toAuthFormError())
                 }
             }
@@ -96,6 +114,11 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
         const val EMAIL = "email"
         const val PASSWORD = "password"
 
+        /** Create account only; the same keys as the profile (onboarding step 1). */
+        const val NAME = "full_name"
+        const val MOBILE = "phone"
+        const val CONFIRM_PASSWORD = "confirm_password"
+
         /** The sign-up consent checkbox (`agent_signup` notice; unticked, required). */
         const val CONSENT = "consent"
 
@@ -103,8 +126,15 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
         const val LINK_TERMS = "terms"
         const val LINK_NOTICE = "notice"
 
-        /** Email ≤ 120 like `submit_enquiry`; the password minimum (8) only applies to new passwords. */
+        /**
+         * Email ≤ 120 like `submit_enquiry`; the password minimum (8) only applies to new passwords. The
+         * name (≤ 80) and mobile follow onboarding step 1's rules.
+         */
         fun fieldsFor(mode: AuthFormMode): List<FieldSpec> = buildList {
+            if (mode == AuthFormMode.SignUp) {
+                add(FieldSpec(NAME, FieldType.Text, Res.string.auth_full_name, required = true, maxLength = 80))
+                add(FieldSpec(MOBILE, FieldType.Phone, Res.string.profile_mobile, required = true))
+            }
             add(FieldSpec(EMAIL, FieldType.Email, Res.string.auth_email, required = true, maxLength = 120))
             if (mode != AuthFormMode.ResetPassword) {
                 add(
@@ -115,6 +145,7 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
                 )
             }
             if (mode == AuthFormMode.SignUp) {
+                add(FieldSpec(CONFIRM_PASSWORD, FieldType.Password, Res.string.auth_confirm_password, required = true, mustMatch = PASSWORD))
                 add(
                     FieldSpec(
                         CONSENT, FieldType.Consent, Res.string.cat_privacy_agent_signup_consent, required = true,
@@ -129,23 +160,62 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
     }
 }
 
-data class CheckEmailUiState(val sending: Boolean = false, val resent: Boolean = false, val error: AppError? = null)
+data class ResendEmailUiState(
+    val sending: Boolean = false,
+    /** Seconds until Resend is allowed again; Resend shows "Resend in 42 s" meanwhile. */
+    val secondsLeft: Int = 0,
+    val resent: Boolean = false,
+    val error: AppError? = null,
+)
 
-/** "Check your email": Resend the confirmation. */
-class CheckEmailViewModel(private val email: String, private val auth: AuthRepository) : ViewModel() {
-    private val _state = MutableStateFlow(CheckEmailUiState())
-    val state: StateFlow<CheckEmailUiState> = _state.asStateFlow()
+/**
+ * Resend on "Check your email" (the confirmation) and "Reset link sent" (the reset link), through [send].
+ * Supabase sends at most one email per address per [AuthRules.EMAIL_RESEND_SECONDS] and refuses earlier
+ * tries, so Resend counts down from the last send instead of failing. A refusal with a wait restarts the
+ * countdown at that wait; the hourly quota shows its message and waits a minute. [sendOnOpen] sends at
+ * once (Sign in → Resend confirmation email); otherwise the email has just gone and the countdown starts.
+ */
+class ResendEmailViewModel(
+    private val email: String,
+    private val send: suspend (String) -> AppResult<Unit>,
+    sendOnOpen: Boolean = false,
+) : ViewModel() {
+    private val _state = MutableStateFlow(ResendEmailUiState())
+    val state: StateFlow<ResendEmailUiState> = _state.asStateFlow()
+    private var countdown: Job? = null
+
+    init {
+        if (sendOnOpen) resend() else startCountdown(AuthRules.EMAIL_RESEND_SECONDS)
+    }
 
     fun resend() {
-        if (_state.value.sending) return
+        val current = _state.value
+        if (current.sending || current.secondsLeft > 0) return
         _state.update { it.copy(sending = true, resent = false, error = null) }
         viewModelScope.launch {
-            val result = auth.resendConfirmation(email)
-            _state.update {
-                when (result) {
-                    is Result.Ok -> it.copy(sending = false, resent = true)
-                    is Result.Err -> it.copy(sending = false, error = result.error)
+            when (val result = send(email)) {
+                is Result.Ok -> {
+                    _state.update { it.copy(sending = false, resent = true) }
+                    startCountdown(AuthRules.EMAIL_RESEND_SECONDS)
                 }
+                is Result.Err -> {
+                    val error = result.error
+                    val wait = (error as? AppError.EmailLimited)?.retryAfterSeconds
+                    // A per-address wait needs no message: the countdown on Resend says it.
+                    _state.update { it.copy(sending = false, error = if (wait != null) null else error) }
+                    if (error is AppError.EmailLimited) startCountdown(wait ?: AuthRules.EMAIL_RESEND_SECONDS)
+                }
+            }
+        }
+    }
+
+    private fun startCountdown(seconds: Int) {
+        countdown?.cancel()
+        _state.update { it.copy(secondsLeft = seconds) }
+        countdown = viewModelScope.launch {
+            while (_state.value.secondsLeft > 0) {
+                delay(1_000)
+                _state.update { it.copy(secondsLeft = it.secondsLeft - 1) }
             }
         }
     }

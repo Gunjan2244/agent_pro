@@ -30,6 +30,18 @@ sealed interface AuthState {
     data class SignedIn(val userId: String, val email: String?) : AuthState
 }
 
+/** What Create account asks for. Name and mobile go to the profile, so onboarding doesn't ask for them again. */
+data class NewAccount(val fullName: String, val phone: String, val email: String, val password: String)
+
+/** What sign-up led to. */
+enum class SignUpOutcome {
+    /** Email confirmation is off in the Auth project: the session has started, so the gate moves on. */
+    SignedIn,
+
+    /** "Check your email" follows; [AuthRepository.signInAfterConfirmation] finishes the sign-in. */
+    ConfirmEmail,
+}
+
 /** Email + password auth (DECISIONS #3; docs/BACKEND.md, Auth: email confirmation on, minimum 8 characters). */
 interface AuthRepository {
     val state: StateFlow<AuthState>
@@ -37,11 +49,20 @@ interface AuthRepository {
     suspend fun signIn(email: String, password: String): AppResult<Unit>
 
     /**
-     * Creates the account. Email confirmation is on, so no session starts; "Check your email" follows.
-     * [consent] (the sign-up notice the person ticked, in the language shown) goes in the user metadata as
-     * `data.consent = {notice_key, version, hash}`; the backend records it (docs/PRIVACY.md, section 1).
+     * Creates the account. The name and mobile go in the user metadata (`data.full_name`, `data.phone`),
+     * and the signup trigger copies them into `profiles`. [consent] (the sign-up notice the person ticked,
+     * in the language shown) goes in as `data.consent = {notice_key, version, hash}`; the backend records
+     * it (docs/PRIVACY.md, section 1).
      */
-    suspend fun signUp(email: String, password: String, consent: NoticeConsent): AppResult<Unit>
+    suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome>
+
+    /**
+     * "Check your email": signs in with the email and password of this run's last sign-up (or of a
+     * sign-in refused as unconfirmed) once the email is confirmed, so the agent never types them again.
+     * They're kept in memory only, never stored. True when signed in; false while the email is still
+     * unconfirmed, when nothing is pending, or on any failure (it's tried again on the next return).
+     */
+    suspend fun signInAfterConfirmation(): Boolean
 
     suspend fun resendConfirmation(email: String): AppResult<Unit>
 
@@ -61,8 +82,10 @@ interface AuthRepository {
     suspend fun handleAuthCallback(url: String): AppResult<Unit>
 }
 
-/** The sign-up user metadata: `{consent: {notice_key, version, hash}}` (pure, unit-tested). */
-fun signUpMetadata(consent: NoticeConsent): JsonObject = buildJsonObject {
+/** The sign-up user metadata: `{full_name, phone, consent: {notice_key, version, hash}}` (pure, unit-tested). */
+fun signUpMetadata(account: NewAccount, consent: NoticeConsent): JsonObject = buildJsonObject {
+    put("full_name", account.fullName.trim())
+    put("phone", account.phone)
     put(
         "consent",
         buildJsonObject {
@@ -76,6 +99,9 @@ fun signUpMetadata(consent: NoticeConsent): JsonObject = buildJsonObject {
 /** Rules of the Supabase Auth project (docs/BACKEND.md, Auth). */
 object AuthRules {
     const val PASSWORD_MIN_LENGTH = 8
+
+    /** Supabase sends at most one auth email per address per this many seconds (Auth → Rate Limits). */
+    const val EMAIL_RESEND_SECONDS = 60
 }
 
 /**
@@ -103,20 +129,44 @@ class SupabaseAuthRepository(
         }.stateIn(scope, SharingStarted.Eagerly, AuthState.Loading)
     } ?: notConfigured
 
-    override suspend fun signIn(email: String, password: String): AppResult<Unit> = remoteCall {
+    /** The credentials [signInAfterConfirmation] uses: in memory only, cleared once signed in or out. */
+    private var pendingSignIn: Pair<String, String>? = null
+
+    override suspend fun signIn(email: String, password: String): AppResult<Unit> {
+        val result = passwordSignIn(email.trim(), password)
+        pendingSignIn = if (result is Result.Err && result.error == NOT_CONFIRMED) email.trim() to password else null
+        return result
+    }
+
+    private suspend fun passwordSignIn(email: String, password: String): AppResult<Unit> = remoteCall {
         supabase.require().auth.signInWith(Email) {
-            this.email = email.trim()
+            this.email = email
             this.password = password
         }
     }
 
-    override suspend fun signUp(email: String, password: String, consent: NoticeConsent): AppResult<Unit> = remoteCall {
-        supabase.require().auth.signUpWith(Email) {
-            this.email = email.trim()
-            this.password = password
-            this.data = signUpMetadata(consent)
+    override suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome> = remoteCall {
+        val auth = supabase.require().auth
+        val email = account.email.trim()
+        auth.signUpWith(Email) {
+            this.email = email
+            this.password = account.password
+            this.data = signUpMetadata(account, consent)
         }
-        Unit
+        if (auth.currentSessionOrNull() != null) {
+            SignUpOutcome.SignedIn
+        } else {
+            pendingSignIn = email to account.password
+            SignUpOutcome.ConfirmEmail
+        }
+    }
+
+    override suspend fun signInAfterConfirmation(): Boolean {
+        val (email, password) = pendingSignIn ?: return false
+        val result = passwordSignIn(email, password)
+        // Wrong credentials won't come right by waiting (the email already had an account with another password).
+        if (result is Result.Ok || (result is Result.Err && result.error == CREDENTIALS)) pendingSignIn = null
+        return result is Result.Ok
     }
 
     override suspend fun resendConfirmation(email: String): AppResult<Unit> = remoteCall {
@@ -133,6 +183,7 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun signOut(): AppResult<Unit> {
+        pendingSignIn = null
         val result = remoteCall { supabase.require().auth.signOut() }
         // Signing out locally always succeeds; the cache goes either way.
         if (result is Result.Err) runCatching { supabase.client?.auth?.clearSession() }
@@ -152,10 +203,12 @@ class SupabaseAuthRepository(
                 fragment != null -> auth.importSession(auth.parseSessionFromFragment(fragment))
                 else -> Unit
             }
-        }
+        }.also { if (it is Result.Ok) pendingSignIn = null }
     }
 
     companion object {
         val LINK_EXPIRED = AppError.Validation("link", "expired")
+        private val NOT_CONFIRMED = AppError.Validation("email", "not_confirmed")
+        private val CREDENTIALS = AppError.Validation("credentials")
     }
 }

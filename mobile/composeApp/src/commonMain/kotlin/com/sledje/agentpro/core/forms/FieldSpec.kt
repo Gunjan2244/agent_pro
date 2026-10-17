@@ -82,6 +82,8 @@ data class FieldSpec(
     val segmented: Boolean = false,
     /** [FieldType.Consent] only: substrings of the label that are tappable; FormRenderer's `onLink` gets the [FieldLink.key]. */
     val links: List<FieldLink> = emptyList(),
+    /** App forms only: the key of a field this one must equal (Confirm password); otherwise [ValidationError.Mismatch]. */
+    val mustMatch: String? = null,
 )
 
 /** A tappable substring of a consent field's label (`label` is a string resource whose text contains it). */

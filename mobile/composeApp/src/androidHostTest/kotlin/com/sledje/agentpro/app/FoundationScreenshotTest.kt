@@ -62,6 +62,15 @@ class FoundationScreenshotTest {
             }
             OnboardingProfileScreen(form, OnboardingUiState(), onContinue = {})
         },
+        "OnboardingProfileFromSignUp" to {
+            val form = remember {
+                FormState(
+                    OnboardingViewModel.PROFILE_FIELDS,
+                    mapOf(OnboardingViewModel.NAME to "Ramesh Kumar", OnboardingViewModel.MOBILE to "+919876543210"),
+                )
+            }
+            OnboardingProfileScreen(form, OnboardingUiState(contactSummary = true), onContinue = {})
+        },
         "OnboardingTemplate" to {
             OnboardingTemplateScreen(Templates.all, Templates.all.first().key, "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {})
         },

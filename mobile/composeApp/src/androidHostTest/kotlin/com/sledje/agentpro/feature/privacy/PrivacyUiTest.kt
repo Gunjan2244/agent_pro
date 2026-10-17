@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.runComposeUiTest
@@ -47,11 +48,14 @@ class PrivacyUiTest {
         val create = hasText("Create account") and hasClickAction()
         onNode(create).assertIsNotEnabled()
 
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.NAME)).performTextInput("Ramesh Kumar")
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.MOBILE)).performTextInput("9876543210")
         onNodeWithTag(fieldTestTag(AuthFormViewModel.EMAIL)).performTextInput("new@example.com")
         onNodeWithTag(fieldTestTag(AuthFormViewModel.PASSWORD)).performTextInput("long enough")
-        onNode(create).assertIsNotEnabled() // valid email and password, but not consented
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.CONFIRM_PASSWORD)).performTextInput("long enough")
+        onNode(create).assertIsNotEnabled() // every field valid, but not consented
 
-        onNode(isToggleable()).performClick()
+        onNode(isToggleable()).performScrollTo().performClick()
         assertEquals(true, form.value(AuthFormViewModel.CONSENT))
         onNode(create).assertIsEnabled()
 

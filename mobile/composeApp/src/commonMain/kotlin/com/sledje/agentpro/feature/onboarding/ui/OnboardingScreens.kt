@@ -43,6 +43,8 @@ import com.sledje.agentpro.core.designsystem.components.AppTextField
 import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
 import com.sledje.agentpro.core.designsystem.components.StepProgressBar
+import com.sledje.agentpro.core.designsystem.components.TertiaryButton
+import com.sledje.agentpro.core.format.Phone
 import com.sledje.agentpro.core.forms.FormRenderer
 import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.forms.fieldTestTag
@@ -56,6 +58,7 @@ import com.sledje.agentpro.resources.website_photo_unreadable
 import com.sledje.agentpro.resources.website_photo_uploading
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.cat_site_cta_default
+import com.sledje.agentpro.resources.crm_edit
 import com.sledje.agentpro.resources.needs_internet
 import com.sledje.agentpro.resources.onboarding_continue
 import com.sledje.agentpro.resources.onboarding_later
@@ -96,12 +99,17 @@ private fun ErrorLine(text: String) {
     )
 }
 
-/** Step 1: name, mobile, designation and city; agency code and branch under More details. */
+/**
+ * Step 1: name, mobile, designation and city; agency code and branch under More details. When sign-up
+ * already gave the name and mobile ([OnboardingUiState.contactSummary]), they show as a card with
+ * **Edit** (which brings back their fields) and aren't asked again.
+ */
 @Composable
 fun OnboardingProfileScreen(
     form: FormState,
     state: OnboardingUiState,
     onContinue: () -> Unit,
+    onEditContact: () -> Unit = {},
     /** Opens the photo picker (MediaPicker); the view model uploads the result. */
     onPickPhoto: () -> Unit = {},
 ) {
@@ -122,15 +130,31 @@ fun OnboardingProfileScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.m),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
+            if (state.contactSummary) ContactSummary(form, enabled = !state.saving, onEdit = onEditContact)
             FormRenderer(
                 form,
                 visibleKeys = OnboardingViewModel.VISIBLE_PROFILE_KEYS,
+                hiddenKeys = if (state.contactSummary) OnboardingViewModel.CONTACT_KEYS else emptySet(),
                 enabled = !state.saving && !state.uploadingPhoto,
                 onPickImage = { if (online) onPickPhoto() },
                 imagePreview = { url -> NetworkImage(url) },
             )
             if (state.uploadingPhoto) Text(stringResource(Res.string.website_photo_uploading), style = AgentProTheme.text.bodyMuted)
             state.error?.let { ErrorLine(stringResource(if (it == ImageUnreadable) Res.string.website_photo_unreadable else it.message)) }
+        }
+    }
+}
+
+/** Step 1's name and mobile from sign-up, with **Edit**. */
+@Composable
+private fun ContactSummary(form: FormState, enabled: Boolean, onEdit: () -> Unit) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(form.text(OnboardingViewModel.NAME), style = AgentProTheme.text.strong)
+                Text(Phone.display(form.text(OnboardingViewModel.MOBILE)), style = AgentProTheme.text.bodyMuted)
+            }
+            TertiaryButton(stringResource(Res.string.crm_edit), onEdit, enabled = enabled)
         }
     }
 }

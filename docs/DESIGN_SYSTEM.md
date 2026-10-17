@@ -183,6 +183,15 @@ Use **Material Symbols Rounded**, outlined weight 400, in `onSurfaceVariant` gre
   - **Master:** `agent-pro-icon.svg` and `agent-pro-glyph.svg`.
   - **Check:** `preview.png` shows the icon in circle and squircle masks and at 96, 48 and 24 px.
 
+## Auth emails
+Supabase Auth emails are built to the same tokens by `scripts/gen-email-templates.mjs` (DECISIONS #69); nobody edits the generated HTML by hand.
+- **Look:** a white card with a hairline border and a `lg` radius on `surfaceContainerLow`, the wordmark above it, and a 23 px title, 14 px body and a primary button with an `md` radius. Spacing only uses 8, 16 and 24 and type only 14, 23 and 39 (the confirmation code). Primary blue is only the button, the logo mark and the link.
+- **Logo:** an HTML "A" on a primary square, not the icon: email clients can't render SVG and block remote images. Swap in the PNG icon once it is hosted (DECISIONS #69).
+- **Language:** English first, a divider, then Hindi (`lang="hi"`, line height +2). The tagline from the Welcome screen is in the footer.
+- **Dark mode:** `prefers-color-scheme: dark` swaps in the dark tokens (Apple Mail and most mobile clients; Gmail's apps often apply their own inversion).
+- **Fonts:** Inter, then system fonts, then Noto Sans Devanagari. No web font is loaded, so no font host sees the reader.
+- **Never:** the LIC or any insurer's logo (CLAUDE.md, Branding).
+
 ## Motion
 - Subtle and quick, with Material 3 standard easing: 150ms for state changes, 250ms for navigation.
 - Shared-axis X for forward and back navigation, fade-through for tab switches, no bouncy effects.
@@ -259,7 +268,7 @@ A debug-only **Component gallery** shows every component in light, dark, EN, HI 
 Component behaviour that the tables above leave to the implementation:
 - **Field layout:** the label sits above the field (`label` style, `space.s` gap), with one line of error or helper text below. Multiline fields with a `maxLength` show a counter (`12/160`); other fields don't. Required fields aren't marked; validation says "Required".
 - **Password fields** (`FieldType.Password`, app forms only, never a site-schema type) are masked with a show/hide icon button and are never trimmed; `FieldSpec.minLength` (app forms only) adds "At least 8 characters".
-- **`FormRenderer`** shows all fields when there are 6 or fewer. Otherwise it shows every required field plus the first optional ones up to 6 (schema order), and the rest go under **More details**; a screen can pass `visibleKeys` instead. Required fields are never hidden, and More details opens by itself when a hidden field has an error. A list item is titled "Item 1", "Item 2"…, with Remove and an Add button up to `maxItems`. The image field is a slot with "Add photo"; the screen wires the MediaPicker through `onPickImage`.
+- **`FormRenderer`** shows all fields when there are 6 or fewer. Otherwise it shows every required field plus the first optional ones up to 6 (schema order), and the rest go under **More details**; a screen can pass `visibleKeys` instead. A screen that shows some fields elsewhere (onboarding step 1's name and mobile card with Edit) passes `hiddenKeys`: those aren't rendered, even when required, but their values and validation still count. Otherwise required fields are never hidden, and More details opens by itself when a hidden field has an error. `FieldSpec.mustMatch` (app forms; Confirm password) makes a field invalid unless it equals the named field ("Passwords don't match"). A list item is titled "Item 1", "Item 2"…, with Remove and an Add button up to `maxItems`. The image field is a slot with "Add photo"; the screen wires the MediaPicker through `onPickImage`.
 - **App-only form fields** (never site-schema types, like `FieldType.Password`): `FieldType.Money` renders a `MoneyField` and returns a `Double` (≤ 2 decimals, `min`/`max` checked); `FieldSpec.suggestions` gives a text field an autocomplete dropdown (up to 5 case-insensitive matches, prefix matches first, any text still allowed; used for `planSuggestions`); `FieldSpec.segmented` shows a select as a `SegmentedControl` (the premium mode).
 - **`ListRow(unseenLabel = …)`** puts an 8dp primary dot (`Dimens.unseenDot`) before the title, with that TalkBack label (unseen enquiries).
 - **`UrgencyChip`** tone and icon come from the catalog `dueBuckets`. Labels: "Overdue 3d"; "Due today"; "Due in 5d" inside the first upcoming bucket (this week); "Due 15 Jan" after that.

@@ -8,6 +8,7 @@ import com.sledje.agentpro.resources.validation_max_items
 import com.sledje.agentpro.resources.validation_max_length
 import com.sledje.agentpro.resources.validation_min
 import com.sledje.agentpro.resources.validation_min_length
+import com.sledje.agentpro.resources.validation_mismatch
 import com.sledje.agentpro.resources.validation_number
 import com.sledje.agentpro.resources.validation_option
 import com.sledje.agentpro.resources.validation_phone
@@ -37,4 +38,5 @@ fun ValidationError.message(): String = when (this) {
     ValidationError.SlugReserved -> stringResource(Res.string.validation_slug_reserved)
     is ValidationError.MaxItems -> stringResource(Res.string.validation_max_items, max)
     ValidationError.Option -> stringResource(Res.string.validation_option)
+    ValidationError.Mismatch -> stringResource(Res.string.validation_mismatch)
 }

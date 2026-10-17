@@ -102,9 +102,11 @@
     <string name="error_validation">Check the details and try again</string>
     <string name="error_conflict">Couldn't save. Refresh and try again</string>
     <string name="error_rate_limited">Too many tries. Wait a minute and try again</string>
+    <string name="error_email_limited">We can't send more emails right now. Try again in about an hour</string>
 
     <!-- Forms (password fields) -->
     <string name="validation_min_length">At least %1$d characters</string>
+    <string name="validation_mismatch">Passwords don't match</string>
     <string name="form_show_password">Show password</string>
     <string name="form_hide_password">Hide password</string>
 
@@ -123,16 +125,22 @@
     <string name="welcome_tagline">Your website, enquiries and customers — in one place</string>
     <string name="auth_create_account">Create account</string>
     <string name="auth_sign_in">Sign in</string>
+    <string name="auth_sign_in_instead">Sign in instead</string>
     <string name="auth_email">Email</string>
     <string name="auth_password">Password</string>
+    <string name="auth_confirm_password">Confirm password</string>
+    <string name="auth_full_name">Full name</string>
     <string name="auth_forgot_password">Forgot password?</string>
     <string name="auth_error_credentials">Wrong email or password</string>
     <string name="auth_error_not_confirmed">Confirm your email first</string>
     <string name="auth_error_weak_password">Choose a stronger password</string>
     <string name="auth_error_exists">An account with this email already exists</string>
     <string name="auth_check_email_title">Check your email</string>
-    <string name="auth_check_email_text">Check your email to confirm. We sent a link to %1$s</string>
+    <string name="auth_check_email_text">Check your email to confirm. We sent a link to %1$s. Then come back here and you'll be signed in.</string>
     <string name="auth_resend">Resend</string>
+    <string name="auth_resend_in">Resend in %1$d s</string>
+    <string name="auth_resend_confirmation">Resend confirmation email</string>
+    <string name="auth_check_spam">Not there? Check your spam folder</string>
     <string name="auth_resent">Email sent again</string>
     <string name="auth_open_email">Open email app</string>
     <string name="auth_no_email_app">No email app found</string>

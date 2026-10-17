@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Agent PRO</title>
+<style>
+  @media (max-width:520px){ .wrap{padding:16px !important} .card{padding:24px 16px !important} }
+  @media (prefers-color-scheme:dark){
+    .page{background:#0F1115 !important}
+    .card{background:#16191F !important;border-color:#2A2F38 !important}
+    .ink{color:#F3F4F6 !important}
+    .sub{color:#C4C8D0 !important}
+    .muted{color:#A1A7B3 !important}
+    .rule{border-color:#2A2F38 !important}
+    .mark,.btn{background:#9DB7F5 !important;color:#0B1F4D !important}
+    .btn-a{color:#0B1F4D !important}
+    .alt{background:#1C2027 !important;color:#C4C8D0 !important}
+    .lnk{color:#9DB7F5 !important}
+    .code{background:#1E2F57 !important;color:#DCE6FF !important}
+  }
+</style>
+</head>
+<body class="page" style="margin:0;padding:0;background:#F9FAFB;-webkit-text-size-adjust:100%">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">Accept the invite to set up your account. अकाउंट बनाने के लिए निमंत्रण स्वीकार करें।</div>
+<table role="presentation" class="page" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F9FAFB">
+<tr><td align="center" class="wrap" style="padding:24px 16px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px">
+    <tr><td style="padding:0 0 16px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td class="mark" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;background:#1F4AA8;border-radius:12px;font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:23px;line-height:40px;font-weight:700;color:#FFFFFF">A</td>
+<td width="8" style="width:8px">&nbsp;</td>
+<td class="ink" valign="middle" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:23px;line-height:40px;font-weight:600;color:#111827">Agent PRO</td>
+</tr></table></td></tr>
+    <tr><td class="card" style="background:#FFFFFF;border:1px solid #E5E7EB;border-radius:16px;padding:24px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td lang="en" class="ink" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:23px;line-height:30px;font-weight:600;color:#111827">You're invited</td></tr>
+<tr><td height="8" style="height:8px;line-height:8px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="en" class="sub" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:20px;color:#4B5563">You've been invited to join Agent PRO. Tap the button to accept and set up your account.</td></tr>
+<tr><td height="16" style="height:16px;line-height:16px;font-size:1px">&nbsp;</td></tr>
+<tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td class="btn" style="background:#1F4AA8;border-radius:12px"><a href="{{ .ConfirmationURL }}" class="btn-a" lang="en" style="display:inline-block;padding:16px 24px;font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none">Accept invite</a></td></tr></table></td></tr>
+<tr><td height="16" style="height:16px;line-height:16px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="en" class="muted" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:20px;color:#6B7280">The link works once.</td></tr>
+<tr><td height="8" style="height:8px;line-height:8px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="en" class="muted" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:20px;color:#6B7280">If you weren't expecting this, you can ignore this email.</td></tr>
+<tr><td height="16" style="height:16px;line-height:16px;font-size:1px">&nbsp;</td></tr>
+<tr><td class="alt" style="background:#F3F4F6;border-radius:8px;padding:16px;font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:20px;color:#4B5563;word-break:break-all">Button not working? Copy this link into your browser:<br><a href="{{ .ConfirmationURL }}" class="lnk" style="color:#1F4AA8;text-decoration:underline">{{ .ConfirmationURL }}</a></td></tr>
+        <tr><td height="24" style="height:24px;line-height:24px;font-size:1px">&nbsp;</td></tr>
+        <tr><td class="rule" style="border-top:1px solid #E5E7EB;font-size:1px;line-height:1px">&nbsp;</td></tr>
+        <tr><td height="24" style="height:24px;line-height:24px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="hi" class="ink" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:23px;line-height:32px;font-weight:600;color:#111827">आपको निमंत्रण मिला है</td></tr>
+<tr><td height="8" style="height:8px;line-height:8px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="hi" class="sub" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:22px;color:#4B5563">आपको Agent PRO से जुड़ने का निमंत्रण मिला है। स्वीकार करने और अकाउंट बनाने के लिए बटन दबाएँ।</td></tr>
+<tr><td height="16" style="height:16px;line-height:16px;font-size:1px">&nbsp;</td></tr>
+<tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td class="btn" style="background:#1F4AA8;border-radius:12px"><a href="{{ .ConfirmationURL }}" class="btn-a" lang="hi" style="display:inline-block;padding:16px 24px;font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:22px;font-weight:600;color:#FFFFFF;text-decoration:none">निमंत्रण स्वीकार करें</a></td></tr></table></td></tr>
+<tr><td height="16" style="height:16px;line-height:16px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="hi" class="muted" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:22px;color:#6B7280">लिंक एक ही बार काम करता है।</td></tr>
+<tr><td height="8" style="height:8px;line-height:8px;font-size:1px">&nbsp;</td></tr>
+<tr><td lang="hi" class="muted" style="font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:22px;color:#6B7280">अगर आप इसकी उम्मीद नहीं कर रहे थे, तो इस ईमेल को अनदेखा करें।</td></tr>
+      </table>
+    </td></tr>
+    <tr><td class="muted" style="padding:16px 8px 0 8px;font-family:Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Devanagari', sans-serif;font-size:14px;line-height:20px;color:#6B7280">Agent PRO — Your website, enquiries and customers — in one place<br><span lang="hi">आपकी वेबसाइट, पूछताछ और ग्राहक — एक ही जगह</span></td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

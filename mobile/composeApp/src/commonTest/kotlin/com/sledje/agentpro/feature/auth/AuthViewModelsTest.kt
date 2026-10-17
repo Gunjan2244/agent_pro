@@ -7,17 +7,20 @@ import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.ValidationError
 import com.sledje.agentpro.feature.auth.data.AuthRules
 import com.sledje.agentpro.feature.auth.data.AuthState
+import com.sledje.agentpro.feature.auth.data.SignUpOutcome
 import com.sledje.agentpro.feature.auth.ui.AuthFormError
 import com.sledje.agentpro.feature.auth.ui.AuthFormMode
 import com.sledje.agentpro.feature.auth.ui.AuthFormUiState
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
-import com.sledje.agentpro.feature.auth.ui.CheckEmailViewModel
+import com.sledje.agentpro.feature.auth.ui.ResendEmailViewModel
 import com.sledje.agentpro.feature.auth.ui.toAuthFormError
 import com.sledje.agentpro.testing.FakeAuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -26,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -39,6 +43,14 @@ class AuthViewModelsTest {
     private fun AuthFormViewModel.fill(email: String, password: String? = null) {
         form.set(AuthFormViewModel.EMAIL, email)
         password?.let { form.set(AuthFormViewModel.PASSWORD, it) }
+    }
+
+    /** Create account with every field valid except the consent box. */
+    private fun AuthFormViewModel.fillSignUp(email: String, password: String) {
+        form.set(AuthFormViewModel.NAME, " Ramesh Kumar ")
+        form.set(AuthFormViewModel.MOBILE, "98765 43210")
+        fill(email, password)
+        form.set(AuthFormViewModel.CONFIRM_PASSWORD, password)
     }
 
     @Test
@@ -85,10 +97,11 @@ class AuthViewModelsTest {
     @Test
     fun signUpNeedsEightCharactersThenGoesToCheckYourEmail() = runTest {
         val vm = AuthFormViewModel(AuthFormMode.SignUp, auth)
-        vm.fill("new@example.com", "short")
+        vm.fillSignUp("new@example.com", "short")
         assertFalse(vm.form.isValid)
         assertEquals(ValidationError.MinLength(AuthRules.PASSWORD_MIN_LENGTH), vm.form.error(AuthFormViewModel.PASSWORD))
         vm.form.set(AuthFormViewModel.PASSWORD, "long enough")
+        vm.form.set(AuthFormViewModel.CONFIRM_PASSWORD, "long enough")
         vm.form.set(AuthFormViewModel.CONSENT, true)
         vm.state.test {
             awaitItem()
@@ -102,10 +115,54 @@ class AuthViewModelsTest {
     }
 
     @Test
+    fun signUpAsksForNameMobileAndThePasswordTwice() = runTest {
+        assertEquals(
+            listOf(
+                AuthFormViewModel.NAME, AuthFormViewModel.MOBILE, AuthFormViewModel.EMAIL,
+                AuthFormViewModel.PASSWORD, AuthFormViewModel.CONFIRM_PASSWORD, AuthFormViewModel.CONSENT,
+            ),
+            AuthFormViewModel.fieldsFor(AuthFormMode.SignUp).map { it.key },
+        )
+        assertEquals(listOf(AuthFormViewModel.EMAIL, AuthFormViewModel.PASSWORD), AuthFormViewModel.fieldsFor(AuthFormMode.SignIn).map { it.key })
+
+        val vm = AuthFormViewModel(AuthFormMode.SignUp, auth)
+        vm.fillSignUp("new@example.com", "long enough")
+        vm.form.set(AuthFormViewModel.CONSENT, true)
+        vm.form.set(AuthFormViewModel.CONFIRM_PASSWORD, "long enougH")
+        assertEquals(ValidationError.Mismatch, vm.form.error(AuthFormViewModel.CONFIRM_PASSWORD))
+        vm.submit(AppLocale.En)
+        runCurrent()
+        assertTrue(auth.calls.isEmpty(), "not sent while the passwords differ")
+
+        vm.form.set(AuthFormViewModel.CONFIRM_PASSWORD, "long enough")
+        assertNull(vm.form.error(AuthFormViewModel.CONFIRM_PASSWORD))
+        vm.submit(AppLocale.En)
+        runCurrent()
+        val account = auth.signUpAccounts.single()
+        assertEquals("Ramesh Kumar", account.fullName)
+        assertEquals("+919876543210", account.phone, "the mobile is normalised to +91")
+        assertEquals("new@example.com", account.email)
+        assertEquals("long enough", account.password)
+    }
+
+    @Test
+    fun signUpThatStartsASessionNeedsNoCheckYourEmail() = runTest {
+        auth.signUpResult = Result.Ok(SignUpOutcome.SignedIn)
+        val vm = AuthFormViewModel(AuthFormMode.SignUp, auth)
+        vm.fillSignUp("new@example.com", "long enough")
+        vm.form.set(AuthFormViewModel.CONSENT, true)
+        vm.submit(AppLocale.En)
+        runCurrent()
+        assertNull(vm.state.value.sentTo, "signed in at once; the gate opens onboarding")
+        assertNull(vm.state.value.error)
+        assertIs<AuthState.SignedIn>(auth.state.value)
+    }
+
+    @Test
     fun signUpWithAnExistingEmail() = runTest {
         auth.signUpResult = Result.Err(AppError.Conflict)
         val vm = AuthFormViewModel(AuthFormMode.SignUp, auth)
-        vm.fill("ramesh@example.com", "long enough")
+        vm.fillSignUp("ramesh@example.com", "long enough")
         vm.form.set(AuthFormViewModel.CONSENT, true)
         vm.state.test {
             awaitItem(); vm.submit(AppLocale.En); awaitItem()
@@ -141,19 +198,75 @@ class AuthViewModelsTest {
         assertEquals(AuthFormError.NotConfirmed, AppError.Validation("email", "not_confirmed").toAuthFormError())
         assertEquals(AuthFormError.WeakPassword, AppError.Validation("password", "weak").toAuthFormError())
         assertEquals(AuthFormError.Other(AppError.RateLimited), AppError.RateLimited.toAuthFormError())
+        assertEquals(AuthFormError.Other(AppError.EmailLimited(null)), AppError.EmailLimited(null).toAuthFormError())
     }
 
     @Test
-    fun checkEmailResends() = runTest {
-        val vm = CheckEmailViewModel("new@example.com", auth)
-        vm.state.test {
-            awaitItem()
-            vm.resend()
-            assertTrue(awaitItem().sending)
-            assertTrue(awaitItem().resent)
-            vm.onResentShown()
-            assertFalse(awaitItem().resent)
-        }
+    fun resendWaitsForTheCooldownAfterSignUp() = runTest {
+        val vm = ResendEmailViewModel("new@example.com", auth::resendConfirmation)
+        runCurrent()
+        assertEquals(AuthRules.EMAIL_RESEND_SECONDS, vm.state.value.secondsLeft)
+        vm.resend()
+        runCurrent()
+        assertEquals(emptyList(), auth.calls)
+
+        advanceTimeBy(AuthRules.EMAIL_RESEND_SECONDS * 1_000L + 1)
+        assertEquals(0, vm.state.value.secondsLeft)
+        vm.resend()
+        runCurrent()
         assertEquals(listOf("resend:new@example.com"), auth.calls)
+        assertTrue(vm.state.value.resent)
+        assertEquals(AuthRules.EMAIL_RESEND_SECONDS, vm.state.value.secondsLeft)
+        vm.onResentShown()
+        assertFalse(vm.state.value.resent)
+    }
+
+    @Test
+    fun resendFromSignInSendsOnOpen() = runTest {
+        val vm = ResendEmailViewModel("ramesh@example.com", auth::resendConfirmation, sendOnOpen = true)
+        runCurrent()
+        assertEquals(listOf("resend:ramesh@example.com"), auth.calls)
+        assertTrue(vm.state.value.resent)
+    }
+
+    @Test
+    fun perAddressWaitRestartsTheCountdownWithoutAMessage() = runTest {
+        auth.resendResult = Result.Err(AppError.EmailLimited(42))
+        val vm = ResendEmailViewModel("ramesh@example.com", auth::resendConfirmation, sendOnOpen = true)
+        runCurrent()
+        assertEquals(42, vm.state.value.secondsLeft)
+        assertNull(vm.state.value.error)
+        assertFalse(vm.state.value.sending)
+    }
+
+    @Test
+    fun hourlyQuotaShowsItsMessageAndWaits() = runTest {
+        auth.resendResult = Result.Err(AppError.EmailLimited(null))
+        val vm = ResendEmailViewModel("ramesh@example.com", auth::resendConfirmation, sendOnOpen = true)
+        runCurrent()
+        assertEquals(AppError.EmailLimited(null), vm.state.value.error)
+        assertEquals(AuthRules.EMAIL_RESEND_SECONDS, vm.state.value.secondsLeft)
+    }
+
+    @Test
+    fun otherFailuresCanBeRetriedAtOnce() = runTest {
+        auth.resendResult = Result.Err(AppError.Offline)
+        val vm = ResendEmailViewModel("ramesh@example.com", auth::resendConfirmation, sendOnOpen = true)
+        runCurrent()
+        assertEquals(AppError.Offline, vm.state.value.error)
+        assertEquals(0, vm.state.value.secondsLeft)
+        auth.resendResult = Result.Ok(Unit)
+        vm.resend()
+        runCurrent()
+        assertEquals(2, auth.calls.size)
+    }
+
+    @Test
+    fun resetSentResendsTheResetLink() = runTest {
+        val vm = ResendEmailViewModel("ramesh@example.com", auth::sendPasswordReset)
+        advanceTimeBy(AuthRules.EMAIL_RESEND_SECONDS * 1_000L + 1)
+        vm.resend()
+        runCurrent()
+        assertEquals(listOf("reset:ramesh@example.com"), auth.calls)
     }
 }

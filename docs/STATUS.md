@@ -1,6 +1,6 @@
 # Status — read this first
 
-_Last updated: 2026-10-17 (Add to home screen). This file was rebuilt on that date after an orchestrator script accidentally emptied it; the content reflects the full session record. See CHANGELOG 2026-10-16._
+_Last updated: 2026-10-17 (fuller Create account and automatic sign-in). This file was rebuilt on that date after an orchestrator script accidentally emptied it; the content reflects the full session record. See CHANGELOG 2026-10-16._
 
 ## Current state
 - **How the work is run:** an orchestrator plus parallel sub-agents (DECISIONS #24, refined by #55).
@@ -54,6 +54,15 @@ _Last updated: 2026-10-17 (Add to home screen). This file was rebuilt on that da
   - **The built-in email limit (about 2 per hour) shows a transactional email provider is needed** before launch (approved, DECISIONS #54).
 - **New scope designed (2026-10-16; the docs match the user's decisions):** a multi-company platform with admin-managed offers and a web admin panel (`docs/OFFERS.md`, DECISIONS #47, #49–#53), and DPDP compliance (`docs/PRIVACY.md`, DECISIONS #48, #54). **Nothing of either is built yet.**
 - **App icon (2026-10-17):** the adaptive launcher icon is in (DESIGN_SYSTEM.md, App icon; DECISIONS #66). It's an "A" with a rising chart line, on primary blue. The Play Store 512 and iOS 1024 PNGs are in `design/app-icon/`. The `-install` test APK (10:40) includes it.
+- **Auth email Resend fixed (2026-10-17, DECISIONS #67; user report):** a refused or lost confirmation or reset email can now always be sent again, from "Check your email", "Reset link sent" and Sign in ("Resend confirmation email"). There's a 60 s countdown, and the hourly quota message is honest. 259 app tests pass, with 0 screenshot diffs. **It isn't in a test APK yet** (the 10:40 APK predates it); lint wasn't run. The hourly quota itself (about 2 per hour) still needs custom SMTP (Open questions, Auth emails).
+- **Fuller Create account and automatic sign-in (2026-10-17, DECISIONS #70; user request):**
+  - **Create account** asks for the full name, mobile, email, password and Confirm password; its link reads "Sign in instead".
+  - The name and mobile reach `profiles` through the existing signup trigger, so there's no migration.
+  - **Onboarding step 1** shows them as a card with Edit and asks only for the rest.
+  - **Sign-in is automatic:** at once if Confirm email is off; otherwise when the agent comes back to "Check your email" after confirming (in-memory credentials), or through the confirmation deep link.
+  - 264 app tests pass, with 0 screenshot diffs. **Test APK (13:18):** `~/AgentPRO-test/AgentPRO-test-2026-10-17-signup.apk` (debug, `AGENT_PRO`; supersedes the 10:40 build). Lint: 0 errors. **Waiting for the user to try it on a phone** (the earlier "it works" ran the 10:40 build, which only covered the confirmation deep link). Any test account created for checks is test data, to be deleted before real users.
+- **Gmail SMTP for Auth emails (2026-10-17, DECISIONS #68):** the user set up a Gmail app password and Supabase custom SMTP on `AGENT_PRO`, with Auth → Rate Limits → emails at 100 per hour (confirmed in the auth log). **Test:** a sign-up for `akash2244rocks+smtp1@gmail.com` (user `fc30253a-…`, test only) returned 200, so Gmail accepted the email. **Still to confirm:** the user sees it arrive. **Delete that test user** after the check.
+- **Branded Auth emails (2026-10-17, DECISIONS #69):** five templates are generated in `supabase/email-templates/` and look right in headless Chrome. **To make them live,** the user pastes each into Supabase → Authentication → Emails → Templates, with its subject from `subjects.json`. Then send a real sign-up and check the email. **Follow-up:** the real icon as a hosted PNG in place of the HTML "A" (needs the preview redeployed).
 - **Nothing is committed yet.** On 2026-10-15 the user said not to commit yet; ask again before committing.
 
 - **Add to home screen (2026-10-17, DECISIONS #65):** built and tested locally, **not deployed**.
@@ -141,7 +150,9 @@ Tick items as they're done and add the date.
 ## Open questions / blockers
 - **HIGH PRIORITY:** approve **Supabase Pro (about $25/month) for daily backups** before launch. The free plan has no backups and pauses after about a week without activity (DECISIONS #54). **Launch gate (PRIVACY.md, Backup risk):** test data only, with no real agents onboarded and no real sites published, until it's approved.
 - **Grievance officer:** name, email and phone, to publish on the privacy pages (PRIVACY.md). This is the only one of the 8 offers and privacy decisions still open.
-- **Auth emails at 100+ per hour (DECISIONS #60):** blocked on the platform domain. Then: a transactional provider (Brevo or Amazon SES) with SPF/DKIM/DMARC, connected as custom SMTP in Supabase, and Auth → Rate Limits → emails set to 100 or more per hour. Until then, about 2 emails per hour.
+- **Confirm email on or off (DECISIONS #70; the user decides):** with it **on** (now), the agent confirms by email, then is signed in on returning to the app. With it **off** (Supabase → Authentication → Sign In / Providers → Email → Confirm email), sign-up signs in at once with no email, and the app needs no change. The cost is that addresses aren't verified, so a mistyped email owns the account and password reset can't reach it.
+- **Auth emails:** **interim fix live since 2026-10-17:** Gmail SMTP as Supabase custom SMTP, with the limit at 100 per hour (DECISIONS #68). **Before launch** (DECISIONS #60, still blocked on the platform domain): a transactional provider (Brevo or Amazon SES) with SPF/DKIM/DMARC replaces Gmail.
+- **Auth "verify" rate limit:** the auth log shows it went from 30 to 10 when the SMTP settings were saved (2026-10-17 07:15 UTC). Ask the user whether that was intended; 10 may be tight while testing.
 - **To set up before launch:**
   - a transactional email provider (approved; pick one, e.g. Resend or Postmark free tier);
   - self-hosted fonts (approved, part of P1).

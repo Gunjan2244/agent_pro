@@ -61,6 +61,11 @@ data class OnboardingUiState(
     val saving: Boolean = false,
     /** The step-1 photo is being prepared and uploaded (Continue waits for it). */
     val uploadingPhoto: Boolean = false,
+    /**
+     * Step 1 shows the name and mobile (from sign-up) as a summary with Edit instead of asking again;
+     * false once Edit is tapped, or when either is missing or invalid.
+     */
+    val contactSummary: Boolean = false,
     val error: AppError? = null,
     val templateKey: String = Templates.all.first().key,
     val slug: String = "",
@@ -75,7 +80,8 @@ data class OnboardingUiState(
 
 /**
  * Drives all three onboarding steps (one instance, scoped to the onboarding nav graph):
- * 1. saves the profile (name and mobile required; photo, agency code and branch under More details);
+ * 1. saves the profile (name and mobile required, usually already given at sign-up and shown as a
+ *    summary with Edit; photo, agency code and branch under More details);
  * 2. picks a template from the generated `Templates` (shared/templates/index.json);
  * 3. suggests a slug from the name, validates it live (format, `ReservedSlugs`) and checks
  *    `is_slug_available` after a 300ms pause; then creates the site and either publishes it
@@ -118,8 +124,12 @@ class OnboardingViewModel(
             NAME to p.fullName, MOBILE to p.phone, DESIGNATION to p.designation, CITY to p.city,
             AGENCY_CODE to p.agencyCode, BRANCH to p.branch, PHOTO to p.photoUrl,
         ).forEach { (key, value) -> if (!value.isNullOrBlank() && profileForm.text(key).isBlank()) profileForm.set(key, value) }
+        if (profileForm.error(NAME) == null && profileForm.error(MOBILE) == null) _state.update { it.copy(contactSummary = true) }
         if (_state.value.slug.isEmpty()) suggestSlug(p.fullName)
     }
+
+    /** Edit on step 1's summary: shows the name and mobile fields. */
+    fun editContact() = _state.update { it.copy(contactSummary = false) }
 
     // ---- Step 1 -------------------------------------------------------------------------------
 
@@ -264,6 +274,9 @@ class OnboardingViewModel(
 
         /** Step 1's visible fields; agency code and branch go under More details (docs/UX.md). */
         val VISIBLE_PROFILE_KEYS = setOf(NAME, MOBILE, DESIGNATION, CITY)
+
+        /** The fields step 1's contact summary stands in for. */
+        val CONTACT_KEYS = setOf(NAME, MOBILE)
 
         /**
          * The profile form. `profiles` has no length limits in SQL; these follow the matching site

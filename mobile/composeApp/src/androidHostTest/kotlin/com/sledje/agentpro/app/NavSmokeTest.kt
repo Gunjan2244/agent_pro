@@ -5,14 +5,19 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import com.sledje.agentpro.core.data.AppError
+import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.fieldTestTag
 import com.sledje.agentpro.feature.auth.data.AuthState
+import com.sledje.agentpro.feature.auth.data.SignUpOutcome
+import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.SLUG_FIELD
 import com.sledje.agentpro.testing.FakeAppDependencies
@@ -116,6 +121,40 @@ class NavSmokeTest {
         assertEquals("sunita-rao", deps.sites.created.single().slug)
         assertEquals(1, deps.sites.publishCalls)
         assertEquals("+919876543210", deps.profiles.profile.value?.phone)
+    }
+
+    @Test
+    fun createAccountSignsInAndStep1DoesNotAskForTheNameAndMobileAgain() = runComposeUiTest {
+        val auth = FakeAuthRepository().apply { signUpResult = Result.Ok(SignUpOutcome.SignedIn) }
+        val profiles = FakeProfileRepository(null)
+        // The signup trigger creates the profile from the sign-up metadata; the first sync brings it.
+        val sync = FakeDataSync().apply {
+            onRefresh = {
+                val account = auth.signUpAccounts.single()
+                profiles.profile.value = testProfile(fullName = account.fullName, phone = account.phone, designation = null, city = null)
+            }
+        }
+        setContent { App(FakeAppDependencies(auth = auth, profiles = profiles, dataSync = sync)) }
+
+        awaitText("Create account")
+        button("Create account").performClick()
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.NAME)).performTextInput("Sunita Rao")
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.MOBILE)).performTextInput("9876543210")
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.EMAIL)).performTextInput("sunita@example.com")
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.PASSWORD)).performTextInput("long enough")
+        onNodeWithTag(fieldTestTag(AuthFormViewModel.CONFIRM_PASSWORD)).performTextInput("long enough")
+        onNode(isToggleable()).performScrollTo().performClick()
+        button("Create account").performClick()
+
+        // Signed in straight away: step 1 shows the name and mobile with Edit, not their fields.
+        awaitText("Your profile")
+        awaitText("Sunita Rao")
+        onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertDoesNotExist()
+        button("Edit").performClick()
+        onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertExists()
+        button("Continue").performClick()
+        awaitText("Pick a design")
+        assertEquals("+919876543210", profiles.updates.single().phone)
     }
 
     @Test

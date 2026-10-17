@@ -38,20 +38,20 @@ object OnboardingRoutes {
 
 /**
  * The onboarding graph, shown by the gate while the profile or site is missing. One
- * [OnboardingViewModel] is shared by the three steps (scoped to [OnboardingRoutes.Graph]).
- * [profileDone] starts at step 2 when the profile was already saved.
+ * [OnboardingViewModel] is shared by the three steps (scoped to [OnboardingRoutes.Graph]). It always
+ * starts at step 1, prefilled from the profile (sign-up's name and mobile, or a step 1 saved earlier).
  */
 @Composable
-fun OnboardingNavHost(deps: AppDependencies, profileDone: Boolean) {
+fun OnboardingNavHost(deps: AppDependencies) {
     val nav = rememberNavController()
     NavHost(nav, startDestination = OnboardingRoutes.Graph) {
-        navigation<OnboardingRoutes.Graph>(startDestination = if (profileDone) OnboardingRoutes.Template else OnboardingRoutes.Profile) {
+        navigation<OnboardingRoutes.Graph>(startDestination = OnboardingRoutes.Profile) {
             composable<OnboardingRoutes.Profile> { entry ->
                 val vm = entry.onboardingViewModel(nav, deps)
                 val state by vm.state.collectAsState()
                 Navigate(vm, state.navigateTo, nav)
                 val pickPhoto = deps.website.mediaPicker.rememberImagePicker { picked -> picked?.let(vm::uploadPhoto) }
-                OnboardingProfileScreen(vm.profileForm, state, onContinue = vm::saveProfile, onPickPhoto = pickPhoto)
+                OnboardingProfileScreen(vm.profileForm, state, onContinue = vm::saveProfile, onEditContact = vm::editContact, onPickPhoto = pickPhoto)
             }
             composable<OnboardingRoutes.Template> { entry ->
                 val vm = entry.onboardingViewModel(nav, deps)
@@ -65,7 +65,7 @@ fun OnboardingNavHost(deps: AppDependencies, profileDone: Boolean) {
                     agentLine = listOf(form.text(OnboardingViewModel.DESIGNATION), form.text(OnboardingViewModel.CITY))
                         .filter { it.isNotBlank() }.joinToString(" · "),
                     onUse = vm::selectTemplate,
-                    onBack = if (profileDone) null else fun() { nav.popBackStack() },
+                    onBack = { nav.popBackStack() },
                     // The agent's own starter content rendered in each template (docs/UX.md, Onboarding step 2).
                     preview = { template ->
                         val profile by deps.profiles.observeMine().collectAsState(null)

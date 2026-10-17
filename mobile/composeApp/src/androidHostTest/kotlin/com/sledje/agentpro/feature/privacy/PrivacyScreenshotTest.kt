@@ -59,7 +59,11 @@ class PrivacyScreenshotTest {
         val form = remember {
             FormState(
                 AuthFormViewModel.fieldsFor(AuthFormMode.SignUp),
-                mapOf("email" to "ramesh@example.com", "password" to "secret123", AuthFormViewModel.CONSENT to consented),
+                mapOf(
+                    AuthFormViewModel.NAME to "Ramesh Kumar", AuthFormViewModel.MOBILE to "+919876543210",
+                    "email" to "ramesh@example.com", "password" to "secret123", AuthFormViewModel.CONFIRM_PASSWORD to "secret123",
+                    AuthFormViewModel.CONSENT to consented,
+                ),
             )
         }
         AuthFormScreen(AuthFormMode.SignUp, form, AuthFormUiState(), {}, {}, {}, {})

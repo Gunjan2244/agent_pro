@@ -3,6 +3,57 @@
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
 ## 2026-10-17
+- **A fuller Create account, no repeated questions, and automatic sign-in** (user request; DECISIONS #70).
+  - **Create account:**
+    - full name, mobile, email, password and **Confirm password** ("Passwords don't match"), plus the consent box;
+    - the switch link now reads **"Sign in instead"** (user follow-up: a bare "Sign in" under the form could be mistaken for its button).
+  - **Sign-up:**
+    - `AuthRepository.signUp(NewAccount, consent)` sends `full_name` and `phone` (+91) in the user metadata; the live signup trigger already copies them to `profiles`, so there's no migration;
+    - it returns `SignUpOutcome.SignedIn`, when Confirm email is off and the gate moves on, or `ConfirmEmail`.
+  - **Automatic sign-in:** `signInAfterConfirmation()` retries the sign-in with the in-memory credentials whenever "Check your email" resumes. Its text now says "Then come back here and you'll be signed in."
+  - **Onboarding:**
+    - step 1 always opens first;
+    - the name and mobile show as a card with **Edit**, and only the remaining fields are asked;
+    - `AppGate.Onboarding` is now a plain object (no `profileDone`).
+  - **Form system:** `FieldSpec.mustMatch`, `ValidationError.Mismatch` and `FormRenderer(hiddenKeys)`.
+  - **Strings (EN/HI):** `auth_full_name`, `auth_confirm_password`, `auth_sign_in_instead`, `validation_mismatch`, plus the updated `auth_check_email_text`.
+  - **Files:**
+    - `feature/auth/data/AuthRepository.kt`, `feature/auth/ui/AuthViewModels.kt`, `AuthScreens.kt` and `AuthNavigation.kt`;
+    - `feature/onboarding/OnboardingNavigation.kt`, `ui/OnboardingViewModel.kt` and `OnboardingScreens.kt`;
+    - `app/AppGate.kt` and `App.kt`;
+    - `core/forms/FieldSpec.kt`, `FormState.kt`, `Validators.kt`, `ValidationMessages.kt` and `FormRenderer.kt`;
+    - the strings;
+    - tests: `Fakes.kt`, `AuthViewModelsTest`, `OnboardingViewModelTest`, `PrivacyConsentTest`, `AppFoundationTest`, `PrivacyUiTest`, `NavSmokeTest` and `FoundationScreenshotTest`.
+  - **Tests:** 264 app tests (5 new), 0 failures; `verifyShared` passes; screenshot verify shows 0 diffs. Baselines: 8 `privacy/SignUpConsent*` re-recorded and 4 new `screens/OnboardingProfileFromSignUp`, all checked by eye. Lint wasn't run.
+  - **Test APK (13:18):** `~/AgentPRO-test/AgentPRO-test-2026-10-17-signup.apk`; `assembleDebug` and lint pass with 0 errors. Not yet checked live: the user's earlier "it works" ran the 10:40 APK.
+  - **Docs:** PRODUCT, UX, DESIGN_SYSTEM, BACKEND, ARCHITECTURE, TESTING, STATUS.
+- **Branded Auth email templates** (user request; DECISIONS #69). **Generated, not yet applied to `AGENT_PRO`.**
+  - `scripts/gen-email-templates.mjs` builds five templates (confirmation, recovery, invite, email change, reauthentication) and `subjects.json` into `supabase/email-templates/`, from `shared/design-tokens.json`.
+  - Look: wordmark, white card, 23 px title, primary button, a copy-the-link fallback, English then Hindi, dark mode, and the Welcome tagline in the footer.
+  - Checked in headless Chrome (light and forced-dark); the generator fails on a missing or unknown placeholder. Not yet seen in a real mail client.
+  - **Docs:** PRODUCT, DESIGN_SYSTEM (Auth emails), BACKEND (Email templates), TESTING, STATUS.
+- **Gmail SMTP for Supabase Auth emails** (user request; DECISIONS #68).
+  - **Set up by the user:** a Gmail app password, Supabase custom SMTP on `AGENT_PRO`, and the email limit at 100 per hour (the auth log shows the limiter moving from 2/1h to 30, then to 100).
+  - **Test:** a sign-up for `akash2244rocks+smtp1@gmail.com` returned 200 in about 3 s. With custom SMTP this means Gmail accepted the email. Delivery to the inbox is still to be confirmed by the user, and the test user is to be deleted afterwards.
+  - **Also seen in the log:** the Auth "verify" limit changed from 30 to 10 (an open question in STATUS).
+  - **Docs:** BACKEND (Auth emails), PRIVACY (Gmail as an interim processor), STATUS, DECISIONS #68.
+- **Auth emails can always be sent again** (user report: a refused or undelivered confirmation email couldn't be re-sent; DECISIONS #67).
+  - **Diagnosis:** the `AGENT_PRO` auth logs show no `/resend` or `/recover` request ever reached Supabase. Two `/signup` calls were refused with `over_email_send_rate_limit` ("email rate limit exceeded", the built-in sender's hourly quota), and they created no user.
+  - **Old dead ends:**
+    - Sign in for an unconfirmed address offered no resend;
+    - "Reset link sent" had no Resend;
+    - every refusal said "Wait a minute", even for the hourly quota;
+    - tapping Resend inside the first minute was always refused.
+  - **App:**
+    - `AppError.EmailLimited(retryAfterSeconds)` and its mapping from the Supabase message;
+    - `ResendEmailViewModel`, which replaces `CheckEmailViewModel` and adds a 60 s countdown ("Resend in N s");
+    - Resend on "Reset link sent";
+    - "Resend confirmation email" on Sign in, which opens "Check your email" and sends at once (`AuthRoutes.CheckEmail.sendNow`);
+    - a "check your spam folder" hint;
+    - new EN/HI strings `error_email_limited`, `auth_resend_in`, `auth_resend_confirmation` and `auth_check_spam`.
+  - **Tests:** 259 app tests (6 new), 0 failures; `verifyShared` passes; screenshot verify shows 0 diffs. Lint wasn't run.
+  - **Files:** `core/data/AppError.kt`, `core/data/ErrorMapper.kt`, `feature/auth/data/AuthRepository.kt` (`AuthRules.EMAIL_RESEND_SECONDS`), `feature/auth/ui/AuthViewModels.kt`, `feature/auth/ui/AuthScreens.kt`, `feature/auth/AuthNavigation.kt`, `composeResources/values{,-hi}/strings.xml`, `ErrorMapperTest.kt`, `AuthViewModelsTest.kt`.
+  - **Docs:** PRODUCT, UX, ARCHITECTURE, BACKEND (Auth emails), TESTING, STATUS.
 - **"Add to home screen": agent sites install like apps** (user request; DECISIONS #65). **Built and tested locally; not deployed.**
   - **Web:**
     - A per-site web app manifest at `/manifest.webmanifest`, built by a new Worker script (`web/worker.js`) from `get_public_site`. It runs only for that path, and an unpublished or lapsed site gets a 404.

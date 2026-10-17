@@ -85,12 +85,27 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
   - Nothing else.
 
 ### Sign in / Create account / Forgot password
-- **Fields:** email and password (show/hide toggle). That's all.
+- **Fields:**
+  - **Sign in:** email and password (show/hide toggle). That's all.
+  - **Create account:** full name, mobile (normalised to +91), email, password (at least 8 characters) and **Confirm password**, which must match ("Passwords don't match"). Both password fields have the show/hide toggle. The name and mobile go into the sign-up metadata, and the signup trigger saves them in the profile, so onboarding doesn't ask for them again (DECISIONS #70).
+  - Create account's text button is **"Sign in instead"**, so it doesn't read as a second submit button. Sign in's is "Create account".
 - **Button:** disabled until the form is valid.
 - **Errors:** inline and human ("Wrong email or password").
-- **Create account:** a third element under the password, an **unticked, required checkbox** (never pre-ticked; `FieldType.Consent`, built by `FormRenderer`): "I'm 18 or older, and I agree to the **Terms** and the **Privacy notice**" (generated `agent_signup` text, EN/HI). "Privacy notice" opens the in-app **Notice screen**; "Terms" opens `<SITE_BASE_URL>/terms` in the browser (the Notice screen when no host is configured). The button stays disabled until the box is ticked; the request carries `data.consent = {notice_key, version, hash}` for the language shown. Next comes "Check your email to confirm", with Resend and Open email app.
+- **Create account:** a third element under the password, an **unticked, required checkbox** (never pre-ticked; `FieldType.Consent`, built by `FormRenderer`): "I'm 18 or older, and I agree to the **Terms** and the **Privacy notice**" (generated `agent_signup` text, EN/HI). "Privacy notice" opens the in-app **Notice screen**; "Terms" opens `<SITE_BASE_URL>/terms` in the browser (the Notice screen when no host is configured). The button stays disabled until the box is ticked; the request carries `data.consent = {notice_key, version, hash}` for the language shown. Next comes "Check your email to confirm", with Resend and Open email app (see **Resend** below).
+- **Signed in automatically after sign-up** (DECISIONS #70):
+  - If Supabase's Confirm email setting is off, sign-up starts the session, and the app goes straight to onboarding with no "Check your email".
+  - Otherwise "Check your email" says "…Then come back here and you'll be signed in." Opening the confirmation link in the app signs in through `agentpro://auth-callback`. Coming back to the app any other way (from the email app or the browser) retries the sign-in with the email and password just typed. They're held **in memory only**, never stored, and dropped once signed in, on sign-out, or when the app process ends. After a restart the agent signs in by hand.
+  - The same applies after Sign in → "Resend confirmation email".
+- **Sign in with an unconfirmed email:** under "Confirm your email first", a text button **Resend confirmation email** opens "Check your email" for that address and sends the confirmation at once.
 - **Notice screen** (Create account link and Settings → Privacy notice): the notice's title, intro, one itemised block per data item (Data in bold, then Purpose and Kept) and the plain paragraphs, in the app language, rendered from the generated ordered texts.
-- **Forgot password:** sends a reset email and shows "Reset link sent".
+- **Forgot password:** sends a reset email and shows "Reset link sent", with **Back to sign in** and Resend.
+- **Resend** ("Check your email" and "Reset link sent"; DECISIONS #67):
+  - Supabase sends at most one email per address per minute, so after each send the text button reads **"Resend in 42 s"** (disabled) and counts down to **Resend**. "Email sent again" is a snackbar.
+  - If Supabase still asks to wait ("after N seconds"), the countdown restarts at N with no error message.
+  - If the project's hourly email quota is used up, the snackbar says "We can't send more emails right now. Try again in about an hour", and Resend opens again after a minute.
+  - Other failures (offline, unknown) show their message, and Resend can be tapped again at once.
+  - Under the line there's a muted hint: "Not there? Check your spam folder".
+  - The same quota message replaces "Too many tries. Wait a minute" on Create account and Forgot password.
 
 ### Set new password
 - **Opened by** the reset link in the email (`agentpro://auth-callback`, a recovery session). It's never reachable any other way.
@@ -108,6 +123,8 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
 ### Onboarding (3 steps)
 Each step has a progress bar at the top and one primary button at the bottom.
 1. **Profile:** name, mobile, designation and city. Photo, agency code and branch are under More details.
+   - **Always the first step**, even when the name and mobile are already saved (they were given at sign-up), so the optional photo, designation and city aren't skipped. Everything already saved is prefilled.
+   - When the name and mobile are both present and valid, they show as a **card** (name in bold, mobile formatted, `+91 98765 43210`) with an **Edit** text button, not as fields. Edit replaces the card with the two fields; the saved values go through Continue as usual.
    - The photo uses the same picker, centred square crop and WebP upload as the hero photo (Phase 8); Continue waits while it uploads.
 2. **Template:** a full-height pager rendering the agent's own content in each template. The template name sits below it, with **Use this template**.
 3. **Your link:** a slug suggested from the name, with live validation and an availability check, and a preview of the full URL. Then **Publish now** (primary) or **Later** (text button).

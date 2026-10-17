@@ -7,6 +7,7 @@ import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.ValidationError
 import com.sledje.agentpro.domain.Age
+import com.sledje.agentpro.feature.auth.data.NewAccount
 import com.sledje.agentpro.feature.auth.data.signUpMetadata
 import com.sledje.agentpro.feature.auth.ui.AuthFormMode
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
@@ -59,8 +60,11 @@ class PrivacyConsentTest {
     // ---- Sign-up consent ----
 
     private fun signUpVm(auth: FakeAuthRepository): AuthFormViewModel = AuthFormViewModel(AuthFormMode.SignUp, auth).also {
+        it.form.set(AuthFormViewModel.NAME, "Ramesh Kumar")
+        it.form.set(AuthFormViewModel.MOBILE, "9876543210")
         it.form.set(AuthFormViewModel.EMAIL, "new@example.com")
         it.form.set(AuthFormViewModel.PASSWORD, "long enough")
+        it.form.set(AuthFormViewModel.CONFIRM_PASSWORD, "long enough")
     }
 
     @Test
@@ -109,7 +113,11 @@ class PrivacyConsentTest {
     @Test
     fun signUpMetadataIsTheConsentObject() {
         val consent = PrivacyNotice.AgentSignup.consent(AppLocale.Hi)
-        val consentJson = signUpMetadata(consent).getValue("consent").jsonObject
+        val metadata = signUpMetadata(NewAccount(" Ramesh Kumar ", "+919876543210", "new@example.com", "long enough"), consent)
+        assertEquals(setOf("full_name", "phone", "consent"), metadata.keys, "the password never goes in the metadata")
+        assertEquals("Ramesh Kumar", metadata.getValue("full_name").jsonPrimitive.content)
+        assertEquals("+919876543210", metadata.getValue("phone").jsonPrimitive.content)
+        val consentJson = metadata.getValue("consent").jsonObject
         assertEquals(setOf("notice_key", "version", "hash"), consentJson.keys)
         assertEquals("agent_signup", consentJson.getValue("notice_key").jsonPrimitive.content)
         assertEquals(consent.version, consentJson.getValue("version").jsonPrimitive.int)

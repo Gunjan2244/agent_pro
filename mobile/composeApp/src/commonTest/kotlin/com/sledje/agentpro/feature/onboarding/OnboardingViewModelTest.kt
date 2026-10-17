@@ -74,6 +74,30 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun nameAndMobileFromSignUpShowAsASummaryWithEdit() = runTest {
+        profiles.profile.value = testProfile(fullName = "Ramesh Kumar", phone = "+919876543210", designation = null, city = null)
+        val vm = vm()
+        runCurrent()
+        assertTrue(vm.state.value.contactSummary, "not asked again")
+        assertTrue(vm.profileForm.isValid, "Continue works straight away; the rest is optional")
+        vm.editContact()
+        assertFalse(vm.state.value.contactSummary)
+        vm.profileForm.set(MOBILE, "91234 56789")
+        vm.saveProfile()
+        runCurrent()
+        assertEquals("Ramesh Kumar", profiles.updates.single().fullName)
+        assertEquals("+919123456789", profiles.updates.single().phone, "the edit is saved")
+    }
+
+    @Test
+    fun noSummaryWithoutAValidMobile() = runTest {
+        profiles.profile.value = testProfile(fullName = "Ramesh Kumar", phone = null)
+        val vm = vm()
+        runCurrent()
+        assertFalse(vm.state.value.contactSummary)
+    }
+
+    @Test
     fun profileStepIsPrefilledFromTheSavedProfile() = runTest {
         profiles.profile.value = testProfile()
         val vm = vm()

@@ -8,7 +8,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -77,16 +76,12 @@ fun AppNavHost(deps: AppDependencies) {
         }
     }
 
-    when (val g = gate) {
+    when (gate) {
         AppGate.Loading -> SplashScreen()
         AppGate.NotConfigured -> NotConfiguredScreen()
         AppGate.Error -> StartupErrorScreen(onRetry = root::refresh)
         AppGate.SignedOut -> AuthNavHost(deps)
-        is AppGate.Onboarding -> {
-            // The start step is fixed when onboarding opens; later gate updates must not restart it.
-            val profileDone = remember { g.profileDone }
-            OnboardingNavHost(deps, profileDone)
-        }
+        AppGate.Onboarding -> OnboardingNavHost(deps)
         AppGate.Ready -> MainShell(deps)
     }
 }

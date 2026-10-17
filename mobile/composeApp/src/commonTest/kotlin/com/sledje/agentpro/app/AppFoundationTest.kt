@@ -44,10 +44,10 @@ class AppFoundationTest {
         assertEquals(AppGate.Ready, resolveGate(true, signedIn, p, s, SyncStatus.Idle, false), "a cached session opens Main at once, even offline")
         assertEquals(AppGate.Loading, resolveGate(true, signedIn, null, null, SyncStatus.Running, false), "empty cache: wait for the first sync")
         assertEquals(AppGate.Error, resolveGate(true, signedIn, null, null, SyncStatus.Failed, false))
-        assertEquals(AppGate.Onboarding(false), resolveGate(true, signedIn, testProfile(fullName = null), null, SyncStatus.Done, false))
+        assertEquals(AppGate.Onboarding, resolveGate(true, signedIn, testProfile(fullName = null), null, SyncStatus.Done, false))
         assertEquals(AppGate.Loading, resolveGate(true, signedIn, p, null, SyncStatus.Running, false), "the site may not have synced yet")
-        assertEquals(AppGate.Onboarding(true), resolveGate(true, signedIn, p, null, SyncStatus.Done, false))
-        assertEquals(AppGate.Onboarding(true), resolveGate(true, signedIn, p, s, SyncStatus.Done, true), "latched while onboarding runs")
+        assertEquals(AppGate.Onboarding, resolveGate(true, signedIn, p, null, SyncStatus.Done, false))
+        assertEquals(AppGate.Onboarding, resolveGate(true, signedIn, p, s, SyncStatus.Done, true), "latched while onboarding runs")
     }
 
     @Test

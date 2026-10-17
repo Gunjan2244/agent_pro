@@ -67,6 +67,7 @@ class FormState(val fields: List<FieldSpec>, initial: Map<String, Any?> = emptyM
         val spec = spec(key)
         val value = if (spec.type == FieldType.ItemList) items(key) else current[key]
         return Validators.validate(spec, value)
+            ?: spec.mustMatch?.let { other -> if (value != current[other]) ValidationError.Mismatch else null }
     }
 
     /** The error to display: only once the field was left or the form was submitted. */

@@ -49,6 +49,7 @@ import com.sledje.agentpro.resources.app_name
 import com.sledje.agentpro.resources.auth_back_to_sign_in
 import com.sledje.agentpro.resources.auth_check_email_text
 import com.sledje.agentpro.resources.auth_check_email_title
+import com.sledje.agentpro.resources.auth_check_spam
 import com.sledje.agentpro.resources.auth_create_account
 import com.sledje.agentpro.resources.auth_error_credentials
 import com.sledje.agentpro.resources.auth_error_exists
@@ -61,6 +62,8 @@ import com.sledje.agentpro.resources.auth_link_expired_title
 import com.sledje.agentpro.resources.auth_no_email_app
 import com.sledje.agentpro.resources.auth_open_email
 import com.sledje.agentpro.resources.auth_resend
+import com.sledje.agentpro.resources.auth_resend_confirmation
+import com.sledje.agentpro.resources.auth_resend_in
 import com.sledje.agentpro.resources.auth_resent
 import com.sledje.agentpro.resources.auth_reset_sent_text
 import com.sledje.agentpro.resources.auth_reset_sent_title
@@ -70,6 +73,7 @@ import com.sledje.agentpro.resources.auth_send_new_link
 import com.sledje.agentpro.resources.auth_send_reset
 import com.sledje.agentpro.resources.auth_set_password_title
 import com.sledje.agentpro.resources.auth_sign_in
+import com.sledje.agentpro.resources.auth_sign_in_instead
 import com.sledje.agentpro.resources.ic_check_circle
 import com.sledje.agentpro.resources.ic_language
 import com.sledje.agentpro.resources.ic_mail
@@ -141,6 +145,8 @@ fun AuthFormScreen(
     onForgotPassword: () -> Unit,
     /** A consent line's link was tapped (Create account: [AuthFormViewModel.LINK_TERMS] / [AuthFormViewModel.LINK_NOTICE]). */
     onLink: (linkKey: String) -> Unit = {},
+    /** Sign in refused an unconfirmed email: send the confirmation again ("Check your email"). */
+    onResendConfirmation: () -> Unit = {},
 ) {
     val online = LocalIsOnline.current
     val title = when (mode) {
@@ -184,10 +190,14 @@ fun AuthFormScreen(
             }
             when (mode) {
                 AuthFormMode.SignIn -> {
+                    if (state.error == AuthFormError.NotConfirmed) {
+                        TertiaryButton(stringResource(Res.string.auth_resend_confirmation), onResendConfirmation, enabled = online)
+                    }
                     TertiaryButton(stringResource(Res.string.auth_forgot_password), onForgotPassword)
                     TertiaryButton(stringResource(Res.string.auth_create_account), onSwitchMode)
                 }
-                AuthFormMode.SignUp -> TertiaryButton(stringResource(Res.string.auth_sign_in), onSwitchMode)
+                // "instead", so it doesn't read as a second way to submit this form.
+                AuthFormMode.SignUp -> TertiaryButton(stringResource(Res.string.auth_sign_in_instead), onSwitchMode)
                 AuthFormMode.ResetPassword -> Unit
             }
         }
@@ -207,6 +217,8 @@ private fun MessageScreen(
     onSecondary: () -> Unit = {},
     secondaryEnabled: Boolean = true,
     snackbarHostState: SnackbarHostState? = null,
+    /** A muted line under [text], e.g. "Not there? Check your spam folder". */
+    hint: String? = null,
 ) {
     AppScaffold(
         topBar = { AppTopBar(title = "", onBack = onBack) },
@@ -222,16 +234,24 @@ private fun MessageScreen(
             Icon(painterResource(icon), null, Modifier.size(Dimens.icon), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(title, style = AgentProTheme.text.title, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
             Text(text, style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            hint?.let { Text(it, style = AgentProTheme.text.bodyMuted, textAlign = TextAlign.Center) }
         }
     }
 }
 
-/** "Check your email to confirm", with **Open email app** and Resend (docs/UX.md). */
+/**
+ * A message screen whose secondary button is Resend: "Resend in 42 s" (disabled) while
+ * [ResendEmailViewModel] counts down, and the result as a snackbar.
+ */
 @Composable
-fun CheckEmailScreen(
-    email: String,
-    state: CheckEmailUiState,
-    onOpenEmailApp: () -> Boolean,
+private fun ResendMessageScreen(
+    icon: DrawableResource,
+    title: String,
+    text: String,
+    primary: String,
+    onPrimary: () -> Boolean,
+    primaryFailedMessage: String?,
+    state: ResendEmailUiState,
     onResend: () -> Unit,
     onResentShown: () -> Unit,
     onErrorShown: () -> Unit,
@@ -239,35 +259,75 @@ fun CheckEmailScreen(
 ) {
     val snackbar = remember { SnackbarHostState() }
     val resent = stringResource(Res.string.auth_resent)
-    val noEmailApp = stringResource(Res.string.auth_no_email_app)
     val error = state.error?.let { stringResource(it.message) }
     LaunchedEffect(state.resent) { if (state.resent) { snackbar.showSnackbar(resent); onResentShown() } }
     LaunchedEffect(error) { if (error != null) { snackbar.showSnackbar(error); onErrorShown() } }
-    var showNoApp by remember { mutableStateOf(false) }
-    LaunchedEffect(showNoApp) { if (showNoApp) { snackbar.showSnackbar(noEmailApp); showNoApp = false } }
+    var primaryFailed by remember { mutableStateOf(false) }
+    LaunchedEffect(primaryFailed) {
+        if (primaryFailed && primaryFailedMessage != null) { snackbar.showSnackbar(primaryFailedMessage); primaryFailed = false }
+    }
     MessageScreen(
-        icon = Res.drawable.ic_mail,
-        title = stringResource(Res.string.auth_check_email_title),
-        text = stringResource(Res.string.auth_check_email_text, email),
-        primary = stringResource(Res.string.auth_open_email),
-        onPrimary = { if (!onOpenEmailApp()) showNoApp = true },
+        icon = icon,
+        title = title,
+        text = text,
+        hint = stringResource(Res.string.auth_check_spam),
+        primary = primary,
+        onPrimary = { if (!onPrimary()) primaryFailed = true },
         onBack = onBack,
-        secondary = stringResource(Res.string.auth_resend),
+        secondary = if (state.secondsLeft > 0) stringResource(Res.string.auth_resend_in, state.secondsLeft) else stringResource(Res.string.auth_resend),
         onSecondary = onResend,
-        secondaryEnabled = LocalIsOnline.current && !state.sending,
+        secondaryEnabled = LocalIsOnline.current && !state.sending && state.secondsLeft == 0,
         snackbarHostState = snackbar,
     )
 }
 
-/** "Reset link sent" (docs/UX.md, Forgot password). */
+/** "Check your email to confirm", with **Open email app** and Resend (docs/UX.md). */
 @Composable
-fun ResetSentScreen(email: String, onBackToSignIn: () -> Unit) {
-    MessageScreen(
+fun CheckEmailScreen(
+    email: String,
+    state: ResendEmailUiState,
+    onOpenEmailApp: () -> Boolean,
+    onResend: () -> Unit,
+    onResentShown: () -> Unit,
+    onErrorShown: () -> Unit,
+    onBack: () -> Unit,
+) {
+    ResendMessageScreen(
+        icon = Res.drawable.ic_mail,
+        title = stringResource(Res.string.auth_check_email_title),
+        text = stringResource(Res.string.auth_check_email_text, email),
+        primary = stringResource(Res.string.auth_open_email),
+        onPrimary = onOpenEmailApp,
+        primaryFailedMessage = stringResource(Res.string.auth_no_email_app),
+        state = state,
+        onResend = onResend,
+        onResentShown = onResentShown,
+        onErrorShown = onErrorShown,
+        onBack = onBack,
+    )
+}
+
+/** "Reset link sent", with **Back to sign in** and Resend (docs/UX.md, Forgot password). */
+@Composable
+fun ResetSentScreen(
+    email: String,
+    state: ResendEmailUiState,
+    onResend: () -> Unit,
+    onResentShown: () -> Unit,
+    onErrorShown: () -> Unit,
+    onBackToSignIn: () -> Unit,
+) {
+    ResendMessageScreen(
         icon = Res.drawable.ic_check_circle,
         title = stringResource(Res.string.auth_reset_sent_title),
         text = stringResource(Res.string.auth_reset_sent_text, email),
         primary = stringResource(Res.string.auth_back_to_sign_in),
-        onPrimary = onBackToSignIn,
+        onPrimary = { onBackToSignIn(); true },
+        primaryFailedMessage = null,
+        state = state,
+        onResend = onResend,
+        onResentShown = onResentShown,
+        onErrorShown = onErrorShown,
         onBack = onBackToSignIn,
     )
 }

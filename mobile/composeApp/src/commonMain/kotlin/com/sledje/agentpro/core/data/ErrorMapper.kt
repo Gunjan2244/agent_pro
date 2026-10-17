@@ -28,7 +28,10 @@ object ErrorMapper {
         "bad_jwt", "no_authorization", "user_not_found",
     )
     private val authConflict = setOf("user_already_exists", "email_exists", "identity_already_exists")
-    private val authRateLimited = setOf("over_request_rate_limit", "over_email_send_rate_limit", "over_sms_send_rate_limit")
+    private val authRateLimited = setOf("over_request_rate_limit", "over_sms_send_rate_limit")
+
+    /** "For security purposes, you can only request this after 42 seconds." (the per-address email wait). */
+    private val retryAfter = Regex("""after (\d+) seconds?""")
     private val validationReasons = setOf("invalid_amount", "invalid_paid_on", "no_due_date", "unknown_premium_mode")
 
     fun map(f: RemoteFailure): AppError {
@@ -53,6 +56,8 @@ object ErrorMapper {
             code == "same_password" -> return AppError.Validation("password", "same")
             code in authUnauthorized -> return AppError.Unauthorized
             code in authConflict -> return AppError.Conflict
+            code == "over_email_send_rate_limit" ->
+                return AppError.EmailLimited(retryAfter.find(message)?.groupValues?.get(1)?.toIntOrNull())
             code in authRateLimited -> return AppError.RateLimited
         }
 

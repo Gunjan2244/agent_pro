@@ -99,9 +99,11 @@
     <string name="error_validation">जानकारी जाँचें और फिर कोशिश करें</string>
     <string name="error_conflict">सेव नहीं हुआ। रीफ़्रेश करके फिर कोशिश करें</string>
     <string name="error_rate_limited">बहुत ज़्यादा कोशिशें। एक मिनट रुककर फिर कोशिश करें</string>
+    <string name="error_email_limited">अभी और ईमेल नहीं भेजे जा सकते। लगभग एक घंटे बाद फिर कोशिश करें</string>
 
     <!-- Forms (password fields) -->
     <string name="validation_min_length">कम से कम %1$d अक्षर</string>
+    <string name="validation_mismatch">पासवर्ड मेल नहीं खाते</string>
     <string name="form_show_password">पासवर्ड दिखाएँ</string>
     <string name="form_hide_password">पासवर्ड छिपाएँ</string>
 
@@ -120,16 +122,22 @@
     <string name="welcome_tagline">आपकी वेबसाइट, पूछताछ और ग्राहक — एक ही जगह</string>
     <string name="auth_create_account">खाता बनाएँ</string>
     <string name="auth_sign_in">साइन इन करें</string>
+    <string name="auth_sign_in_instead">इसके बजाय साइन इन करें</string>
     <string name="auth_email">ईमेल</string>
     <string name="auth_password">पासवर्ड</string>
+    <string name="auth_confirm_password">पासवर्ड दोबारा लिखें</string>
+    <string name="auth_full_name">पूरा नाम</string>
     <string name="auth_forgot_password">पासवर्ड भूल गए?</string>
     <string name="auth_error_credentials">ईमेल या पासवर्ड गलत है</string>
     <string name="auth_error_not_confirmed">पहले अपने ईमेल की पुष्टि करें</string>
     <string name="auth_error_weak_password">कोई मज़बूत पासवर्ड चुनें</string>
     <string name="auth_error_exists">इस ईमेल से खाता पहले से मौजूद है</string>
     <string name="auth_check_email_title">अपना ईमेल देखें</string>
-    <string name="auth_check_email_text">पुष्टि के लिए अपना ईमेल देखें। हमने %1$s पर लिंक भेजा है</string>
+    <string name="auth_check_email_text">पुष्टि के लिए अपना ईमेल देखें। हमने %1$s पर लिंक भेजा है। फिर यहाँ लौटें, आप अपने-आप साइन इन हो जाएँगे।</string>
     <string name="auth_resend">फिर से भेजें</string>
+    <string name="auth_resend_in">%1$d सेकंड में फिर से भेजें</string>
+    <string name="auth_resend_confirmation">पुष्टि ईमेल फिर से भेजें</string>
+    <string name="auth_check_spam">नहीं मिला? स्पैम फ़ोल्डर देखें</string>
     <string name="auth_resent">ईमेल फिर से भेजा गया</string>
     <string name="auth_open_email">ईमेल ऐप खोलें</string>
     <string name="auth_no_email_app">कोई ईमेल ऐप नहीं मिला</string>

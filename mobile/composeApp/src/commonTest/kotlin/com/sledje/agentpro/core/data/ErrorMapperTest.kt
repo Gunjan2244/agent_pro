@@ -2,6 +2,7 @@ package com.sledje.agentpro.core.data
 
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.error_conflict
+import com.sledje.agentpro.resources.error_email_limited
 import com.sledje.agentpro.resources.error_generic
 import com.sledje.agentpro.resources.error_offline
 import com.sledje.agentpro.resources.error_rate_limited
@@ -44,8 +45,19 @@ class ErrorMapperTest {
         assertEquals(AppError.Validation("password", "weak"), map(422, "weak_password"))
         assertEquals(AppError.Validation("email"), map(400, "email_address_invalid"))
         assertEquals(AppError.Conflict, map(422, "user_already_exists"))
-        assertEquals(AppError.RateLimited, map(429, "over_email_send_rate_limit"))
+        assertEquals(AppError.RateLimited, map(429, "over_request_rate_limit"))
         assertEquals(AppError.Unauthorized, map(403, "session_not_found"))
+    }
+
+    /** The two email refusals Supabase sends with the same code (seen live on AGENT_PRO, 2026-10-16). */
+    @Test
+    fun emailSendLimits() {
+        assertEquals(AppError.EmailLimited(null), map(429, "over_email_send_rate_limit", "email rate limit exceeded"))
+        assertEquals(
+            AppError.EmailLimited(42),
+            map(429, "over_email_send_rate_limit", "For security purposes, you can only request this after 42 seconds."),
+        )
+        assertEquals(AppError.EmailLimited(1), map(429, "over_email_send_rate_limit", "you can only request this after 1 second."))
     }
 
     @Test
@@ -79,6 +91,8 @@ class ErrorMapperTest {
         assertEquals(Res.string.error_validation, AppError.Validation("x").message)
         assertEquals(Res.string.error_conflict, AppError.Conflict.message)
         assertEquals(Res.string.error_rate_limited, AppError.RateLimited.message)
+        assertEquals(Res.string.error_rate_limited, AppError.EmailLimited(42).message)
+        assertEquals(Res.string.error_email_limited, AppError.EmailLimited(null).message)
         assertEquals(Res.string.error_generic, AppError.Unknown().message)
     }
 }

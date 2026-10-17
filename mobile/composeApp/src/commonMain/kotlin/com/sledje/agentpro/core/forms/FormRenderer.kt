@@ -103,19 +103,22 @@ fun splitVisibleFields(fields: List<FieldSpec>, visibleKeys: Set<String>? = null
  * @param onPickImage called with the field key when the agent taps an image slot. The MediaPicker seam
  *   (core/platform) is wired by the screen, which then calls `state.set(key, url)`.
  * @param imagePreview renders a picked image (URL) once an image loader is added.
+ * @param hiddenKeys fields shown elsewhere on the screen (e.g. a summary card with Edit) and not rendered,
+ *   even when required. Their values and validation still count, so the screen must offer a way back to them.
  */
 @Composable
 fun FormRenderer(
     state: FormState,
     modifier: Modifier = Modifier,
     visibleKeys: Set<String>? = null,
+    hiddenKeys: Set<String> = emptySet(),
     enabled: Boolean = true,
     onPickImage: (fieldKey: String) -> Unit = {},
     imagePreview: (@Composable (url: String) -> Unit)? = null,
     onDone: () -> Unit = {},
     onLink: (fieldKey: String, linkKey: String) -> Unit = { _, _ -> },
 ) {
-    val (visible, more) = splitVisibleFields(state.fields, visibleKeys)
+    val (visible, more) = splitVisibleFields(state.fields.filter { it.key !in hiddenKeys }, visibleKeys)
     var expanded by rememberSaveable { mutableStateOf(false) }
     // A hidden field with a showing error opens "More details" so the error is never out of sight.
     val forced = more.any { state.visibleError(it.key) != null }

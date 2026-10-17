@@ -2,6 +2,7 @@ package com.sledje.agentpro.core.data
 
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.error_conflict
+import com.sledje.agentpro.resources.error_email_limited
 import com.sledje.agentpro.resources.error_generic
 import com.sledje.agentpro.resources.error_offline
 import com.sledje.agentpro.resources.error_rate_limited
@@ -36,6 +37,13 @@ sealed interface AppError {
     /** Too many requests; try again later. */
     data object RateLimited : AppError
 
+    /**
+     * Supabase Auth refused to send an email (`over_email_send_rate_limit`). [retryAfterSeconds] is set for
+     * the per-address wait ("you can only request this after 42 seconds"); null means the project's
+     * hourly email quota is used up (docs/BACKEND.md, Auth emails).
+     */
+    data class EmailLimited(val retryAfterSeconds: Int? = null) : AppError
+
     /** Anything else. [detail] is for logs only and never shown. */
     data class Unknown(val detail: String? = null) : AppError
 }
@@ -49,5 +57,6 @@ val AppError.message: StringResource
         is AppError.Validation -> Res.string.error_validation
         AppError.Conflict -> Res.string.error_conflict
         AppError.RateLimited -> Res.string.error_rate_limited
+        is AppError.EmailLimited -> if (retryAfterSeconds != null) Res.string.error_rate_limited else Res.string.error_email_limited
         is AppError.Unknown -> Res.string.error_generic
     }

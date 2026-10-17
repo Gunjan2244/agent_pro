@@ -17,6 +17,9 @@ sealed interface ValidationError {
     data object SlugReserved : ValidationError
     data class MaxItems(val max: Int) : ValidationError
     data object Option : ValidationError
+
+    /** A [FieldSpec.mustMatch] field differs from its pair ("Passwords don't match"). */
+    data object Mismatch : ValidationError
 }
 
 /**
