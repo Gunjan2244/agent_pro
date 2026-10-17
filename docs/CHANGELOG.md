@@ -3,6 +3,28 @@
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
 ## 2026-10-17
+- **"Add to home screen": agent sites install like apps** (user request; DECISIONS #65). **Built and tested locally; not deployed.**
+  - **Web:**
+    - A per-site web app manifest at `/manifest.webmanifest`, built by a new Worker script (`web/worker.js`) from `get_public_site`. It runs only for that path, and an unpublished or lapsed site gets a 404.
+    - Accent-colour PNG icons are generated at build time (`scripts/gen-icons.mjs`).
+    - A ghost "Add to home screen" button in the Contact section, with a new schema toggle `contact.showInstallButton` (default on).
+    - A `?install=1` sheet for the agent; that visit isn't counted as a view.
+    - No service worker. `manifest.js` and `install.js` load after render, so first paint stays under 50 KB.
+  - **App:** Website tab → ⋮ → **Add to home screen**, shown once the site is published. It opens `<link>/?install=1` in the browser (`SiteLinks.installUrl`).
+  - **Shared:** the toggle and 8 `site.install_*` / `field.show_install_button` strings in EN and HI. `generateShared` wrote `20261017050728_catalog_sync.sql`, which only updates `site_schema()`. **Not applied.**
+  - **Verified:**
+    - web: 106 checks (was 73), CSS lint, and `wrangler deploy --dry-run` bundles the Worker (8 KB);
+    - app: `verifyShared`, build-logic tests, `assembleDebug`, lint 0 errors and 2 warnings, 253/253 host tests, 0 screenshot diffs.
+  - **Not tested on a real phone yet** (TESTING.md, Add to home screen on a real phone).
+  - **Test fix:** `NavSmokeTest` failed at the Website step since `SITE_BASE_URL` was set in `local.properties` (09:59). It expected the bare `/a/ramesh-kumar`, so it now matches a substring. This wasn't caused by this change.
+  - **Docs:** BACKEND.md's header still said the P1 migrations weren't applied; it's corrected.
+  - **Test APK:** `~/AgentPRO-test/AgentPRO-test-2026-10-17-install.apk` (debug, `AGENT_PRO` + preview; it also has the new launcher icon).
+  - **Files:**
+    - `web/{manifest,install,worker,app}.js`, `web/sections/contact.js`, `web/styles/base.css`, `web/wrangler.jsonc`;
+    - `scripts/{gen-icons,test-web-install}.mjs`, `scripts/{build-web.sh,test-web.mjs}`;
+    - `shared/site-schema.json`, `shared/i18n/{en,hi}.json`, `supabase/migrations/20261017050728_catalog_sync.sql`;
+    - `feature/website/{WebsiteFeature.kt,data/SiteRepository.kt,ui/WebsiteHubScreen.kt}`, `strings_website.xml` (EN/HI), `AppFoundationTest`, `WebsiteScreenshotTest`, `NavSmokeTest`;
+    - `docs/{PRODUCT,DECISIONS,WEB_RENDERER,UX,SHARED_DEFINITIONS,ARCHITECTURE,BACKEND,PRIVACY,TESTING,STATUS}.md`.
 - **App launcher icon added** (the user supplied an AI-generated concept image).
   - **The design:** a rounded white "A" whose crossbar is a rising chart line ending in a dot, on flat `primary` #1F4AA8. It has no insurer artwork and nothing resembling the LIC emblem.
   - **How it's built:** the concept was redrawn as a vector by `design/app-icon/build_icon.py`. The script merges the strokes into one even-odd outline, asserts the glyph stays inside the 66dp safe zone, and keeps the path under lint's `VectorPath` limit.

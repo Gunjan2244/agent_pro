@@ -71,7 +71,8 @@ class NavSmokeTest {
         awaitText("All caught up")
 
         button("Website").performClick()
-        awaitText("/a/ramesh-kumar")
+        // A substring: the address starts with SITE_BASE_URL's host when local.properties sets one.
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasText("/a/ramesh-kumar", substring = true)).fetchSemanticsNodes().isNotEmpty() }
 
         // Home avatar → Settings → Sign out → Welcome.
         button("Home").performClick()

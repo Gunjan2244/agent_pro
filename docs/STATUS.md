@@ -1,6 +1,6 @@
 # Status — read this first
 
-_Last updated: 2026-10-17. This file was rebuilt on that date after an orchestrator script accidentally emptied it; the content reflects the full session record. See CHANGELOG 2026-10-16._
+_Last updated: 2026-10-17 (Add to home screen). This file was rebuilt on that date after an orchestrator script accidentally emptied it; the content reflects the full session record. See CHANGELOG 2026-10-16._
 
 ## Current state
 - **How the work is run:** an orchestrator plus parallel sub-agents (DECISIONS #24, refined by #55).
@@ -53,9 +53,18 @@ _Last updated: 2026-10-17. This file was rebuilt on that date after an orchestra
   - **Before real users:** delete these demo accounts.
   - **The built-in email limit (about 2 per hour) shows a transactional email provider is needed** before launch (approved, DECISIONS #54).
 - **New scope designed (2026-10-16; the docs match the user's decisions):** a multi-company platform with admin-managed offers and a web admin panel (`docs/OFFERS.md`, DECISIONS #47, #49–#53), and DPDP compliance (`docs/PRIVACY.md`, DECISIONS #48, #54). **Nothing of either is built yet.**
-- **App icon (2026-10-17):** the adaptive launcher icon is in (DESIGN_SYSTEM.md, App icon; DECISIONS #66). It's an "A" with a rising chart line, on primary blue. The Play Store 512 and iOS 1024 PNGs are in `design/app-icon/`. The test APK in `~/AgentPRO-test/` predates the icon, so rebuild it to see it on a phone.
+- **App icon (2026-10-17):** the adaptive launcher icon is in (DESIGN_SYSTEM.md, App icon; DECISIONS #66). It's an "A" with a rising chart line, on primary blue. The Play Store 512 and iOS 1024 PNGs are in `design/app-icon/`. The `-install` test APK (10:40) includes it.
 - **Nothing is committed yet.** On 2026-10-15 the user said not to commit yet; ask again before committing.
 
+- **Add to home screen (2026-10-17, DECISIONS #65):** built and tested locally, **not deployed**.
+  - Agent sites are installable web apps: a manifest from a manifest-only Worker, accent PNG icons, a customer button with an agent toggle, and an app menu item, Website → ⋮ → Add to home screen.
+  - **To make it live (each step needs the user's approval):**
+    1. Redeploy the Cloudflare preview: run the tests first, then the real build, check `config.js`, then deploy. The deploy now uploads `worker.js` too.
+    2. Optionally apply `20261017050728_catalog_sync.sql`. It only adds the toggle to `site_schema()`, and nothing breaks without it.
+  - Then run the phone checks in TESTING.md (Add to home screen on a real phone).
+  - **Until the preview is redeployed,** the app's new menu item opens the current preview, which has no install sheet yet.
+  - **Follow-up:** use the agent's photo as the icon. It needs a PNG copy uploaded by the app, because WebP isn't confirmed for Android's WebAPK.
+- **Test APK with Add to home screen (2026-10-17 10:40):** `~/AgentPRO-test/AgentPRO-test-2026-10-17-install.apk` (debug, `AGENT_PRO` + preview; includes the new launcher icon). It supersedes the 10:04 build.
 - **Test APK (2026-10-17 10:04):** a debug build pointed at `AGENT_PRO` and the preview site (`SITE_BASE_URL` set in the git-ignored `local.properties`). A copy is at `~/AgentPRO-test/AgentPRO-test-2026-10-17.apk`. It's waiting for the user to install it on a phone (USB with adb, or sideload). It's for testing only, not a release.
 
 ## Next steps
