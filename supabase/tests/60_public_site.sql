@@ -65,7 +65,7 @@ select tests.ok(public.get_public_site_by_host('Ramesh.Example.in.') #>> '{publi
   '#5 get_public_site_by_host resolves an active custom domain (case/trailing dot normalised)');
 select tests.ok(public.get_public_site('ramesh-sharma') ->> 'canonical_host' = 'ramesh.example.in', '#5 canonical_host = active custom domain');
 select tests.ok(
-  public.submit_enquiry(null, 'ramesh.example.in', 'Host visitor', '9833300000', null, 'term', null, null) = '{"ok": true}'::jsonb,
+  public.submit_enquiry(null, 'ramesh.example.in', 'Host visitor', '9833300000', null, 'term', null, null, tests.consent('enquiry_form')) = '{"ok": true}'::jsonb,
   '#5 submit_enquiry works by host');
 reset role;
 update public.site_domains set status = 'renew_soon' where hostname = 'ramesh.example.in';

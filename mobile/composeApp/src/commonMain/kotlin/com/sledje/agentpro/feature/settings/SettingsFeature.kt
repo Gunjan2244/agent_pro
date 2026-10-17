@@ -22,6 +22,10 @@ import com.sledje.agentpro.core.designsystem.components.ChoiceChips
 import com.sledje.agentpro.core.designsystem.components.ChoiceOption
 import com.sledje.agentpro.core.designsystem.components.HairlineDivider
 import com.sledje.agentpro.core.designsystem.components.ListRow
+import com.sledje.agentpro.core.designsystem.components.NavRow
+import com.sledje.agentpro.core.catalog.PrivacyNotice
+import com.sledje.agentpro.feature.privacy.ui.NoticeScreen
+import com.sledje.agentpro.resources.cat_privacy_agent_signup_title
 import com.sledje.agentpro.core.designsystem.components.SectionHeader
 import com.sledje.agentpro.core.designsystem.currentAppLocale
 import com.sledje.agentpro.core.features.AppFeature
@@ -36,6 +40,9 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
 
 @Serializable data object SettingsRoute
+
+/** The in-app privacy notice (docs/PRIVACY.md, section 1), opened from Settings. */
+@Serializable data object PrivacyNoticeRoute
 
 /**
  * Settings: always on, opened from the Home avatar. Phase 5 has Language (EN/हिं) and Sign out;
@@ -52,8 +59,10 @@ object SettingsFeature : AppFeature {
                 onLocale = vm::setLocale,
                 onSignOut = vm::signOut,
                 onBack = { host.nav.popBackStack() },
+                onPrivacyNotice = { host.nav.navigate(PrivacyNoticeRoute) },
             )
         }
+        composable<PrivacyNoticeRoute> { NoticeScreen(PrivacyNotice.AgentSignup, onBack = { host.nav.popBackStack() }) }
     }
 }
 
@@ -69,7 +78,13 @@ class SettingsViewModel(private val deps: AppDependencies) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(currentLocale: AppLocale, onLocale: (AppLocale) -> Unit, onSignOut: () -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    currentLocale: AppLocale,
+    onLocale: (AppLocale) -> Unit,
+    onSignOut: () -> Unit,
+    onBack: () -> Unit,
+    onPrivacyNotice: () -> Unit = {},
+) {
     AppScaffold(
         topBar = { AppTopBar(title = stringResource(Res.string.action_settings), onBack = onBack) },
         offline = !LocalIsOnline.current,
@@ -82,6 +97,8 @@ fun SettingsScreen(currentLocale: AppLocale, onLocale: (AppLocale) -> Unit, onSi
                 onToggle = { key -> AppLocale.fromKey(key)?.let(onLocale) },
                 modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s),
             )
+            HairlineDivider()
+            NavRow(title = stringResource(Res.string.cat_privacy_agent_signup_title), onClick = onPrivacyNotice)
             HairlineDivider()
             ListRow(title = stringResource(Res.string.settings_sign_out), onClick = onSignOut)
         }

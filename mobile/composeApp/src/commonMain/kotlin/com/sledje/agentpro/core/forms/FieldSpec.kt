@@ -26,6 +26,9 @@ enum class FieldType(val key: String) {
 
     /** App-only (policy premium, payment amount): a ₹ amount with Indian grouping (MoneyField). Never a site-schema type. */
     Money("money"),
+
+    /** App-only (sign-up): a required, never pre-ticked consent checkbox whose [FieldSpec.links] are tappable. Never a site-schema type. */
+    Consent("consent"),
     ;
 
     companion object {
@@ -77,7 +80,12 @@ data class FieldSpec(
     val suggestions: List<String> = emptyList(),
     /** App forms only: show a select as a segmented control (short option lists, e.g. the premium mode). */
     val segmented: Boolean = false,
+    /** [FieldType.Consent] only: substrings of the label that are tappable; FormRenderer's `onLink` gets the [FieldLink.key]. */
+    val links: List<FieldLink> = emptyList(),
 )
+
+/** A tappable substring of a consent field's label (`label` is a string resource whose text contains it). */
+data class FieldLink(val key: String, val label: StringResource)
 
 /** A website section of shared/site-schema.json. */
 data class SectionSpec(

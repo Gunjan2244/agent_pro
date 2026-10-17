@@ -11,8 +11,10 @@ ${f("name", t("site.form_name"), '<input id="f-name" name="name" autocomplete="n
 ${f("phone", t("site.form_phone"), '<input id="f-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="16" required>')}
 ${f("email", t("site.form_email"), '<input id="f-email" name="email" type="email" autocomplete="email" maxlength="120">')}
 ${f("interest", t("site.form_interest"), `<select id="f-interest" name="interest">${blank}${opts}</select>`)}
-${f("message", t("site.form_message"), '<textarea id="f-message" name="message" rows="3" maxlength="500"></textarea>')}
+${f("message", t("site.form_message"), '<textarea id="f-message" name="message" rows="3" maxlength="500" aria-describedby="h-message"></textarea>')}
+<p class="hint" id="h-message">${esc(t("site.form_message_hint"))}</p>
 <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+<div class="fld consent"><label class="chk" for="f-consent"><input id="f-consent" name="consent" type="checkbox" aria-describedby="e-consent"><span>${esc(t(ctx.consentKey, { name: ctx.agentName }))} <a href="${esc(ctx.privacyHref || "#")}">${esc(t(ctx.consentLinkKey))}</a></span></label><p class="err" id="e-consent" role="alert" hidden></p></div>
 <p class="err" id="e-form" role="alert" hidden></p>
 <button class="btn" type="submit">${esc(t("site.form_submit"))}</button>
 </form>`;

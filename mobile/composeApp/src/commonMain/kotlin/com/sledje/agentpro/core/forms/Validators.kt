@@ -79,6 +79,8 @@ object Validators {
      * Boolean for toggle; List<String> for multiSelect; LocalDate for date; a List for item lists.
      */
     fun validate(spec: FieldSpec, value: Any?): ValidationError? {
+        // A required consent is valid only when ticked.
+        if (spec.type == FieldType.Consent) return if (spec.required && value != true) ValidationError.Required else null
         if (isBlank(value)) return if (spec.required) ValidationError.Required else null
         val text = value as? String
         spec.maxLength?.let { max -> if (text != null) maxLength(text, max)?.let { return it } }

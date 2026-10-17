@@ -11,7 +11,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.sledje.agentpro.app.AppDependencies
+import com.sledje.agentpro.core.catalog.PrivacyNotice
 import com.sledje.agentpro.core.designsystem.currentAppLocale
+import com.sledje.agentpro.feature.privacy.data.PrivacyLinks
+import com.sledje.agentpro.feature.privacy.ui.NoticeScreen
 import com.sledje.agentpro.feature.auth.ui.AuthFormMode
 import com.sledje.agentpro.feature.auth.ui.AuthFormScreen
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
@@ -31,6 +34,9 @@ object AuthRoutes {
     @Serializable data object Welcome
     @Serializable data object SignIn
     @Serializable data object SignUp
+
+    /** The in-app privacy notice, opened from the Create account consent line. */
+    @Serializable data object Notice
     @Serializable data class CheckEmail(val email: String)
     @Serializable data object ForgotPassword
     @Serializable data class ResetSent(val email: String)
@@ -64,8 +70,10 @@ fun AuthNavHost(deps: AppDependencies) {
             AuthForm(deps, AuthFormMode.SignUp, onBack = { nav.popBackStack() },
                 onSwitchMode = { nav.navigate(AuthRoutes.SignIn) { popUpTo(AuthRoutes.Welcome) } },
                 onForgotPassword = {},
-                onSent = { email -> nav.navigate(AuthRoutes.CheckEmail(email)) { popUpTo(AuthRoutes.Welcome) } })
+                onSent = { email -> nav.navigate(AuthRoutes.CheckEmail(email)) { popUpTo(AuthRoutes.Welcome) } },
+                onOpenNotice = { nav.navigate(AuthRoutes.Notice) })
         }
+        composable<AuthRoutes.Notice> { NoticeScreen(PrivacyNotice.AgentSignup, onBack = { nav.popBackStack() }) }
         composable<AuthRoutes.ForgotPassword> {
             AuthForm(deps, AuthFormMode.ResetPassword, onBack = { nav.popBackStack() },
                 onSwitchMode = {}, onForgotPassword = {},
@@ -142,11 +150,26 @@ private fun AuthForm(
     onSwitchMode: () -> Unit,
     onForgotPassword: () -> Unit,
     onSent: (String) -> Unit,
+    onOpenNotice: () -> Unit = {},
 ) {
     val vm = viewModel(key = mode.name) { AuthFormViewModel(mode, deps.auth) }
     val state by vm.state.collectAsState()
+    val locale = currentAppLocale()
     LaunchedEffect(state.sentTo) {
         state.sentTo?.let { onSent(it); vm.onNavigated() }
     }
-    AuthFormScreen(mode, vm.form, state, vm::submit, onBack, onSwitchMode, onForgotPassword)
+    AuthFormScreen(
+        mode, vm.form, state,
+        onSubmit = { vm.submit(locale) },
+        onBack = onBack,
+        onSwitchMode = onSwitchMode,
+        onForgotPassword = onForgotPassword,
+        onLink = { key ->
+            when (key) {
+                AuthFormViewModel.LINK_NOTICE -> onOpenNotice()
+                // Terms are the web page; without a configured host the notice is all there is to show.
+                AuthFormViewModel.LINK_TERMS -> PrivacyLinks.terms()?.let { deps.urlLauncher.openUrl(it) } ?: onOpenNotice()
+            }
+        },
+    )
 }

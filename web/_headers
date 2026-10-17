@@ -26,3 +26,11 @@
 /a/*
   ! Cache-Control
   Cache-Control: no-cache
+
+/privacy
+  ! Cache-Control
+  Cache-Control: no-cache
+
+/terms
+  ! Cache-Control
+  Cache-Control: no-cache

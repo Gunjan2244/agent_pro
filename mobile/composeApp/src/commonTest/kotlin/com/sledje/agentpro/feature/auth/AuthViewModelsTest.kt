@@ -1,6 +1,7 @@
 package com.sledje.agentpro.feature.auth
 
 import app.cash.turbine.test
+import com.sledje.agentpro.core.catalog.AppLocale
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.ValidationError
@@ -46,7 +47,7 @@ class AuthViewModelsTest {
         vm.fill(" ramesh@example.com ", "secret")
         vm.state.test {
             assertEquals(AuthFormUiState(), awaitItem())
-            vm.submit()
+            vm.submit(AppLocale.En)
             assertTrue(awaitItem().submitting)
             val done = awaitItem()
             assertFalse(done.submitting)
@@ -64,7 +65,7 @@ class AuthViewModelsTest {
         vm.fill("ramesh@example.com", "wrong")
         vm.state.test {
             awaitItem()
-            vm.submit()
+            vm.submit(AppLocale.En)
             awaitItem()
             assertEquals(AuthFormError.Credentials, awaitItem().error)
         }
@@ -75,7 +76,7 @@ class AuthViewModelsTest {
     fun invalidFormIsNotSubmitted() = runTest {
         val vm = AuthFormViewModel(AuthFormMode.SignIn, auth)
         vm.fill("not-an-email", "x")
-        vm.submit()
+        vm.submit(AppLocale.En)
         testScheduler.advanceUntilIdle()
         assertTrue(auth.calls.isEmpty())
         assertEquals(ValidationError.Email, vm.form.visibleError(AuthFormViewModel.EMAIL))
@@ -88,9 +89,10 @@ class AuthViewModelsTest {
         assertFalse(vm.form.isValid)
         assertEquals(ValidationError.MinLength(AuthRules.PASSWORD_MIN_LENGTH), vm.form.error(AuthFormViewModel.PASSWORD))
         vm.form.set(AuthFormViewModel.PASSWORD, "long enough")
+        vm.form.set(AuthFormViewModel.CONSENT, true)
         vm.state.test {
             awaitItem()
-            vm.submit()
+            vm.submit(AppLocale.En)
             awaitItem()
             assertEquals("new@example.com", awaitItem().sentTo)
             vm.onNavigated()
@@ -104,8 +106,9 @@ class AuthViewModelsTest {
         auth.signUpResult = Result.Err(AppError.Conflict)
         val vm = AuthFormViewModel(AuthFormMode.SignUp, auth)
         vm.fill("ramesh@example.com", "long enough")
+        vm.form.set(AuthFormViewModel.CONSENT, true)
         vm.state.test {
-            awaitItem(); vm.submit(); awaitItem()
+            awaitItem(); vm.submit(AppLocale.En); awaitItem()
             assertEquals(AuthFormError.AccountExists, awaitItem().error)
         }
     }
@@ -116,7 +119,7 @@ class AuthViewModelsTest {
         assertEquals(listOf(AuthFormViewModel.EMAIL), vm.form.fields.map { it.key })
         vm.fill("ramesh@example.com")
         vm.state.test {
-            awaitItem(); vm.submit(); awaitItem()
+            awaitItem(); vm.submit(AppLocale.En); awaitItem()
             assertEquals("ramesh@example.com", awaitItem().sentTo)
         }
         assertEquals(listOf("reset:ramesh@example.com"), auth.calls)
@@ -128,7 +131,7 @@ class AuthViewModelsTest {
         val vm = AuthFormViewModel(AuthFormMode.ResetPassword, auth)
         vm.fill("ramesh@example.com")
         vm.state.test {
-            awaitItem(); vm.submit(); awaitItem()
+            awaitItem(); vm.submit(AppLocale.En); awaitItem()
             assertEquals(AuthFormError.Other(AppError.Offline), awaitItem().error)
         }
     }

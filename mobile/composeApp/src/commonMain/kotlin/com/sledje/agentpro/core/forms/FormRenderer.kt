@@ -45,6 +45,8 @@ import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.core.designsystem.components.AppTextField
 import com.sledje.agentpro.core.designsystem.components.ChoiceChips
+import com.sledje.agentpro.core.designsystem.components.ConsentCheckbox
+import com.sledje.agentpro.core.designsystem.components.ConsentLink
 import com.sledje.agentpro.core.designsystem.components.ChoiceOption
 import com.sledje.agentpro.core.designsystem.components.DateField
 import com.sledje.agentpro.core.designsystem.components.FieldFrame
@@ -111,6 +113,7 @@ fun FormRenderer(
     onPickImage: (fieldKey: String) -> Unit = {},
     imagePreview: (@Composable (url: String) -> Unit)? = null,
     onDone: () -> Unit = {},
+    onLink: (fieldKey: String, linkKey: String) -> Unit = { _, _ -> },
 ) {
     val (visible, more) = splitVisibleFields(state.fields, visibleKeys)
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -121,11 +124,11 @@ fun FormRenderer(
     val lastTextKey = textOrder.lastOrNull()
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-        visible.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone) }
+        visible.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone, onLink) }
         if (more.isNotEmpty()) {
             MoreDetails(expanded = showMore, onToggle = { expanded = !showMore }) {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                    more.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone) }
+                    more.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone, onLink) }
                 }
             }
         }
@@ -154,6 +157,7 @@ private fun Field(
     onPickImage: (String) -> Unit,
     imagePreview: (@Composable (String) -> Unit)?,
     onDone: () -> Unit,
+    onLink: (String, String) -> Unit,
 ) {
     val label = stringResource(spec.label)
     val error = state.visibleError(spec.key)?.message()
@@ -265,6 +269,15 @@ private fun Field(
             checked = state.value(spec.key) as? Boolean ?: false,
             onCheckedChange = { state.set(spec.key, it) },
             modifier = tag,
+            enabled = enabled,
+        )
+        FieldType.Consent -> ConsentCheckbox(
+            text = label,
+            checked = state.value(spec.key) as? Boolean ?: false,
+            onCheckedChange = { state.set(spec.key, it); state.onFocusLost(spec.key) },
+            links = spec.links.map { link -> ConsentLink(stringResource(link.label)) { onLink(spec.key, link.key) } },
+            modifier = tag,
+            error = error,
             enabled = enabled,
         )
         FieldType.Swatch -> FieldFrame(label, tag, error) {

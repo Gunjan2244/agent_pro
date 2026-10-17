@@ -2,8 +2,11 @@ package com.sledje.agentpro.feature.auth.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.core.catalog.PrivacyNotice
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
+import com.sledje.agentpro.core.forms.FieldLink
 import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
@@ -13,6 +16,9 @@ import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.auth_email
 import com.sledje.agentpro.resources.auth_new_password
 import com.sledje.agentpro.resources.auth_password
+import com.sledje.agentpro.resources.cat_privacy_agent_signup_consent
+import com.sledje.agentpro.resources.cat_privacy_agent_signup_link_notice
+import com.sledje.agentpro.resources.cat_privacy_agent_signup_link_terms
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,7 +64,11 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
     private val _state = MutableStateFlow(AuthFormUiState())
     val state: StateFlow<AuthFormUiState> = _state.asStateFlow()
 
-    fun submit() {
+    /**
+     * [locale] is the language the form and its consent line are shown in: sign-up sends the hash of
+     * the notice text in that language.
+     */
+    fun submit(locale: AppLocale) {
         if (_state.value.submitting || !form.validateAll()) return
         val values = form.values()
         val email = values[EMAIL] as? String ?: return
@@ -67,7 +77,7 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
         viewModelScope.launch {
             val result = when (mode) {
                 AuthFormMode.SignIn -> auth.signIn(email, password.orEmpty())
-                AuthFormMode.SignUp -> auth.signUp(email, password.orEmpty())
+                AuthFormMode.SignUp -> auth.signUp(email, password.orEmpty(), PrivacyNotice.AgentSignup.consent(locale))
                 AuthFormMode.ResetPassword -> auth.sendPasswordReset(email)
             }
             _state.update {
@@ -86,6 +96,13 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
         const val EMAIL = "email"
         const val PASSWORD = "password"
 
+        /** The sign-up consent checkbox (`agent_signup` notice; unticked, required). */
+        const val CONSENT = "consent"
+
+        /** Link keys of the consent line. */
+        const val LINK_TERMS = "terms"
+        const val LINK_NOTICE = "notice"
+
         /** Email ≤ 120 like `submit_enquiry`; the password minimum (8) only applies to new passwords. */
         fun fieldsFor(mode: AuthFormMode): List<FieldSpec> = buildList {
             add(FieldSpec(EMAIL, FieldType.Email, Res.string.auth_email, required = true, maxLength = 120))
@@ -94,6 +111,17 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
                     FieldSpec(
                         PASSWORD, FieldType.Password, Res.string.auth_password, required = true,
                         minLength = if (mode == AuthFormMode.SignUp) AuthRules.PASSWORD_MIN_LENGTH else null,
+                    ),
+                )
+            }
+            if (mode == AuthFormMode.SignUp) {
+                add(
+                    FieldSpec(
+                        CONSENT, FieldType.Consent, Res.string.cat_privacy_agent_signup_consent, required = true,
+                        links = listOf(
+                            FieldLink(LINK_TERMS, Res.string.cat_privacy_agent_signup_link_terms),
+                            FieldLink(LINK_NOTICE, Res.string.cat_privacy_agent_signup_link_notice),
+                        ),
                     ),
                 )
             }

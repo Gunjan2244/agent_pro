@@ -12,6 +12,7 @@ import com.sledje.agentpro.feature.customers.data.CustomerRepository
 import com.sledje.agentpro.feature.enquiries.data.EnquiryLive
 import com.sledje.agentpro.feature.enquiries.data.EnquiryRepository
 import com.sledje.agentpro.feature.policies.data.PolicyRepository
+import com.sledje.agentpro.feature.privacy.data.ConsentRepository
 import com.sledje.agentpro.feature.settings.data.ProfileRepository
 import com.sledje.agentpro.feature.website.WebsiteServices
 import com.sledje.agentpro.feature.website.data.SiteRepository
@@ -34,6 +35,9 @@ interface AppDependencies {
     val enquiries: EnquiryRepository
     val customers: CustomerRepository
     val policies: PolicyRepository
+
+    /** In-app consents recorded through `record_consent` (docs/PRIVACY.md; P1-4). */
+    val consents: ConsentRepository
 
     /** Realtime on `enquiries` while the app is in the foreground (started and stopped by MainShell). */
     val enquiryLive: EnquiryLive

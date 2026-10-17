@@ -521,3 +521,42 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
   - Until then, test sign-ups are limited to about 2 emails per hour.
 - **Alternatives considered:** Gmail SMTP with an app password as a stopgap; Resend (its free tier is only 100 per day); Amazon SES straight away.
 - **Status:** Accepted. Blocked on buying the platform domain.
+
+### #61 — 2026-10-17 — Privacy notice hashing and the release gate
+- **Decision:**
+  - **The notice hash** is sha256 over `JSON.stringify({key, locale, text, version})`, where `text` is the NFC-normalised `textKeys` values joined by `\n`, with placeholders left unfilled.
+  - **Locked hashes** live in `catalog-keys.lock.json`, and changing a notice's text requires a version bump.
+  - **The web** reads the committed generated file `shared/generated/privacy-notices.json`.
+  - **The server** validates `{notice_key, version, hash}` against `catalog_privacy_notice*()`, accepts only the current version, and resolves the language from the hash.
+  - **Release gate:** upper-case `{TOKEN}` placeholders block release builds through `verifyReleaseReady`, which isn't part of `check`.
+- **Why:** this proves exactly which text each person saw, in both languages, without duplicating the hash logic in JS or SQL, and keeps debug builds green while the grievance officer is undecided.
+- **Alternatives considered:** hashing at runtime on the web; generating the JSON at web build time; failing `check` on placeholders.
+- **Status:** Accepted, provisional. The notice texts need user and counsel review.
+
+### #62 — 2026-10-17 — Web privacy surfaces and the production build gate
+- **Decision:**
+  - **Production web builds** must use `RELEASE=1`, which runs `scripts/release-check.mjs` and fails while there are release blockers or i18n placeholders. Preview builds only warn.
+  - **The per-site privacy page** is a route in the single-page app (`/a/<slug>/privacy`). Its data-request form has no consent checkbox, per PRIVACY.md.
+  - **The platform `/privacy` and `/terms`** ship as shells that reuse the `agent_signup` notice texts until P2-4 provides the final legal text.
+- **Status:** Accepted.
+
+### #63 — 2026-10-17 — Privacy backend shapes (P1-2)
+- **Decision:**
+  - **Consent payload:** `consent` is the notice payload itself (`jsonb`), not a boolean.
+  - **Sign-up:** an invalid or missing sign-up consent doesn't block Auth; the app calls `record_consent` instead.
+  - **`record_consent`** is idempotent per notice version and customer, refuses `enquiry_form`, and may return `field:'customer_id'`.
+  - **Lapsed agents:** privacy RPCs don't require `can_write()`, so agents keep their privacy duties after a lapse.
+  - **Payments:** `payments.raw` is minimised by a database trigger for every writer.
+  - **`audit_log`** has no API access until the admin tables exist.
+  - **Codegen:** the privacy CHECKs are emitted only when the catalog has those lists.
+  - **Naming:** the RPC is `update_data_request`, not the planned `resolve_data_request`.
+- **Why:** this keeps one PostgREST function per RPC, keeps the hash logic in generated SQL only (#61), and enforces data minimisation whichever writer stores payment data.
+- **Status:** Accepted, provisional (counsel review pending).
+
+### #64 — 2026-10-17 — App consent implementation (P1-4)
+- **Decision:**
+  - **Form field:** consent is a form field type (`FieldType.Consent`), not a hand-built checkbox, so FormRenderer stays the only form builder.
+  - **Customer-data sheet:** it appears when Add customer or Add enquiry opens. Acceptance is remembered per account and notice version, and recorded again on a new device.
+  - **"Terms"** opens the web `/terms` page, because there's no in-app terms text.
+  - **Guardian consent** is recorded after the customer exists on the server, and a retry doesn't create a duplicate.
+- **Status:** Accepted, provisional until the user's review.

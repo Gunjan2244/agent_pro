@@ -85,6 +85,7 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
 ```
 
 **What exists after Phase 5 (app foundation):**
+- `feature/privacy` (P1-4): `data/ConsentRepository` (`record_consent` RPC; the local once-per-account mark in `KeyValueStore` under `privacy.customer_duty.<userId>` = notice version; `PrivacyLinks`), `ui/NoticeScreen` (lays out a generated `PrivacyNotice` from its resource keys), `ui/CustomerDuty` (`CustomerDutyViewModel`, the attestation sheet, `CustomerDutyGateHost` used by the customer and enquiry form routes). `AppDependencies.consents`. Sign-up consent travels in `AuthRepository.signUp(email, password, consent)` as `data.consent`. New seams in `core`: `FieldType.Consent` + `FieldSpec.links` + `FormRenderer(onLink)` (app-only checkbox with tappable substrings, component `ConsentCheckbox`), `domain/Age`.
 - `feature/auth`: `data/AuthRepository` (`SupabaseAuthRepository`, `AuthState`, `AuthRules`), `data/AuthCallbackLink`
   (pure parser of `agentpro://auth-callback` links), `ui/` (Welcome, the shared Sign in / Create account / Forgot password
   form with `AuthFormViewModel`, Check your email with `CheckEmailViewModel`, Reset sent, Set new password with

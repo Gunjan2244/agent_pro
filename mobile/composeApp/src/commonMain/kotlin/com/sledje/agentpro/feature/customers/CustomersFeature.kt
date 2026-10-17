@@ -36,6 +36,7 @@ import com.sledje.agentpro.feature.customers.ui.CustomerFormViewModel
 import com.sledje.agentpro.feature.customers.ui.CustomerListScreen
 import com.sledje.agentpro.feature.customers.ui.CustomerListViewModel
 import com.sledje.agentpro.feature.home.TabScreen
+import com.sledje.agentpro.feature.privacy.ui.CustomerDutyGateHost
 import com.sledje.agentpro.feature.policies.PolicyDetailRoute
 import com.sledje.agentpro.feature.policies.PolicyFormRoute
 import com.sledje.agentpro.resources.Res
@@ -115,10 +116,16 @@ object CustomersFeature : AppFeature {
                 route.fromEnquiryId != null -> CustomerFormMode.Convert(route.fromEnquiryId)
                 else -> CustomerFormMode.Add(route.name, route.phone)
             }
-            val vm = viewModel(key = "customer_form_$mode") { CustomerFormViewModel(mode, deps.customers, deps.enquiries) }
+            val vm = viewModel(key = "customer_form_$mode") { CustomerFormViewModel(mode, deps.customers, deps.enquiries, deps.consents) }
             CustomerFormScreen(
                 vm = vm,
                 onBack = { host.nav.popBackStack() },
+                // Adding a customer (manually, from contacts or from an enquiry) needs the one-time attestation.
+                dutyGate = if (mode !is CustomerFormMode.Edit) {
+                    { snackbar -> CustomerDutyGateHost(deps, snackbar, onDeclined = { host.nav.popBackStack() }) }
+                } else {
+                    null
+                },
                 onSaved = { id ->
                     host.nav.popBackStack()
                     // Edit returns to the detail screen it came from; add and convert open the new customer.

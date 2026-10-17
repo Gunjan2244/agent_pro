@@ -106,11 +106,11 @@ select tests.ok('ulip' = any (public.catalog_interest_keys_all()) and not ('ulip
 
 select tests.as_anon();
 select tests.ok(
-  public.submit_enquiry('ramesh-sharma', null, 'Visitor', '9833300001', null, 'ulip', null, null)
+  public.submit_enquiry('ramesh-sharma', null, 'Visitor', '9833300001', null, 'ulip', null, null, tests.consent('enquiry_form'))
   = '{"ok": false, "error": "invalid", "field": "interest"}'::jsonb,
   '#D submit_enquiry rejects a deprecated interest');
 select tests.ok(
-  public.submit_enquiry('ramesh-sharma', null, 'Visitor', '9833300001', null, 'term', null, null) = '{"ok": true}'::jsonb,
+  public.submit_enquiry('ramesh-sharma', null, 'Visitor', '9833300001', null, 'term', null, null, tests.consent('enquiry_form')) = '{"ok": true}'::jsonb,
   '#D submit_enquiry still accepts an active interest');
 reset role;
 

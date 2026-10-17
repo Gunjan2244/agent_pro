@@ -7,6 +7,9 @@ import com.sledje.agentpro.app.DeepLinks
 import com.sledje.agentpro.app.OnboardingSession
 import com.sledje.agentpro.app.SyncStatus
 import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.core.catalog.NoticeConsent
+import com.sledje.agentpro.core.catalog.PrivacyNotice
+import com.sledje.agentpro.feature.privacy.data.ConsentRepository
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.InMemoryKeyValueStore
@@ -97,7 +100,14 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
         return signInResult
     }
 
-    override suspend fun signUp(email: String, password: String): AppResult<Unit> { calls += "signUp:$email"; return signUpResult }
+    /** The consent each sign-up sent (`data.consent` in the real call). */
+    val signUpConsents = mutableListOf<NoticeConsent>()
+
+    override suspend fun signUp(email: String, password: String, consent: NoticeConsent): AppResult<Unit> {
+        calls += "signUp:$email"
+        signUpConsents += consent
+        return signUpResult
+    }
     override suspend fun resendConfirmation(email: String): AppResult<Unit> { calls += "resend:$email"; return resendResult }
     override suspend fun sendPasswordReset(email: String): AppResult<Unit> { calls += "reset:$email"; return resetResult }
     override suspend fun updatePassword(password: String): AppResult<Unit> { calls += "updatePassword"; return updatePasswordResult }
@@ -113,6 +123,34 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
         calls += "callback:$url"
         if (callbackResult is Result.Ok) state.value = AuthState.SignedIn(TEST_USER, "ramesh@example.com")
         return callbackResult
+    }
+}
+
+/**
+ * Consent fake. [dutyAccepted] starts true in whole-app fakes so existing flows aren't gated; privacy tests set
+ * it false. [error] fails the next records (e.g. Offline). [calls] holds "duty:<locale key>:<hash>" and
+ * "guardian:<customerId>:<locale key>:<hash>".
+ */
+class FakeConsentRepository(accepted: Boolean = false) : ConsentRepository {
+    val accepted = MutableStateFlow(accepted)
+    var error: AppError? = null
+    val calls = mutableListOf<String>()
+
+    override fun customerDutyAccepted(): Flow<Boolean> = accepted
+
+    override suspend fun acceptCustomerDuty(locale: AppLocale): AppResult<Unit> {
+        val c = PrivacyNotice.AgentCustomerDuty.consent(locale)
+        calls += "duty:${c.noticeKey}:${c.version}:${c.hash}"
+        error?.let { return Result.Err(it) }
+        accepted.value = true
+        return Result.Ok(Unit)
+    }
+
+    override suspend fun recordGuardianConsent(customerId: String, locale: AppLocale): AppResult<Unit> {
+        val c = PrivacyNotice.GuardianConsent.consent(locale)
+        calls += "guardian:$customerId:${c.noticeKey}:${c.version}:${c.hash}"
+        error?.let { return Result.Err(it) }
+        return Result.Ok(Unit)
     }
 }
 
@@ -238,6 +276,7 @@ class FakeAppDependencies(
     override val enquiries: FakeEnquiryRepository = FakeEnquiryRepository(),
     override val policies: FakePolicyRepository = FakePolicyRepository(),
     override val customers: FakeCustomerRepository = FakeCustomerRepository(enquiries = enquiries, policies = policies),
+    override val consents: FakeConsentRepository = FakeConsentRepository(accepted = true),
     override val enquiryLive: FakeEnquiryLive = FakeEnquiryLive(),
     override val contactPicker: FakeContactPicker = FakeContactPicker(),
     val fakeWebsite: FakeWebsite = FakeWebsite(),

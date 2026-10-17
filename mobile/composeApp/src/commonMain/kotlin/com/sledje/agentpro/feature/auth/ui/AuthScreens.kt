@@ -139,6 +139,8 @@ fun AuthFormScreen(
     onBack: () -> Unit,
     onSwitchMode: () -> Unit,
     onForgotPassword: () -> Unit,
+    /** A consent line's link was tapped (Create account: [AuthFormViewModel.LINK_TERMS] / [AuthFormViewModel.LINK_NOTICE]). */
+    onLink: (linkKey: String) -> Unit = {},
 ) {
     val online = LocalIsOnline.current
     val title = when (mode) {
@@ -166,7 +168,12 @@ fun AuthFormScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.m),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
-            FormRenderer(form, enabled = !state.submitting, onDone = { if (online && form.isValid) onSubmit() })
+            FormRenderer(
+                form,
+                enabled = !state.submitting,
+                onDone = { if (online && form.isValid) onSubmit() },
+                onLink = { _, linkKey -> onLink(linkKey) },
+            )
             state.error?.let {
                 Text(
                     authErrorMessage(it),

@@ -2,7 +2,8 @@
 import * as api from "./api.js";
 import { loadDict, makeT, localeKeys, pickLocale } from "./i18n.js";
 import { headData, applyHead } from "./head.js";
-import { wireForm } from "./form.js";
+import { wireForm, consentFor } from "./form.js";
+import { resolveTarget as resolve, siteLinks } from "./route.js";
 import { makeCtx } from "./sections/index.js";
 import { esc } from "./sections/util.js";
 
@@ -15,16 +16,6 @@ const json = async (p) => (await fetch(p)).json();
 const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
 let backend = api;
 if (isLocal && q.get("mock") === "1") backend = await import("./dev-mock.js").then((m) => m.mockApi(api, q)).catch(() => api);
-
-function resolveTarget() {
-  const primary = cfg.SITE_BASE_URL ? new URL(cfg.SITE_BASE_URL).host : location.host;
-  if (location.host === primary) {
-    const m = location.pathname.match(/^\/a\/([^/]+)\/?$/);
-    const slug = m ? decodeURIComponent(m[1]) : q.get("s");
-    return slug ? { slug } : null;
-  }
-  return { host: location.hostname };
-}
 
 function stylesheet(href) {
   return new Promise((res) => {
@@ -48,6 +39,8 @@ async function unavailable(wanted, generic) {
   root.removeAttribute("aria-busy");
 }
 
+let notices;
+const loadNotices = () => (notices ||= json("/shared/generated/privacy-notices.json").catch(() => ({ notices: {} })));
 let shared;
 const loadShared = () => (shared ||= Promise.all([json("/shared/site-schema.json"), json("/shared/catalog.json"), json("/shared/templates/index.json")]));
 
@@ -59,23 +52,52 @@ export async function show(site, target = {}) {
   const keys = localeKeys(catalog), locale = pickLocale(keys, site.locale);
   const [dict, mod] = await Promise.all([loadDict(locale, keys), import(`./templates/${key}/render.js`), stylesheet(`/templates/${key}/style.css`)]);
   const t = makeT(dict);
-  const tokens = { accent: swatch ? swatch.hex : "var(--c-primary)", schema, catalog };
+  const nf = await loadNotices();
+  const notice = (nf.notices || {}).enquiry_form;
+  const links = target.slug || target.host ? siteLinks(target) : { privacy: "#" };
+  const tokens = { accent: swatch ? swatch.hex : "var(--c-primary)", schema, catalog, notice, privacyHref: links.privacy };
   document.documentElement.lang = locale;
   root.innerHTML = mod.render(site, t, tokens);
   root.removeAttribute("aria-busy");
-  const ctx = Object.assign(makeCtx(site, t, tokens, key), { slug: target.slug, host: target.host });
+  const ctx = Object.assign(makeCtx(site, t, tokens, key), { slug: target.slug, host: target.host, consent: consentFor(nf.notices, locale) });
   return ctx;
+}
+
+async function showPrivacy(site, target) {
+  const [, catalog] = await loadShared();
+  const keys = localeKeys(catalog), locale = pickLocale(keys, site.locale);
+  const [dict, nf, { privacyHtml, wirePrivacy }] = await Promise.all([loadDict(locale, keys), loadNotices(), import("./privacy.js")]);
+  const t = makeT(dict), links = siteLinks(target);
+  document.documentElement.lang = locale;
+  root.innerHTML = privacyHtml(site, t, { notice: (nf.notices || {}).enquiry_form, catalog, backHref: links.home });
+  root.removeAttribute("aria-busy");
+  document.title = t("site.privacy_page_title", { name: (site.profile || {}).full_name || "" });
+  wirePrivacy(root, { t, catalog, slug: target.slug, host: target.host, name: (site.profile || {}).full_name, submit: backend.submitDataRequest });
+}
+
+async function showPlatform(page) {
+  const [, catalog] = await loadShared();
+  const keys = localeKeys(catalog);
+  const locale = pickLocale(keys, q.get("lang") || (navigator.language || "").slice(0, 2));
+  const [dict, nf, { legalHtml }] = await Promise.all([loadDict(locale, keys), loadNotices(), import("./legal.js")]);
+  const t = makeT(dict), other = keys.find((k) => k !== locale) || locale;
+  document.documentElement.lang = locale;
+  root.innerHTML = legalHtml(page, t, { notice: (nf.notices || {}).agent_signup, otherLang: other, otherHref: `?lang=${other}` });
+  root.removeAttribute("aria-busy");
+  document.title = t(page === "terms" ? "site.legal_terms_title" : "site.legal_privacy_title");
 }
 
 async function boot() {
   const lang = (navigator.language || "").slice(0, 2);
-  const target = resolveTarget();
+  const target = resolve(location, q, cfg.SITE_BASE_URL ? new URL(cfg.SITE_BASE_URL).host : location.host);
   if (!target) return unavailable(lang);
+  if (target.platform) return showPlatform(target.platform).catch(() => unavailable(lang, true));
   let site;
   try {
     site = target.slug ? await backend.getPublicSite(target.slug) : await backend.getPublicSiteByHost(target.host);
   } catch { return unavailable(lang, true); }
   if (!site) return unavailable(lang);
+  if (target.page === "privacy") return showPrivacy(site, target).catch(() => unavailable(site.locale || lang, true));
   const ctx = await show(site, target);
   applyHead(headData(site, { origin: location.origin, path: location.pathname + (target.slug && !location.pathname.startsWith("/a/") ? "?s=" + encodeURIComponent(target.slug) : ""), canonicalHost: target.host || site.canonical_host || null }));
   wireForm(root, Object.assign(ctx, { submit: backend.submitEnquiry }));

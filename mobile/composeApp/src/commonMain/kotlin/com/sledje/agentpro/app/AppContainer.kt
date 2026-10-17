@@ -32,6 +32,9 @@ import com.sledje.agentpro.feature.enquiries.data.SupabaseEnquiryRealtime
 import com.sledje.agentpro.feature.enquiries.data.SupabaseEnquiryRepository
 import com.sledje.agentpro.feature.enquiries.data.enquiriesSyncTable
 import com.sledje.agentpro.feature.policies.data.PolicyRepository
+import com.sledje.agentpro.feature.privacy.data.ConsentRepository
+import com.sledje.agentpro.feature.privacy.data.SupabaseConsentRepository
+import com.sledje.agentpro.feature.auth.data.AuthState
 import com.sledje.agentpro.feature.policies.data.SupabasePolicyRepository
 import com.sledje.agentpro.feature.policies.data.policiesSyncTable
 import com.sledje.agentpro.feature.policies.data.premiumPaymentsSyncTable
@@ -135,6 +138,11 @@ class AppContainer(platform: PlatformServices) : AppDependencies {
     override val customers: CustomerRepository = SupabaseCustomerRepository(supabase, database.customerDao(), syncEngine)
     override val policies: PolicyRepository =
         SupabasePolicyRepository(supabase, database.policyDao(), database.premiumPaymentDao(), syncEngine)
+    override val consents: ConsentRepository = SupabaseConsentRepository(
+        supabase, store,
+        userId = { (auth.state.value as? AuthState.SignedIn)?.userId },
+        userIds = auth.state.map { (it as? AuthState.SignedIn)?.userId },
+    )
     override val enquiryLive: EnquiryLive = SupabaseEnquiryRealtime(supabase, syncEngine, scope)
     override val website = WebsiteServices(
         mediaPicker = platform.mediaPicker,

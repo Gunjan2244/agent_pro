@@ -88,7 +88,8 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
 - **Fields:** email and password (show/hide toggle). That's all.
 - **Button:** disabled until the form is valid.
 - **Errors:** inline and human ("Wrong email or password").
-- **Create account:** next comes "Check your email to confirm", with Resend and Open email app.
+- **Create account:** a third element under the password, an **unticked, required checkbox** (never pre-ticked; `FieldType.Consent`, built by `FormRenderer`): "I'm 18 or older, and I agree to the **Terms** and the **Privacy notice**" (generated `agent_signup` text, EN/HI). "Privacy notice" opens the in-app **Notice screen**; "Terms" opens `<SITE_BASE_URL>/terms` in the browser (the Notice screen when no host is configured). The button stays disabled until the box is ticked; the request carries `data.consent = {notice_key, version, hash}` for the language shown. Next comes "Check your email to confirm", with Resend and Open email app.
+- **Notice screen** (Create account link and Settings → Privacy notice): the notice's title, intro, one itemised block per data item (Data in bold, then Purpose and Kept) and the plain paragraphs, in the app language, rendered from the generated ordered texts.
 - **Forgot password:** sends a reset email and shows "Reset link sent".
 
 ### Set new password
@@ -206,6 +207,8 @@ There's a segmented control at the top. Dues lives here so the bottom bar stays 
 
 ### Customer form
 Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and notes are under More details.
+- **First time only** (adding a customer manually, from contacts or by converting an enquiry; also **Add enquiry**): a bottom sheet with the `agent_customer_duty` text, **I understand** (primary; records `record_consent`, disabled offline with "Needs internet") and **Share privacy note** (shares a short message with `<SITE_BASE_URL>/a/<slug>/privacy`). Swiping it away leaves the form. It is remembered per account and version.
+- **Under 18:** when the date of birth gives an age under 18, a line "Customer is under 18 — record a parent's or guardian's consent" and the required toggle "A parent or guardian has agreed" sit above Save; Save without it shows "Required". The consent is recorded (`guardian_consent`, with the customer's id) after the customer is saved; if that fails the form stays and Save retries it without adding a second customer. Editing a customer who was already under 18 doesn't ask again.
 
 ### Policy form
 - **Always shown:** plan name\* (autocomplete), policy number\*, premium\*, mode\* (segmented control), start date\*.
@@ -334,7 +337,7 @@ This screen has two sections.
 | Plan | Plan & billing (shows the plan's status pill) |
 | Preferences | Language, Appearance (System / Light / Dark), Notifications |
 | Data | Export CSV |
-| About | Privacy policy, Terms, Plan terms, Domain terms, Version |
+| About | Privacy notice (built: opens the Notice screen), Privacy policy, Terms, Plan terms, Domain terms, Version |
 | — | Sign out, Delete account (the user types DELETE) |
 
 - **Notifications:** toggles for New enquiries, Follow-ups, Premium dues, and Plan & domain renewal. Plus a lead time of 3 / 7 / 15 days, and the digest time (default 9:00).
@@ -349,8 +352,7 @@ The full specs are in OFFERS.md ("Screens") and PRIVACY.md; they move into the s
   - **Custom offer form** (6 fields, including the confirmation toggle), shown on the site with "Details provided by the agent".
   - Ended offers: greyed in the preview, an "Ended" pill in the editor, one Today row on Home ("1 offer on your site has ended"), a digest line, and a "Published · 1 ended offer isn't shown · Fix" snackbar.
 - **Privacy (PRIVACY.md):**
-  - Create account: an unticked, required checkbox, "I'm 18 or older, and I agree to the Terms and the Privacy notice".
-  - The first time a customer, contact or manual enquiry is added: a one-time "You're responsible for your customers' data" sheet; on the customer form, a guardian-consent toggle when the date of birth gives an age under 18.
+  - Built (P1-4): the Create account checkbox, the Notice screen, the one-time customer-data sheet and the guardian-consent toggle (see Sign in / Create account and Customer form above).
   - Customer and Enquiry detail overflow: **Share privacy note**, **Export this person's data**, **Erase permanently** (a confirm dialog, like deleting a customer).
   - A **Privacy requests** list (from the website's request form), with due dates and the actions above.
   - Enquiries tab overflow: **Clear old enquiries** (closed or not converted, older than a chosen age; count, confirm, bulk erase). Nothing is deleted automatically: the agent decides (DECISIONS #54).

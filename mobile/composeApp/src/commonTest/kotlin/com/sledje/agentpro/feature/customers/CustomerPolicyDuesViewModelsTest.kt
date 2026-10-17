@@ -1,6 +1,8 @@
 package com.sledje.agentpro.feature.customers
 
 import app.cash.turbine.test
+import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.testing.FakeConsentRepository
 import com.sledje.agentpro.core.catalog.DueBucket
 import com.sledje.agentpro.core.catalog.Interest
 import com.sledje.agentpro.core.catalog.PolicyStatus
@@ -108,18 +110,18 @@ class CustomerPolicyDuesViewModelsTest {
     @Test
     fun customerFormRequiresNameAndMobileAndPrefillsAPickedContact() = runTest {
         val repo = FakeCustomerRepository()
-        val vm = CustomerFormViewModel(CustomerFormMode.Add(name = "Kiran Rao", phone = "098765 43210"), repo, FakeEnquiryRepository())
+        val vm = CustomerFormViewModel(CustomerFormMode.Add(name = "Kiran Rao", phone = "098765 43210"), repo, FakeEnquiryRepository(), FakeConsentRepository())
         advanceUntilIdle()
         val form = vm.form.value!!
         assertEquals("Kiran Rao", form.text(CustomerFormViewModel.NAME))
         assertEquals("+919876543210", form.text(CustomerFormViewModel.PHONE), "a contact's number is normalised to +91")
         form.set(CustomerFormViewModel.PHONE, "")
-        vm.save()
+        vm.save(AppLocale.En)
         advanceUntilIdle()
         assertTrue(repo.calls.isEmpty(), "mobile is required")
         form.set(CustomerFormViewModel.PHONE, "9876543210")
         form.set(CustomerFormViewModel.CITY, "Nagpur")
-        vm.save()
+        vm.save(AppLocale.En)
         advanceUntilIdle()
         val c = repo.rows.value.single()
         assertEquals("+919876543210", c.phone)
@@ -130,14 +132,14 @@ class CustomerPolicyDuesViewModelsTest {
     @Test
     fun customerFormEditsAnExistingCustomer() = runTest {
         val repo = FakeCustomerRepository(customers)
-        val vm = CustomerFormViewModel(CustomerFormMode.Edit("c1"), repo, FakeEnquiryRepository())
+        val vm = CustomerFormViewModel(CustomerFormMode.Edit("c1"), repo, FakeEnquiryRepository(), FakeConsentRepository())
         advanceUntilIdle()
         val form = vm.form.value!!
         assertEquals("Sunita Sharma", form.text(CustomerFormViewModel.NAME))
         assertFalse(form.isDirty)
         form.set(CustomerFormViewModel.NOMINEE, "Rahul Sharma")
         assertTrue(form.isDirty, "leaving now asks Discard changes?")
-        vm.save()
+        vm.save(AppLocale.En)
         advanceUntilIdle()
         assertEquals("Rahul Sharma", repo.rows.value.first { it.id == "c1" }.nominee)
     }

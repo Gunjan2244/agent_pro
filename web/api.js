@@ -37,6 +37,7 @@ export async function submitEnquiry(a) {
     r = await rpc("submit_enquiry", {
       slug: a.slug || null, host: a.host || null, name: a.name, phone: a.phone,
       email: a.email || null, interest: a.interest || null, message: a.message || null, honeypot: a.honeypot || "",
+      consent: a.consent || null, // {notice_key, version, hash}; the RPC rejects a missing/invalid one with field "consent"
     });
   } catch (e) {
     if (e.status === 429) return { status: "rate_limited" }; // fallback if a proxy rate-limits
@@ -47,4 +48,24 @@ export async function submitEnquiry(a) {
   if (r && r.error === "invalid") return { status: "invalid", field: r.field };
   if (r && r.error === "unavailable") return { status: "unavailable" };
   throw new Error("unexpected submit_enquiry response");
+}
+
+// Privacy page request form (PRIVACY.md). Same result shape as submitEnquiry.
+// Contract: {ok:true} | {ok:false, error:'invalid', field} | {ok:false, error:'rate_limited'} | {ok:false, error:'unavailable'}
+export async function submitDataRequest(a) {
+  let r;
+  try {
+    r = await rpc("submit_data_request", {
+      slug: a.slug || null, host: a.host || null, name: a.name, phone: a.phone,
+      kind: a.kind, message: a.message || null, honeypot: a.honeypot || "",
+    });
+  } catch (e) {
+    if (e.status === 429) return { status: "rate_limited" };
+    throw e;
+  }
+  if (r && r.ok === true) return { status: "ok" };
+  if (r && r.error === "rate_limited") return { status: "rate_limited" };
+  if (r && r.error === "invalid") return { status: "invalid", field: r.field };
+  if (r && r.error === "unavailable") return { status: "unavailable" };
+  throw new Error("unexpected submit_data_request response");
 }

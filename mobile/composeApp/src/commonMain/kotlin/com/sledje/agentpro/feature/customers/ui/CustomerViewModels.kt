@@ -2,6 +2,7 @@ package com.sledje.agentpro.feature.customers.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sledje.agentpro.core.catalog.AppLocale
 import com.sledje.agentpro.core.catalog.CatalogEntry
 import com.sledje.agentpro.core.catalog.DueBucket
 import com.sledje.agentpro.core.catalog.Interest
@@ -9,12 +10,15 @@ import com.sledje.agentpro.core.catalog.PolicyStatus
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.KeyValueStore
 import com.sledje.agentpro.core.data.Result
+import com.sledje.agentpro.core.format.Dates
 import com.sledje.agentpro.core.format.Phone
 import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.ui.UiState
+import com.sledje.agentpro.domain.Age
 import com.sledje.agentpro.domain.DueBuckets
+import com.sledje.agentpro.feature.privacy.data.ConsentRepository
 import com.sledje.agentpro.feature.customers.data.Customer
 import com.sledje.agentpro.feature.customers.data.CustomerInput
 import com.sledje.agentpro.feature.customers.data.CustomerRepository
@@ -245,12 +249,45 @@ class CustomerFormViewModel(
     val mode: CustomerFormMode,
     private val customers: CustomerRepository,
     private val enquiries: EnquiryRepository,
+    private val consents: ConsentRepository,
+    private val today: () -> LocalDate = { Dates.today() },
 ) : ViewModel() {
     private val _form = MutableStateFlow<FormState?>(null)
     val form: StateFlow<FormState?> = _form.asStateFlow()
 
     private val _state = MutableStateFlow(SaveState())
     val state: StateFlow<SaveState> = _state.asStateFlow()
+
+    private val _guardianAgreed = MutableStateFlow(false)
+
+    /** The "A parent or guardian has agreed" toggle (docs/PRIVACY.md, "Customers under 18"). */
+    val guardianAgreed: StateFlow<Boolean> = _guardianAgreed.asStateFlow()
+
+    private val _guardianMissing = MutableStateFlow(false)
+
+    /** Save was tapped for a customer under 18 without the toggle: the form shows it as required. */
+    val guardianMissing: StateFlow<Boolean> = _guardianMissing.asStateFlow()
+
+    /** Whether the loaded customer was already under 18 (editing them again doesn't ask again). */
+    private var initialMinor = false
+
+    /** Set once an Add succeeded but recording the guardian consent failed, so a retry doesn't add twice. */
+    private var created: Customer? = null
+
+    /**
+     * True when the date of birth makes the customer under 18 and a guardian's consent still has to be
+     * recorded: always for a new customer, and when an edit newly makes them a minor. Reads form state, so
+     * composables that call it recompose with the date field.
+     */
+    fun requiresGuardian(): Boolean {
+        val dob = _form.value?.value(DOB) as? LocalDate ?: return false
+        return Age.isUnder18(dob, today()) && (mode !is CustomerFormMode.Edit || !initialMinor)
+    }
+
+    fun setGuardianAgreed(agreed: Boolean) {
+        _guardianAgreed.value = agreed
+        if (agreed) _guardianMissing.value = false
+    }
 
     init {
         viewModelScope.launch {
@@ -266,13 +303,20 @@ class CustomerFormViewModel(
                     mapOf(NAME to e.name, PHONE to e.phone, EMAIL to e.email)
                 }.orEmpty()
             }
+            initialMinor = (initial[DOB] as? LocalDate)?.let { Age.isUnder18(it, today()) } == true
             _form.value = FormState(FIELDS, initial.filterValues { it != null })
         }
     }
 
-    fun save() {
+    /** [locale] is the language the guardian-consent text is shown in (the recorded hash identifies it). */
+    fun save(locale: AppLocale) {
         val form = _form.value ?: return
         if (_state.value.saving || !form.validateAll()) return
+        val needsGuardian = requiresGuardian()
+        if (needsGuardian && !_guardianAgreed.value) {
+            _guardianMissing.value = true
+            return
+        }
         val v = form.values()
         val input = CustomerInput(
             name = v[NAME] as String,
@@ -287,14 +331,24 @@ class CustomerFormViewModel(
         _state.value = SaveState(saving = true)
         viewModelScope.launch {
             val result = when (mode) {
-                is CustomerFormMode.Add -> customers.create(input)
+                is CustomerFormMode.Add -> created?.let { customers.update(it.id, input) } ?: customers.create(input)
                 is CustomerFormMode.Edit -> customers.update(mode.id, input)
                 is CustomerFormMode.Convert -> customers.convertEnquiry(mode.enquiryId, input)
             }
-            _state.value = when (result) {
-                is Result.Ok -> SaveState(savedId = result.value.id)
-                is Result.Err -> SaveState(error = result.error)
+            if (result is Result.Err) {
+                _state.value = SaveState(error = result.error)
+                return@launch
             }
+            val customer = (result as Result.Ok).value
+            if (mode is CustomerFormMode.Add) created = customer
+            if (needsGuardian) {
+                val recorded = consents.recordGuardianConsent(customer.id, locale)
+                if (recorded is Result.Err) {
+                    _state.value = SaveState(error = recorded.error)
+                    return@launch
+                }
+            }
+            _state.value = SaveState(savedId = customer.id)
         }
     }
 

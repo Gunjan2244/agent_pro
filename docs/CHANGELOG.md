@@ -3,6 +3,67 @@
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
 ## 2026-10-17
+- **P1 released to `AGENT_PRO` and the Cloudflare preview** (user-approved).
+  - **Database:** the user ran `20261016220600_privacy.sql` and then `20261016220836_catalog_sync.sql` in the SQL Editor; the connector was disconnected.
+  - **Verified through the public API:** `submit_enquiry` refuses a missing or fake consent; `submit_data_request` validates its input; public sites load.
+  - **Preview redeployed.** A real-browser check on the live site passed:
+    - self-hosted fonts, with 0 Google requests;
+    - the consent checkbox starts unticked, "Interested in" starts blank, and nothing is sent until consent is ticked;
+    - the submission succeeds, and the privacy page and request form render;
+    - 0 console errors.
+  - **Stored correctly, checked as the agent:** the enquiry, and its `consents` row (`enquiry_form` v1, the EN hash, `principal_kind` enquirer, `channel` web, linked to the enquiry, no IP). The test enquiry was then soft-deleted.
+  - **Slip and fix:** the first redeploy shipped a test build, because `scripts/test-web.mjs` rebuilds `web/dist` with dummy config (`SUPABASE_URL: "x"`), and it was run between the real build and the deploy. The page showed "unavailable" for a few minutes. It was rebuilt and redeployed right away. The rule now in WEB_RENDERER.md and TESTING.md: build, then check `config.js`, then deploy, with nothing in between.
+  - **Pending:** the Supabase advisors, because the connector is disconnected.
+  - **Files:** `docs/STATUS.md`, `docs/WEB_RENDERER.md`, `docs/TESTING.md`.
+- **P1-4, privacy in the app** (sub-agent `p1-app`, Sonnet; resumed after a usage-limit stop).
+  - **Create account:** an unticked, required consent checkbox (18+, Terms, Privacy notice) using the generated `agent_signup` text in EN/HI. Sign-up sends `data.consent = {notice_key, version, hash}`.
+  - **Notice screen:** "Privacy notice" opens it, and it's also in Settings. "Terms" opens `<SITE_BASE_URL>/terms`.
+  - **Customer-data sheet:** shown once, on the first Add customer or Add enquiry. It records `agent_customer_duty` through `record_consent` and offers "Share privacy note".
+  - **Guardian consent:** a required toggle for customers under 18, recorded with the customer id.
+  - **New pieces:** `FieldType.Consent` (FormRenderer stays the only form builder), `ConsentCheckbox`, `Age`, and the `feature/privacy` package.
+  - **Verified** (the orchestrator checked the run's outputs): build-logic 84 and app 253 tests pass; 0 screenshot diffs across 180 baselines (20 new); lint 0 errors and 3 warnings. The `record_consent` arguments match the P1-2 SQL signature. The sign-up and Hindi sheet screenshots were reviewed.
+  - **Not yet tested against the live backend.**
+  - **Files:** `feature/privacy/*`, `feature/{auth,customers,enquiries,settings}/*`, `core/forms/*`, `core/designsystem/components/Consent.kt`, `domain/Age.kt`, `strings_privacy.xml` (EN/HI), tests and `privacy/` screenshots, `docs/UX.md`, `ARCHITECTURE.md`, `TESTING.md`, `PRIVACY.md`.
+- **P1-2, privacy backend** (sub-agent `p1-backend`, Opus; resumed after a usage-limit stop). **Not applied to `AGENT_PRO`.**
+  - **Migration `20261016220600_privacy.sql`:**
+    - tables `consents`, `data_requests` and `audit_log` (owner-only select; no anon access; `audit_log` append-only with no API access);
+    - `submit_enquiry(…, consent jsonb)` validates the notice against `catalog_privacy_notice*()` and writes the consent row in the same transaction; the 8-argument overload is dropped;
+    - new RPCs `submit_data_request` (anon, 3 per phone per site per 24 h), `record_consent` and `update_data_request` (audited);
+    - the signup trigger records the `agent_signup` consent from the sign-up metadata;
+    - a `payments.raw` allow-list trigger.
+  - **Codegen:** the generator emits the 3 privacy CHECKs, 13 in total. The never-applied `20261016214959_catalog_sync.sql` was deleted (it had been committed in "almost") and regenerated as `20261016220836_catalog_sync.sql`.
+  - **Verified** (re-run by the orchestrator): `PG_IMAGE=postgres:17 bash supabase/tests/run.sh` passes 323/323; the agent's run had build-logic at 84 tests and `verifyShared` passing.
+  - **Files:**
+    - `supabase/migrations/20261016220600_privacy.sql`, `20261016220836_catalog_sync.sql`;
+    - `supabase/tests/{10,30,60,70,80,90,96}_*.sql`;
+    - `mobile/build-logic` `CatalogSyncGenerator` and its tests;
+    - `docs/BACKEND.md`, `PRIVACY.md`, `TESTING.md`, `SHARED_DEFINITIONS.md`.
+- **P1-3, privacy on the web** (sub-agent `p1-web`, Sonnet).
+  - **Enquiry form:** a required, unticked consent checkbox using the `enquiry_form` notice; it sends `consent {notice_key, version, hash[locale]}`, and a server `consent` error shows inline.
+  - **Per-site privacy page** at `/a/<slug>/privacy` (and `/privacy` on custom domains): the agent as data fiduciary, the notice, and a data-request form that calls `submit_data_request`.
+  - **Footer** "Privacy" link on every site page.
+  - **Platform shells** for `/privacy` and `/terms` (EN/HI). The final texts come in P2-4.
+  - **Release gate:** `RELEASE=1 sh scripts/build-web.sh` fails while release blockers or `{UPPER_CASE}` placeholders remain.
+  - 42 new `site.*` strings in EN and HI.
+  - **Verified** (re-run by the orchestrator): 73 web checks pass; the CSS lint passes; `RELEASE=1` exits 1 while a default build exits 0; a fresh Hindi privacy-page screenshot was reviewed, with the button contrast fix applied.
+  - All pages are under the 50 KB JS+CSS budget (site 43 KB, privacy 47 KB, legal 45 KB).
+  - **Not deployed.** It must go out together with the P1-2 backend, because the live `submit_enquiry` doesn't accept `consent` yet.
+  - **Files:** `web/{privacy,legal,route}.js`, `web/{app,api,form,dev-mock}.js`, `web/sections/{contact,footer,index}.js`, `web/styles/base.css`, `web/_headers`, `scripts/{build-web.sh,release-check.mjs,test-web.mjs}`, `shared/i18n/*.json`, `docs/WEB_RENDERER.md`, `PRIVACY.md`, `TESTING.md`.
+- **Incident:** at 03:31 the `docs/` folder was moved into `mobile/docs/`, apparently by an accidental drag in the VS Code explorer. The orchestrator found it at 03:35 and moved it back unchanged (all 15 docs intact), and the running agents were told.
+- **P1-1: privacy shared definitions and codegen** (sub-agent `p1-shared`, Opus).
+  - **`catalog.json` additions:**
+    - `privacyNotices`: `agent_signup`, `enquiry_form`, `agent_customer_duty` and `guardian_consent`, all at v1, with the EN/HI texts (63 i18n keys each);
+    - `dataRequestKinds`, `dataRequestStatuses`, and `retention` (no enquiry period, per #54).
+  - **Hashing:** codegen hashes each notice per version and language (sha256 over canonical NFC text). The hashes are locked in `catalog-keys.lock.json`, and changing a notice's text requires a new version.
+  - **Generated files:**
+    - `PrivacyNotices.kt` and `shared/generated/privacy-notices.json`;
+    - in `catalog_sync`, the functions `catalog_privacy_notice`, `_hash`, `_locale`, `catalog_data_request_kinds` and `_statuses`, plus `app_config.retention`, in migration `20261016214959_catalog_sync.sql` (not applied).
+  - **New gate, `verifyReleaseReady`:** Android release builds fail while `{UPPER_CASE}` placeholders such as the grievance officer and `{EMAIL_PROVIDER}` remain.
+  - **Verified** (re-run by the orchestrator): `:build-logic:test` and `verifyShared` pass, 83 tests; `PG_IMAGE=postgres:17 bash supabase/tests/run.sh` passes 226/226 with the new migration; the agent's own run passed 231 app tests and 43 web checks.
+  - **Files:** `shared/catalog.json`, `shared/i18n/*`, `shared/generated/privacy-notices.json`, `mobile/build-logic/**`, `supabase/migrations/20261016214959_catalog_sync.sql`, `docs/SHARED_DEFINITIONS.md`, `PRIVACY.md`, `BACKEND.md`, `TESTING.md`, `ARCHITECTURE.md`.
+- **Repo:** the user committed and pushed "almost" (`06ab83f`) to `origin/main` (`github.com:Gunjan2244/agent_pro`).
+  - The orchestrator scanned it: no secrets.
+  - It does include `.wrangler/cache/` (the Cloudflare account ID) and 45 IDE-generated files under `mobile/build-logic/bin/`. Those files also cause stale red errors in VS Code. A `.gitignore` cleanup is proposed to the user.
 - **P1, web part one** (sub-agent `p1-web-fonts`, Sonnet).
   - **Fonts are self-hosted:** `@fontsource/inter` and `@fontsource/noto-sans-devanagari` 5.3.0 WOFF2, 11 files in `web/fonts/` with OFL licences, declared in `web/styles/fonts.css` with `font-display: swap`. Inter latin 400 is preloaded, and latin-ext is included because ₹ (U+20B9) needs it.
   - **The CSP no longer allows Google Fonts.** Visitors' IPs no longer go to Google (DECISIONS #54), and the render-blocking font CSS is gone.

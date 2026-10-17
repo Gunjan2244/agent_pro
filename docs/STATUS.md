@@ -22,7 +22,26 @@ _Last updated: 2026-10-17. This file was rebuilt on that date after an orchestra
 - **Phases 6, 7 and 8 and the Phase 5 follow-up:** built and **verified on 2026-10-17** in one combined run: 62 build-logic and 231 app tests, 0 failures, 0 screenshot diffs across 160 baselines, lint 0 errors. Live and device checks are still pending (TESTING.md End to end).
 - **P1 privacy foundations started (2026-10-17, user request):**
   - **Done:** part of P1-3, self-hosted fonts, a CSP without Google, and the "Interested in" blank "Select…" (2026-10-17; 43 web checks pass). It isn't on the preview yet; that needs a redeploy, with the user's approval.
-  - **Running:** `p1-shared` (Opus) on P1-1, the notices, hashes and codegen.
+  - **P1-1 done and verified** (2026-10-17, DECISIONS #61): 83 build-logic tests; SQL 226/226 with the new `catalog_sync`.
+  - **P1-3 web done and verified** (2026-10-17, DECISIONS #62): 73 web checks; a `RELEASE=1` gate. Not deployed; it must go out together with P1-2.
+  - **P1-2 backend done and verified locally** (2026-10-17, DECISIONS #63): SQL 323/323 on Postgres 17. **Not applied.**
+  - **P1-4 app done and verified** (2026-10-17, DECISIONS #64): 253 app tests, 0 screenshot diffs.
+  - **P1 is released (2026-10-17):** the privacy migrations are applied to `AGENT_PRO` (pasted in the SQL Editor by the user), and the preview is redeployed (version `c588c5c8`). A live browser check passed, and the consent row is stored correctly.
+  - **Still pending:**
+    - the Supabase advisors (the connector is disconnected; reconnect it in claude.ai);
+    - before a public launch: the grievance officer's details and the email provider (release blockers), plus counsel review.
+  - **Small follow-up:** make `scripts/test-web.mjs` build into a temp directory, so it can't overwrite `web/dist` (Sonnet).
+  - **Release plan (needs the user's approval):**
+    1. Apply `20261016220600_privacy.sql` to `AGENT_PRO`. The connector will probably auto-decline it because of the `drop function` overload, so the user may need to paste it in the SQL Editor.
+    2. Immediately after, apply `20261016220836_catalog_sync.sql`.
+    3. Redeploy the web preview with P1-3, because the old web form sends no consent.
+    4. Run the advisors (expect 5 anon and 9 authenticated SECURITY DEFINER WARNs, accepted by design).
+  - **The fixed interface between them:**
+    - `submit_enquiry(…, consent jsonb)`, where consent is `{notice_key, version, hash}`;
+    - `submit_data_request(slug, host, name, phone, kind, message, honeypot)`;
+    - `record_consent(notice_key, version, hash, customer_id)`;
+    - sign-up consent passed in `raw_user_meta_data.consent`.
+  - **Afterwards:** applying to `AGENT_PRO` and redeploying the preview must happen **together**, because the new `submit_enquiry` needs the new web form. Both need the user's approval.
   - Next, after P1-1 lands: P1-2 backend (Opus), the rest of P1-3 web (Sonnet) and P1-4 app (Sonnet), in parallel.
   - If this session ended before they reported, check `git status` and the CHANGELOG and resume from what's on disk. The scratchpad (with the Gradle lock file) may have been wiped; recreate it.
 - **Live demo sign-ups on `AGENT_PRO` (2026-10-17, at the user's request: test data only, without the app):**
@@ -35,6 +54,8 @@ _Last updated: 2026-10-17. This file was rebuilt on that date after an orchestra
   - **The built-in email limit (about 2 per hour) shows a transactional email provider is needed** before launch (approved, DECISIONS #54).
 - **New scope designed (2026-10-16; the docs match the user's decisions):** a multi-company platform with admin-managed offers and a web admin panel (`docs/OFFERS.md`, DECISIONS #47, #49–#53), and DPDP compliance (`docs/PRIVACY.md`, DECISIONS #48, #54). **Nothing of either is built yet.**
 - **Nothing is committed yet.** On 2026-10-15 the user said not to commit yet; ask again before committing.
+
+- **Test APK (2026-10-17 10:04):** a debug build pointed at `AGENT_PRO` and the preview site (`SITE_BASE_URL` set in the git-ignored `local.properties`). A copy is at `~/AgentPRO-test/AgentPRO-test-2026-10-17.apk`. It's waiting for the user to install it on a phone (USB with adb, or sideload). It's for testing only, not a release.
 
 ## Next steps
 1. **P1 privacy foundations** (PRIVACY.md), required before any public deploy. Work packages, Sonnet by default (DECISIONS #55):
@@ -83,7 +104,7 @@ Tick items as they're done and add the date.
   - [ ] Then in parallel: 8b-2 backend, 8b-3 web slots and bridge, 8b-4 app `feature/offers` (including the admin-verified membership states)
   - [ ] 8b-5 verifier
 - [ ] **8c. Admin panel** (OFFERS.md): 8c-1 `admin` Edge Function, 8c-2 app shell, auth and MFA, 8c-3 CRUD screens including membership requests, 8c-4 deploy (needs the user's approval)
-- [ ] **P1. Privacy foundations** (PRIVACY.md), **before the renderer's first public deploy**: notices, consent and hashing in `shared/`; the `consents`, `data_requests` and `audit_log` tables and the `payments.raw` minimisation; the web consent checkbox, privacy page, self-hosted fonts and policy pages; app sign-up consent and the customer attestation
+- [x] **P1. Privacy foundations** (PRIVACY.md). **Released on 2026-10-17** to `AGENT_PRO` and the preview. Advisors pending; the release blockers (grievance officer, email provider) gate a public launch, **before the renderer's first public deploy**: notices, consent and hashing in `shared/`; the `consents`, `data_requests` and `audit_log` tables and the `payments.raw` minimisation; the web consent checkbox, privacy page, self-hosted fonts and policy pages; app sign-up consent and the customer attestation
 - [ ] **9. Service plan and payments** (BILLING.md)
   - [x] `subscriptions`, `orders`, `payments`, `entitlement()`/`can_write()`, RLS write gating, lapse handling in the public RPCs. Done early, in the Phase 3 migrations
   - [ ] Edge Functions `billing` and `razorpay-webhook`, plus `cron` (plan reminders, stale orders)
@@ -147,9 +168,9 @@ Tick items as they're done and add the date.
 | Android SDK | `~/Android/Sdk` (installs approved by the user on 2026-10-15/16): cmdline-tools (latest), platform-tools, `platforms;android-35`, `android-36` and `android-37.0`, and `build-tools;35.0.0` and `36.0.0`. AGP downloaded `36.0.0` by itself; the user kept it, and `android.builder.sdkDownload=false` now blocks automatic downloads. No emulator system image yet |
 | Mac / Xcode | Not needed until the iOS phase. This machine is Linux, so iOS targets can't be built here |
 | Docker | Available. The local SQL tests (`bash supabase/tests/run.sh`) run in a throwaway container capped at 384 MB: `postgres:15` by default, `postgres:17` via `PG_IMAGE=postgres:17` (pulled 2026-10-16 with approval). Both pass 226/226 |
-| Supabase | **Project `AGENT_PRO`**, ref `rpqatijolcajehshoikc`, URL `https://rpqatijolcajehshoikc.supabase.co`, org **letssee** (free plan), **ap-south-1 (Mumbai)**, Postgres 17.11, created by the user on 2026-10-16. **All 8 migrations applied:** 7 through the connector, and `rpcs` by the user in the SQL Editor. **Verified:** functions and grants, 14 tables with RLS, 30+4 policies, 10 catalog CHECKs, realtime publication, `app_config` rows. **Advisors:** no errors; 11 WARNs accepted. The project also has Supabase's `rls_auto_enable` event trigger, whose API execute permission is revoked. The remote migration history has 7 connector-versioned entries (no `rpcs`), so run `supabase migration repair` before any `db push`. `mobile/local.properties` (git-ignored) holds the URL and the legacy anon JWT. The user's other org, Sledje-SCM, isn't used. The empty Tokyo project `agent_Pro` and a temporary `agent-pro` were removed by the user |
+| Supabase | **Project `AGENT_PRO`**, ref `rpqatijolcajehshoikc`, URL `https://rpqatijolcajehshoikc.supabase.co`, org **letssee** (free plan), **ap-south-1 (Mumbai)**, Postgres 17.11, created by the user on 2026-10-16. **10 migrations applied** (including `20261016220600_privacy.sql` and `20261016220836_catalog_sync.sql`, pasted in the SQL Editor by the user on 2026-10-17). Earlier batch: 7 through the connector, and `rpcs` by the user in the SQL Editor. **Verified:** functions and grants, 14 tables with RLS, 30+4 policies, 10 catalog CHECKs, realtime publication, `app_config` rows. **Advisors:** no errors; 11 WARNs accepted. The project also has Supabase's `rls_auto_enable` event trigger, whose API execute permission is revoked. The remote migration history has 7 connector-versioned entries (no `rpcs`), so run `supabase migration repair` before any `db push`. `mobile/local.properties` (git-ignored) holds the URL and the legacy anon JWT. The user's other org, Sledje-SCM, isn't used. The empty Tokyo project `agent_Pro` and a temporary `agent-pro` were removed by the user |
 | Razorpay | No account or keys configured yet |
 | Registrar | Not chosen |
 | Hosting | **Cloudflare** (DECISIONS #59), account "Sledjesoftwares@gmail.com's Account", logged in through `npx wrangler@4.151.1 login`. **Deployed on 2026-10-17:** Worker `agentpro-sites` → `https://agentpro-sites.sledjesoftwares.workers.dev` (preview, demo data only; built with `SITE_BASE_URL` set to that URL). Redeploy: build with `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SITE_BASE_URL` set, then `npx wrangler@4.151.1 deploy --config web/wrangler.jsonc`; each deploy needs the user's approval. No platform domain yet |
-| Git | Branch `main`. Nothing beyond the first commit is committed; the user approves each commit |
+| Git | Remote `origin` = `git@github.com:Gunjan2244/agent_pro.git`. On `main`, the user committed and pushed `0e77dc7` ("everything documented") and `06ab83f` ("almost", 2026-10-17). No secrets are committed (scanned). **To clean up:** `.wrangler/` and `mobile/**/bin/` (IDE output) are committed but should be git-ignored. The agents never commit; the user decides commits and pushes |
 | Connectors | The claude.ai Supabase connector reaches org letssee. It disconnects at times; if so, re-enable it in claude.ai → Settings → Connectors |

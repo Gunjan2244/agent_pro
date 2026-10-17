@@ -29,6 +29,10 @@ export function makeCtx(site, t, tokens, variant) {
   return {
     t, variant, site, profile: site.profile || {}, schema: tokens.schema || { sections: [] },
     catalog: tokens.catalog || { interests: [] }, accent: tokens.accent,
+    // privacy: link to the site's privacy page + the enquiry_form notice's consent line / link keys (first two textKeys)
+    privacyHref: tokens.privacyHref || "#", agentName: (site.profile || {}).full_name || "",
+    consentKey: ((tokens.notice || {}).textKeys || [])[0] || "privacy.enquiry_form.consent",
+    consentLinkKey: ((tokens.notice || {}).textKeys || [])[1] || "privacy.enquiry_form.link",
   };
 }
 

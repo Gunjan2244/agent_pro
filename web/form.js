@@ -17,6 +17,13 @@ export function validate(v, interests) {
 }
 const MSG = { required: "site.form_error_required", phone: "site.form_error_phone", email: "site.form_error_email" };
 
+// The consent object sent with an enquiry: the notice shown, its version and the hash of the text in the site's locale.
+export function consentFor(notices, locale) {
+  const n = notices && notices.enquiry_form;
+  if (!n || !n.hash) return null;
+  return { notice_key: "enquiry_form", version: n.version, hash: n.hash[locale] || n.hash.en };
+}
+
 export function wireForm(root, ctx) {
   const form = root.querySelector("#enq");
   if (!form) return;
@@ -33,11 +40,16 @@ export function wireForm(root, ctx) {
     for (const id of ["name", "phone", "email", "interest", "message"]) if (!only || only === id) show(id, errors[id] ? t(MSG[errors[id]]) : "");
     return { errors, phone };
   };
+  const consentBox = form.querySelector("#f-consent");
+  const showConsent = (bad) => { show("consent", bad ? t("site.form_error_consent") : ""); };
+  consentBox?.addEventListener("change", () => { if (consentBox.checked) showConsent(false); });
   form.addEventListener("focusout", (ev) => { if (ev.target.name && ev.target.value) check(ev.target.name); });
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const { errors, phone } = check();
-    if (Object.keys(errors).length) { form.querySelector('[aria-invalid="true"]')?.focus(); return; }
+    const unticked = !consentBox || !consentBox.checked; // required and never pre-ticked: no network call without it
+    showConsent(unticked);
+    if (Object.keys(errors).length || unticked) { form.querySelector('[aria-invalid="true"]')?.focus(); return; }
     const btn = form.querySelector("button[type=submit]");
     const label = btn.textContent;
     btn.disabled = true; btn.textContent = t("site.form_sending"); show("form", "");
@@ -46,7 +58,13 @@ export function wireForm(root, ctx) {
       const r = await (ctx.submit || submitEnquiry)({
         slug: ctx.slug, host: ctx.host, name: v.name.trim(), phone, email: (v.email || "").trim(),
         interest: v.interest || null, message: (v.message || "").trim(), honeypot: v.website || "",
+        consent: ctx.consent || null,
       });
+      if (r.status === "invalid" && r.field === "consent") {
+        btn.disabled = false; btn.textContent = label;
+        showConsent(true); consentBox?.focus();
+        return;
+      }
       if (r.status === "invalid" && ["name", "phone", "email", "interest", "message"].includes(r.field)) {
         btn.disabled = false; btn.textContent = label;
         show(r.field, t(r.field === "phone" ? "site.form_error_phone" : r.field === "email" ? "site.form_error_email" : "site.form_error_required"));

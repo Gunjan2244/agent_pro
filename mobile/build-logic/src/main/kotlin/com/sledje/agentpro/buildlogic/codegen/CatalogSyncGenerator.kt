@@ -66,6 +66,7 @@ class CatalogSyncGenerator(
 
         sb.append("-- CHECK constraints for enum-like columns (deprecated keys stay valid).\n")
         for (c in CHECKS) {
+            if (c.ifPresent && defs.catalogList(c.source) == null) continue
             val values = checkValues(c)
             val name = "${c.table}_${c.column}_check"
             sb.append("alter table public.${c.table} drop constraint if exists $name;\n")
@@ -112,8 +113,8 @@ class CatalogSyncGenerator(
 
     /**
      * Privacy (docs/PRIVACY.md): notice lookups for record_consent / submit_enquiry, and the data-request keys
-     * for submit_data_request / resolve_data_request. Functions only: the CHECKs on consents.notice_key,
-     * data_requests.kind and data_requests.status are added to [CHECKS] once P1-2 has created those tables.
+     * for submit_data_request / update_data_request. The CHECKs on consents.notice_key, data_requests.kind and
+     * data_requests.status (tables from the P1-2 `*_privacy.sql` migration) are in [CHECKS].
      */
     private fun appendPrivacy(sb: StringBuilder) {
         val pn = PrivacyNotices(defs)
@@ -201,8 +202,11 @@ class CatalogSyncGenerator(
 
     private fun lit(s: String) = "'" + s.replace("'", "''") + "'"
 
-    /** [source] is a catalog list name, or [TEMPLATES] for the keys of templates/index.json. */
-    private class Check(val table: String, val column: String, val source: String)
+    /**
+     * [source] is a catalog list name, or [TEMPLATES] for the keys of templates/index.json. With [ifPresent], the
+     * CHECK is emitted only when the catalog has that list (the optional privacy lists); otherwise it's required.
+     */
+    private class Check(val table: String, val column: String, val source: String, val ifPresent: Boolean = false)
 
     companion object {
         private val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
@@ -218,6 +222,10 @@ class CatalogSyncGenerator(
             Check("sites", "accent", "accentSwatches"),
             Check("sites", "locale", "locales"),
             Check("profiles", "preferred_language", "locales"),
+            // Privacy (tables from the P1-2 *_privacy.sql migration, which sorts before the catalog_sync that adds these).
+            Check("consents", "notice_key", "privacyNotices", ifPresent = true),
+            Check("data_requests", "kind", "dataRequestKinds", ifPresent = true),
+            Check("data_requests", "status", "dataRequestStatuses", ifPresent = true),
         )
     }
 }

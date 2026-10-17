@@ -81,6 +81,16 @@ begin
 end;
 $$;
 
+-- A valid consent payload {notice_key, version, hash} for the CURRENT version of a notice in a locale,
+-- read from the generated catalog functions (never a hard-coded hash). SECURITY DEFINER so anon and
+-- authenticated test sessions can build one (the catalog functions are revoked from the API roles).
+create function tests.consent(p_key text, p_locale text default 'en')
+returns jsonb language sql stable security definer as $$
+  select jsonb_build_object('notice_key', p_key,
+                            'version', (public.catalog_privacy_notice(p_key) ->> 'version')::int,
+                            'hash', public.catalog_privacy_notice(p_key) ->> ('hash_' || p_locale));
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated;
 
 -- ---------------------------------------------------------------------------

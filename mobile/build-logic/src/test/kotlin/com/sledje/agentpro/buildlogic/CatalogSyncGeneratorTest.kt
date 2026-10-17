@@ -135,7 +135,25 @@ class CatalogSyncGeneratorTest {
             "alter table public.profiles drop constraint if exists profiles_preferred_language_check;",
             "alter table public.profiles add constraint profiles_preferred_language_check check (preferred_language in ('en', 'hi'));",
         ).forEach { assertTrue(it in sql, "missing:\n$it\n--- in ---\n$sql") }
-        assertEquals(10, Regex("add constraint \\w+_check check").findAll(sql).count(), "10 catalog CHECK constraints")
+        assertEquals(10, Regex("add constraint \\w+_check check").findAll(sql).count(), "10 catalog CHECK constraints without the privacy lists")
+    }
+
+    @Test fun `privacy lists add the consents and data_requests CHECKs, deprecated keys included`() {
+        val fx = Fixture().addPrivacy()
+        fx.replace("shared/catalog.json",
+            "\"labelKey\": \"data_request_kind.erasure\", \"icon\": \"error\", \"tone\": \"neutral\", \"order\": 2 }",
+            "\"labelKey\": \"data_request_kind.erasure\", \"icon\": \"error\", \"tone\": \"neutral\", \"order\": 2, \"deprecated\": true }")
+        val sql = CatalogSyncGenerator(fx.defs(), fx.currentNoticeLock()) { now }.sql()
+        listOf(
+            "alter table public.consents drop constraint if exists consents_notice_key_check;",
+            "alter table public.consents add constraint consents_notice_key_check check (notice_key in ('agent_signup', 'enquiry_form'));",
+            "alter table public.data_requests drop constraint if exists data_requests_kind_check;",
+            "alter table public.data_requests add constraint data_requests_kind_check check (kind in ('access', 'erasure'));",
+            "alter table public.data_requests drop constraint if exists data_requests_status_check;",
+            "alter table public.data_requests add constraint data_requests_status_check check (status in ('open', 'done'));",
+        ).forEach { assertTrue(it in sql, "missing:\n$it\n--- in ---\n$sql") }
+        assertEquals(13, Regex("add constraint \\w+_check check").findAll(sql).count(), "13 catalog CHECK constraints with the privacy lists")
+        assertTrue("select array['access']::text[]" in sql, "a deprecated kind can't be used for new requests")
     }
 
     @Test fun `deprecated locales and swatches stay valid in CHECKs`() {

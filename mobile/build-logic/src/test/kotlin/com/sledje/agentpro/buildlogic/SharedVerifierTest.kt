@@ -113,7 +113,7 @@ class SharedVerifierTest {
     @Test fun `catalog_sync hash mismatch fails, matching hash passes`() {
         val fx = Fixture()
         fx.addSchemaMigration()
-        val plan = CatalogSyncGenerator(fx.defs()) { Instant.parse("2026-10-15T12:00:00Z") }.plan(fx.migrations)
+        val plan = CatalogSyncGenerator(fx.defs()){ Instant.parse("2026-10-15T12:00:00Z") }.plan(fx.migrations)
         plan as CatalogSyncGenerator.Plan.Write
         File(fx.migrations, plan.fileName).writeText(plan.content)
         assertEquals(emptyList(), fx.verifier().checkCatalogSync())

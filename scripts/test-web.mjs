@@ -6,6 +6,7 @@ import { visibleKeys } from "../web/sections/index.js";
 import { normalizeSite } from "../web/api.js";
 import { validate } from "../web/form.js";
 import { headData } from "../web/head.js";
+import { esc } from "../web/sections/util.js";
 
 const R = (p) => JSON.parse(readFileSync(new URL("../" + p, import.meta.url)));
 const schema = R("shared/site-schema.json"), catalog = R("shared/catalog.json");
@@ -122,7 +123,7 @@ ok("canonical/og:url: canonical_host wins on the free link", () => {
   reply(500, { message: "rate limit text" }); await assert.rejects(submitEnquiry(args));
   ok("RPC argument names match BACKEND.md signatures", () => {
     assert.equal(sent.u, "https://s.test/rest/v1/rpc/submit_enquiry");
-    assert.deepEqual(Object.keys(sent.body), ["slug", "host", "name", "phone", "email", "interest", "message", "honeypot"]);
+    assert.deepEqual(Object.keys(sent.body), ["slug", "host", "name", "phone", "email", "interest", "message", "honeypot", "consent"]);
   });
   const { getPublicSite, getPublicSiteByHost, recordSiteView } = await import("../web/api.js");
   reply(200, null); await getPublicSite("a"); ok("get_public_site(slug)", () => assert.deepEqual(Object.keys(sent.body), ["slug"]) || assert.ok(sent.u.endsWith("/get_public_site")));
@@ -136,13 +137,19 @@ import { readdirSync } from "node:fs";
 const dist = new URL("../web/dist/", import.meta.url).pathname;
 try {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(d + e.name + "/") : [d + e.name]));
-  const shared = ["app.js", "api.js", "i18n.js", "head.js", "form.js", "tokens.css", "styles/base.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
+  const shared = ["app.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
   for (const tpl of TEMPLATE_KEYS) {
     const files = [...shared, `templates/${tpl}/render.js`, `templates/${tpl}/style.css`];
     const buf = files.map((f) => readFileSync(dist + f));
     const raw = buf.reduce((a, b) => a + b.length, 0), gz = buf.reduce((a, b) => a + gzipSync(b).length, 0);
     console.log(`SIZE ${tpl}: ${(raw / 1024).toFixed(1)} KB raw, ${(gz / 1024).toFixed(1)} KB gzip`);
     assert.ok(raw < 50 * 1024, tpl + " over 50KB");
+    // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
+    for (const extra of ["privacy.js", "legal.js"]) {
+      const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
+      if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
+      assert.ok(sz < 50 * 1024, extra + " page over 50KB");
+    }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);
   }
@@ -216,5 +223,168 @@ import { readdirSync as rd } from "node:fs";
     assert.ok(h.includes('href="/styles/fonts.css"') && h.includes('href="/fonts/inter-latin-400-normal.woff2"') && /as="font"[^>]*crossorigin/.test(h));
   });
   if (existsSync(web + "dist/index.html")) ok("dist contains fonts/", () => assert.ok(existsSync(web + "dist/fonts/inter-latin-400-normal.woff2") && existsSync(web + "dist/fonts/LICENSE-Inter-OFL.txt")));
+}
+// ---- P1-3 privacy (web) ----
+import { spawnSync } from "node:child_process";
+{
+  const { consentFor, wireForm } = await import("../web/form.js");
+  const { privacyHtml, wirePrivacy, validateRequest, kindsOf } = await import("../web/privacy.js");
+  const { legalHtml } = await import("../web/legal.js");
+  const { resolveTarget, siteLinks } = await import("../web/route.js");
+  const { submitEnquiry, submitDataRequest } = await import("../web/api.js");
+  const notices = R("shared/generated/privacy-notices.json");
+  const nf = notices.notices.enquiry_form;
+  const { render } = await import(`../web/templates/${TEMPLATE_KEYS[0]}/render.js`);
+  const tokens = (s, href) => ({ ...tokensFor(s), notice: nf, privacyHref: href });
+
+  ok("consentFor: notice key, version and the hash of the site's locale (EN and HI differ)", () => {
+    assert.deepEqual(consentFor(notices.notices, "en"), { notice_key: "enquiry_form", version: nf.version, hash: nf.hash.en });
+    assert.deepEqual(consentFor(notices.notices, "hi"), { notice_key: "enquiry_form", version: nf.version, hash: nf.hash.hi });
+    assert.notEqual(nf.hash.en, nf.hash.hi); assert.match(nf.hash.hi, /^[0-9a-f]{64}$/);
+    assert.equal(consentFor({}, "en"), null);
+  });
+  for (const loc of LOCALE_KEYS) {
+    const site = fx("sample-" + loc), t = makeT(dicts[loc]);
+    const html = render(site, t, tokens(site, "/a/demo/privacy"));
+    ok(`enquiry form (${loc}): unticked required consent with notice text, privacy link, hint; footer Privacy link`, () => {
+      const box = html.match(/<input id="f-consent"[^>]*>/)[0];
+      assert.ok(!/checked/.test(box) && box.includes('type="checkbox"'));
+      assert.ok(html.includes(esc(t("privacy.enquiry_form.consent", { name: site.profile.full_name }))));
+      assert.ok(html.includes(`<a href="/a/demo/privacy">${dicts[loc]["privacy.enquiry_form.link"]}</a>`));
+      assert.ok(html.includes('id="e-consent"') && html.includes(esc(dicts[loc]["site.form_message_hint"])));
+      assert.ok(html.includes(`<a href="/a/demo/privacy">${dicts[loc]["site.footer_privacy"]}</a>`), "footer link");
+    });
+  }
+  // fake DOM for wireForm / wirePrivacy
+  const mkEl = (o = {}) => Object.assign({ textContent: "", hidden: true, attrs: {}, focused: 0, checked: false, disabled: false, listeners: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; }, focus() { this.focused++; }, addEventListener(e, f) { this.listeners[e] = f; } }, o);
+  const fakeForm = (ids, values) => {
+    const els = {}; for (const id of ids) { els["#e-" + id] = mkEl(); els["#re-" + id] = els["#e-" + id]; els["#f-" + id] = mkEl(); els["#r-" + id] = els["#f-" + id]; }
+    els["button[type=submit]"] = mkEl({ textContent: "Send", hidden: false });
+    const form = { els, querySelector: (sel) => els[sel] || (sel === '[aria-invalid="true"]' ? Object.values(els).find((e) => e.attrs["aria-invalid"]) || null : null), addEventListener(e, f) { this.l = f; }, outerHTML: null, values };
+    return form;
+  };
+  // Object.fromEntries(new FormData(form)) -> make FormData return an array of pairs
+  const pairs = (o) => Object.entries(o);
+  const submitEnq = async (vals, ticked, reply) => {
+    const form = fakeForm(["name", "phone", "email", "interest", "message", "consent", "form"], vals);
+    form.els["#f-consent"].checked = ticked;
+    form.els["#f-consent"].addEventListener = function () {};
+    let calls = [];
+    const real = globalThis.FormData; globalThis.FormData = function () { return pairs(vals); };
+    wireForm({ querySelector: () => form }, { t: makeT(dicts.en), profile: { full_name: "Asha Verma" }, site: { content: {} }, catalog, slug: "demo", consent: consentFor(notices.notices, "hi"), submit: async (a) => { calls.push(a); return reply || { status: "ok" }; } });
+    await form.l({ preventDefault() {} });
+    globalThis.FormData = real;
+    return { form, calls };
+  };
+  const good = { name: "Asha", phone: "9876543210", email: "", interest: "", message: "" };
+  {
+    const r = await submitEnq(good, false);
+    ok("unticked consent: no submit call, inline consent error, focus on the box", () => {
+      assert.equal(r.calls.length, 0);
+      assert.equal(r.form.els["#e-consent"].textContent, dicts.en["site.form_error_consent"]); assert.equal(r.form.els["#e-consent"].hidden, false);
+      assert.equal(r.form.els["#f-consent"].attrs["aria-invalid"], "true");
+    });
+    const r2 = await submitEnq(good, true);
+    ok("ticked consent: submitted once with the consent payload (HI hash)", () => {
+      assert.equal(r2.calls.length, 1);
+      assert.deepEqual(r2.calls[0].consent, { notice_key: "enquiry_form", version: nf.version, hash: nf.hash.hi });
+      assert.equal(r2.calls[0].interest, null);
+    });
+    const r3 = await submitEnq(good, true, { status: "invalid", field: "consent" });
+    ok("server field:'consent' error is shown inline, button re-enabled", () => {
+      assert.equal(r3.form.els["#e-consent"].textContent, dicts.en["site.form_error_consent"]);
+      assert.equal(r3.form.els["button[type=submit]"].disabled, false); assert.equal(r3.form.outerHTML, null);
+    });
+  }
+  // API payloads
+  globalThis.window = { AGENTPRO_CONFIG: { SUPABASE_URL: "https://s.test", SUPABASE_ANON_KEY: "k" } };
+  const rf = globalThis.fetch; let sent;
+  const reply2 = (body) => { globalThis.fetch = async (u, o) => { sent = { u, body: JSON.parse(o.body) }; return { ok: true, status: 200, text: async () => JSON.stringify(body) }; }; };
+  reply2({ ok: true });
+  await submitEnquiry({ slug: "d", name: "A", phone: "9876543210", honeypot: "", consent: consentFor(notices.notices, "en") });
+  ok("submit_enquiry payload carries consent {notice_key, version, hash}", () => {
+    assert.deepEqual(Object.keys(sent.body), ["slug", "host", "name", "phone", "email", "interest", "message", "honeypot", "consent"]);
+    assert.deepEqual(sent.body.consent, { notice_key: "enquiry_form", version: nf.version, hash: nf.hash.en });
+  });
+  const KINDS = kindsOf(catalog).map((k) => k.key);
+  ok("data request kinds come from the catalog, withdraw_consent first", () => { assert.equal(KINDS[0], "withdraw_consent"); assert.deepEqual(KINDS.slice().sort(), catalog.dataRequestKinds.map((k) => k.key).sort()); });
+  ok("validateRequest: kind from catalog, name, Indian mobile, message <= 500", () => {
+    const v = (o) => validateRequest({ kind: "access", name: "A", phone: "9876543210", ...o }, KINDS);
+    assert.deepEqual(v({}).errors, {});
+    assert.equal(v({ kind: "bogus" }).errors.kind, "required"); assert.equal(v({ kind: "" }).errors.kind, "required");
+    assert.equal(v({ name: " " }).errors.name, "required"); assert.equal(v({ phone: "123" }).errors.phone, "phone");
+    assert.equal(v({ message: "x".repeat(501) }).errors.message, "required"); assert.equal(v({ phone: "+91 98765 43210" }).phone, "9876543210");
+  });
+  for (const [st, body, want] of [[200, { ok: true }, "ok"], [200, { ok: false, error: "rate_limited" }, "rate_limited"], [200, { ok: false, error: "unavailable" }, "unavailable"], [200, { ok: false, error: "invalid", field: "kind" }, "invalid"]]) {
+    reply2(body); const got = await submitDataRequest({ slug: "demo", name: "A", phone: "9876543210", kind: "erasure", message: "", honeypot: "" });
+    ok(`submit_data_request ${JSON.stringify(body)} -> ${want}`, () => { assert.equal(got.status, want); assert.ok(sent.u.endsWith("/rpc/submit_data_request")); });
+  }
+  ok("submit_data_request argument names", () => assert.deepEqual(Object.keys(sent.body), ["slug", "host", "name", "phone", "kind", "message", "honeypot"]));
+  globalThis.fetch = rf; delete globalThis.window;
+  {
+    const sendReq = async (vals, reply) => {
+      const form = fakeForm(["kind", "name", "phone", "message", "form"], vals); const calls = [];
+      const real = globalThis.FormData; globalThis.FormData = function () { return pairs(vals); };
+      wirePrivacy({ querySelector: () => form }, { t: makeT(dicts.en), catalog, slug: "demo", name: "Asha Verma", submit: async (a) => { calls.push(a); return reply; } });
+      await form.l({ preventDefault() {} }); globalThis.FormData = real; return { form, calls };
+    };
+    const ok1 = await sendReq({ kind: "erasure", name: "Ravi", phone: "9876543210", message: "", website: "" }, { status: "ok" });
+    ok("privacy request form: valid -> one call with kind, then thank-you", () => { assert.equal(ok1.calls.length, 1); assert.equal(ok1.calls[0].kind, "erasure"); assert.equal(ok1.calls[0].slug, "demo"); assert.ok(ok1.form.outerHTML.includes("Asha")); });
+    const bad = await sendReq({ kind: "", name: "", phone: "1", message: "" }, { status: "ok" });
+    ok("privacy request form: invalid -> no call, inline errors", () => { assert.equal(bad.calls.length, 0); assert.equal(bad.form.els["#re-kind"].hidden, false); assert.equal(bad.form.els["#re-phone"].textContent, dicts.en["site.form_error_phone"]); });
+    const rl = await sendReq({ kind: "access", name: "R", phone: "9876543210", message: "" }, { status: "rate_limited" });
+    ok("privacy request form: rate limited message", () => assert.ok(rl.form.outerHTML.includes("already sent")));
+    const un = await sendReq({ kind: "access", name: "R", phone: "9876543210", message: "" }, { status: "unavailable" });
+    ok("privacy request form: unavailable -> generic error, button back", () => { assert.equal(un.form.els["#re-form"].textContent, dicts.en["site.form_error_generic"]); assert.equal(un.form.els["button[type=submit]"].disabled, false); });
+  }
+  for (const loc of LOCALE_KEYS) {
+    const site = fx("sample-" + loc), t = makeT(dicts[loc]);
+    const html = privacyHtml(site, t, { notice: nf, catalog, backHref: "/a/demo" });
+    ok(`privacy page (${loc}): agent named as fiduciary, notice parts, rights, grievance placeholders, request form with every kind`, () => {
+      assert.ok(html.includes(site.profile.full_name));
+      for (const k of nf.textKeys.slice(3)) assert.ok(html.includes(esc(t(k, { name: site.profile.full_name, phone: site.content.contact.phone, email: site.content.contact.email })).replace(/&#39;/g, "&#39;")), k);
+      assert.ok(html.includes("{GRIEVANCE_OFFICER_NAME}") === (dicts[loc]["privacy.enquiry_form.rights"].includes("{GRIEVANCE_OFFICER_NAME}")));
+      assert.ok(html.includes('id="req"') && html.includes('name="website"'));
+      for (const k of KINDS) assert.ok(html.includes(`<option value="${k}">${esc(dicts[loc]["data_request_kind." + k])}</option>`), k);
+      assert.ok(html.indexOf('value="withdraw_consent"') < html.indexOf('value="access"'));
+      assert.ok(!/\{(name|phone|email)\}/.test(html));
+    });
+  }
+  ok("privacy page: HTML-escapes agent-supplied name", () => assert.ok(!/<script/i.test(privacyHtml(fx("sample-xss"), makeT(dicts.en), { notice: nf, catalog }))));
+  for (const loc of LOCALE_KEYS) for (const page of ["privacy", "terms"]) {
+    const html = legalHtml(page, makeT(dicts[loc]), { notice: notices.notices.agent_signup, otherLang: "x", otherHref: "?lang=x" });
+    ok(`platform /${page} shell (${loc}): title, sections, placeholders visible`, () => {
+      assert.ok(html.includes(esc(dicts[loc][page === "terms" ? "site.legal_terms_title" : "site.legal_privacy_title"])));
+      assert.ok(html.includes("{GRIEVANCE_OFFICER_NAME}"), "grievance placeholder shown as-is");
+      assert.ok((html.match(/<h2>/g) || []).length >= 8);
+      if (page === "privacy") { assert.ok(html.includes("{EMAIL_PROVIDER}")); assert.ok(html.includes("<table>")); }
+    });
+  }
+  ok("routing: /a/<slug>, /a/<slug>/privacy, ?s&page, /privacy + /terms platform, custom domain", () => {
+    const L = (host, pathname, search = "") => ({ host, hostname: host.split(":")[0], pathname, search });
+    const P = "x.dev", g = (l) => resolveTarget(l, new URLSearchParams(l.search), P);
+    assert.deepEqual(g(L(P, "/a/demo")), { slug: "demo", page: undefined });
+    assert.deepEqual(g(L(P, "/a/demo/privacy")), { slug: "demo", page: "privacy" });
+    assert.deepEqual(g(L(P, "/", "?s=demo&page=privacy")), { slug: "demo", page: "privacy" });
+    assert.deepEqual(g(L(P, "/privacy")), { platform: "privacy" }); assert.deepEqual(g(L(P, "/terms/")), { platform: "terms" });
+    assert.equal(g(L(P, "/")), null);
+    assert.deepEqual(g(L("asha.in", "/privacy")), { host: "asha.in", page: "privacy" });
+    assert.deepEqual(g(L("asha.in", "/")), { host: "asha.in", page: undefined });
+    assert.deepEqual(siteLinks({ slug: "demo" }, L(P, "/a/demo")), { home: "/a/demo", privacy: "/a/demo/privacy" });
+    assert.deepEqual(siteLinks({ host: "asha.in" }, L("asha.in", "/")), { home: "/", privacy: "/privacy" });
+    const loc = siteLinks({ slug: "demo" }, L(P, "/", "?mock=1&s=demo"));
+    assert.equal(loc.privacy, "?mock=1&s=demo&page=privacy"); assert.equal(loc.home, "?mock=1&s=demo");
+  });
+  ok("i18n: every new site.* / privacy page key exists in both locales, no privacy.* text changed by this work", () => {
+    for (const l of LOCALE_KEYS) for (const k of Object.keys(dicts.en)) assert.ok(dicts[l][k], l + " missing " + k);
+  });
+  ok("_headers: /privacy and /terms are revalidated", () => { const h = readFileSync(new URL("../web/_headers", import.meta.url), "utf8"); assert.ok(/^\/privacy$/m.test(h) && /^\/terms$/m.test(h)); });
+  // release gate
+  const sh = (env) => spawnSync("sh", [new URL("../scripts/build-web.sh", import.meta.url).pathname], { env: { PATH: process.env.PATH, SITE_BASE_URL: "http://localhost:8080", SUPABASE_URL: "x", ...env }, encoding: "utf8" });
+  const blockers = spawnSync("node", [new URL("../scripts/release-check.mjs", import.meta.url).pathname], { encoding: "utf8" }).stdout.trim();
+  if (notices.releaseBlockers.length || blockers) {
+    ok("release gate: RELEASE=1 fails (non-zero) while placeholders remain, naming them", () => { const r = sh({ RELEASE: "1" }); assert.notEqual(r.status, 0); assert.ok(r.stderr.includes("RELEASE BLOCKED") && r.stderr.includes("{GRIEVANCE_OFFICER_NAME}"), r.stderr); });
+    ok("release gate: preview build only warns and succeeds", () => { const r = sh({}); assert.equal(r.status, 0, r.stderr); assert.ok(r.stderr.includes("preview build; release blockers remain")); });
+  } else ok("release gate: no blockers left, RELEASE=1 builds", () => assert.equal(sh({ RELEASE: "1" }).status, 0));
 }
 console.log(`\n${n} checks passed`);

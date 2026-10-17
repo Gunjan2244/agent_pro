@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Privacy UI copy (P1-4). The notice texts themselves are generated (cat_privacy_*, strings_catalog.xml). -->
+<resources>
+    <string name="privacy_share_note">Share privacy note</string>
+    <string name="privacy_share_note_message">This is how I keep your details safe and what you can ask me to do with them: %1$s</string>
+</resources>

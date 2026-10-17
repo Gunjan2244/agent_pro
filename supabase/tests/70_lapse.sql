@@ -66,7 +66,7 @@ update public.subscriptions
 select tests.ok(public.entitlement(:C) = 'lapsed', '#L period end + 16 days -> lapsed');
 select tests.as_anon();
 select tests.ok(public.get_public_site('chetan-lal') is null, '#L lapsed: get_public_site -> null');
-select tests.ok(public.submit_enquiry('chetan-lal', null, 'Visitor', '9844400000', null, 'term', null, null)
+select tests.ok(public.submit_enquiry('chetan-lal', null, 'Visitor', '9844400000', null, 'term', null, null, tests.consent('enquiry_form'))
   = '{"ok": false, "error": "unavailable"}'::jsonb, '#L lapsed: submit_enquiry rejected (unavailable)');
 select public.record_site_view('chetan-lal', null);
 reset role;

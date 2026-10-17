@@ -177,7 +177,7 @@ class PrivacyNoticesTest {
             "revoke all on function public.catalog_data_request_statuses() from public, anon, authenticated;",
             "  ('retention', '{\"softDeletedDays\":30,\"lapsedAccount\":{\"deleteAfterMonths\":12,\"noticeDaysBefore\":[30,7,2]}}'::jsonb)\non conflict (key) do update set value = excluded.value;",
         ).forEach { assertTrue(it in sql, "missing:\n$it\n--- in ---\n$sql") }
-        assertEquals(10, Regex("add constraint \\w+_check check").findAll(sql).count(), "no CHECKs for tables that don't exist yet")
+        assertEquals(13, Regex("add constraint \\w+_check check").findAll(sql).count(), "the 10 base CHECKs plus consents.notice_key, data_requests.kind and data_requests.status")
         assertTrue(sql.lines()[2].startsWith("-- catalog-hash: sha256:"))
     }
 

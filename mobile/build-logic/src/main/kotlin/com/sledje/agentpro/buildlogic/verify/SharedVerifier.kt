@@ -443,7 +443,7 @@ class SharedVerifier(private val inputs: VerifyInputs) {
                 dict.entries.sortedBy { it.key }.mapNotNull { (key, value) ->
                     val tokens = PrivacyNoticeHashing.RELEASE_PLACEHOLDER.findAll(value).map { it.value }.distinct().toList()
                     if (tokens.isEmpty()) null
-                    else "i18n/$locale.json: \"$key\" still contains ${tokens.joinToString()}; fill it in before a release (docs/PRIVACY.md, Contact details)"
+                    else "i18n/$locale.json: \"$key\" still contains ${tokens.joinToString()}; fill it in before a release (docs/SHARED_DEFINITIONS.md, Release gate)"
                 }
             }
     }

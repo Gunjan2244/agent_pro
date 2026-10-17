@@ -37,7 +37,13 @@ const val NOTES_FIELD_TAG = "enquiry_notes"
 
 /** "Add enquiry" (FormRenderer; docs/UX.md). Closes once saved. */
 @Composable
-fun AddEnquiryScreen(vm: AddEnquiryViewModel, onBack: () -> Unit, onSaved: (String) -> Unit) {
+fun AddEnquiryScreen(
+    vm: AddEnquiryViewModel,
+    onBack: () -> Unit,
+    onSaved: (String) -> Unit,
+    /** The one-time customer-data attestation for a manual enquiry (docs/PRIVACY.md, section 3). */
+    dutyGate: (@Composable (SnackbarHostState) -> Unit)? = null,
+) {
     val state by vm.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.savedId) { state.savedId?.let(onSaved) }
@@ -51,6 +57,7 @@ fun AddEnquiryScreen(vm: AddEnquiryViewModel, onBack: () -> Unit, onSaved: (Stri
         snackbar = snackbar,
         visibleKeys = AddEnquiryViewModel.VISIBLE,
     )
+    dutyGate?.invoke(snackbar)
 }
 
 /** The notes editor with autosave (docs/UX.md, Enquiry detail → Notes). */

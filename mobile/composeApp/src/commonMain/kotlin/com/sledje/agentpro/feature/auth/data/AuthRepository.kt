@@ -1,5 +1,6 @@
 package com.sledje.agentpro.feature.auth.data
 
+import com.sledje.agentpro.core.catalog.NoticeConsent
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.KeyValueStore
@@ -18,6 +19,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /** Who is signed in. [Loading] until the stored session has been read. */
 sealed interface AuthState {
@@ -32,8 +36,12 @@ interface AuthRepository {
 
     suspend fun signIn(email: String, password: String): AppResult<Unit>
 
-    /** Creates the account. Email confirmation is on, so no session starts; "Check your email" follows. */
-    suspend fun signUp(email: String, password: String): AppResult<Unit>
+    /**
+     * Creates the account. Email confirmation is on, so no session starts; "Check your email" follows.
+     * [consent] (the sign-up notice the person ticked, in the language shown) goes in the user metadata as
+     * `data.consent = {notice_key, version, hash}`; the backend records it (docs/PRIVACY.md, section 1).
+     */
+    suspend fun signUp(email: String, password: String, consent: NoticeConsent): AppResult<Unit>
 
     suspend fun resendConfirmation(email: String): AppResult<Unit>
 
@@ -51,6 +59,18 @@ interface AuthRepository {
      * `Validation("link", "expired")`.
      */
     suspend fun handleAuthCallback(url: String): AppResult<Unit>
+}
+
+/** The sign-up user metadata: `{consent: {notice_key, version, hash}}` (pure, unit-tested). */
+fun signUpMetadata(consent: NoticeConsent): JsonObject = buildJsonObject {
+    put(
+        "consent",
+        buildJsonObject {
+            put("notice_key", consent.noticeKey)
+            put("version", consent.version)
+            put("hash", consent.hash)
+        },
+    )
 }
 
 /** Rules of the Supabase Auth project (docs/BACKEND.md, Auth). */
@@ -90,10 +110,11 @@ class SupabaseAuthRepository(
         }
     }
 
-    override suspend fun signUp(email: String, password: String): AppResult<Unit> = remoteCall {
+    override suspend fun signUp(email: String, password: String, consent: NoticeConsent): AppResult<Unit> = remoteCall {
         supabase.require().auth.signUpWith(Email) {
             this.email = email.trim()
             this.password = password
+            this.data = signUpMetadata(consent)
         }
         Unit
     }

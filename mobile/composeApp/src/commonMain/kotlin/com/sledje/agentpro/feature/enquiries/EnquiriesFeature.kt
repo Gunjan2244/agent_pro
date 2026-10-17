@@ -16,6 +16,7 @@ import com.sledje.agentpro.core.features.FeatureHost
 import com.sledje.agentpro.feature.customers.CustomerDetailRoute
 import com.sledje.agentpro.feature.customers.CustomerFormRoute
 import com.sledje.agentpro.feature.enquiries.ui.AddEnquiryScreen
+import com.sledje.agentpro.feature.privacy.ui.CustomerDutyGateHost
 import com.sledje.agentpro.feature.enquiries.ui.AddEnquiryViewModel
 import com.sledje.agentpro.feature.enquiries.ui.EnquiryDetailScreen
 import com.sledje.agentpro.feature.enquiries.ui.EnquiryDetailViewModel
@@ -82,6 +83,7 @@ object EnquiriesFeature : AppFeature {
             AddEnquiryScreen(
                 vm = vm,
                 onBack = { host.nav.popBackStack() },
+                dutyGate = { snackbar -> CustomerDutyGateHost(deps, snackbar, onDeclined = { host.nav.popBackStack() }) },
                 onSaved = { id ->
                     host.nav.popBackStack()
                     host.nav.navigate(EnquiryDetailRoute(id))

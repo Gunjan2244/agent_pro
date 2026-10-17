@@ -116,7 +116,7 @@ class FormState(val fields: List<FieldSpec>, initial: Map<String, Any?> = emptyM
             is FieldDefault.Text -> d.value
             is FieldDefault.Number -> if (d.value % 1.0 == 0.0) d.value.toLong().toString() else d.value.toString()
             null -> when (spec.type) {
-                FieldType.Toggle -> false
+                FieldType.Toggle, FieldType.Consent -> false
                 FieldType.MultiSelect -> emptyList<String>()
                 FieldType.Date -> null
                 else -> ""

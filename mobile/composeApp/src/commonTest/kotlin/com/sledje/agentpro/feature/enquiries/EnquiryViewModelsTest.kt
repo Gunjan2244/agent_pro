@@ -2,6 +2,8 @@ package com.sledje.agentpro.feature.enquiries
 
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.testing.FakeConsentRepository
 import com.sledje.agentpro.core.catalog.EnquirySource
 import com.sledje.agentpro.core.catalog.EnquiryStatus
 import com.sledje.agentpro.core.catalog.Interest
@@ -262,12 +264,12 @@ class EnquiryViewModelsTest {
     fun convertCreatesTheCustomerAndLinksTheEnquiry() = runTest {
         val enquiries = FakeEnquiryRepository(sample)
         val customers = FakeCustomerRepository(enquiries = enquiries)
-        val vm = CustomerFormViewModel(CustomerFormMode.Convert("a"), customers, enquiries)
+        val vm = CustomerFormViewModel(CustomerFormMode.Convert("a"), customers, enquiries, FakeConsentRepository())
         advanceUntilIdle()
         val form = vm.form.value!!
         assertEquals("Sunita Sharma", form.text(CustomerFormViewModel.NAME), "prefilled from the enquiry")
         assertEquals("+919812345678", form.text(CustomerFormViewModel.PHONE))
-        vm.save()
+        vm.save(AppLocale.En)
         advanceUntilIdle()
         val customer = customers.rows.value.single()
         assertEquals("a", customer.sourceEnquiryId)
@@ -287,13 +289,13 @@ class EnquiryViewModelsTest {
         val enquiries = FakeEnquiryRepository(sample)
         val customers = FakeCustomerRepository(enquiries = enquiries)
         customers.linkError = AppError.Offline
-        val vm = CustomerFormViewModel(CustomerFormMode.Convert("a"), customers, enquiries)
+        val vm = CustomerFormViewModel(CustomerFormMode.Convert("a"), customers, enquiries, FakeConsentRepository())
         advanceUntilIdle()
-        vm.save()
+        vm.save(AppLocale.En)
         advanceUntilIdle()
         assertEquals(AppError.Offline, vm.state.value.error)
         customers.linkError = null
-        vm.save()
+        vm.save(AppLocale.En)
         advanceUntilIdle()
         assertEquals(1, customers.rows.value.size)
         assertEquals(EnquiryStatus.Converted, enquiries.rows.value.first { it.id == "a" }.status)
