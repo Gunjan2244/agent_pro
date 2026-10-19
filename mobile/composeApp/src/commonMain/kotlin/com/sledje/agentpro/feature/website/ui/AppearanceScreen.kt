@@ -3,23 +3,16 @@ package com.sledje.agentpro.feature.website.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import com.sledje.agentpro.core.catalog.AccentSwatch
 import com.sledje.agentpro.core.catalog.AppLocale
 import com.sledje.agentpro.core.catalog.TemplateSpec
@@ -41,7 +34,6 @@ import com.sledje.agentpro.core.designsystem.components.SwatchPicker
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.ic_web
 import com.sledje.agentpro.resources.needs_internet
-import com.sledje.agentpro.resources.onboarding_template_position
 import com.sledje.agentpro.resources.onboarding_use_template
 import com.sledje.agentpro.resources.website_accent
 import com.sledje.agentpro.resources.website_appearance_live_note
@@ -111,8 +103,9 @@ fun AppearanceScreen(
 }
 
 /**
- * Template picker (docs/UX.md): a full-height pager of the agent's real draft rendered in each
- * template (SitePreview, injected as [preview]), the name and description below, and **Use this template**.
+ * Template picker (docs/UX.md): opens on the pager of the current template's family (positioned on the current template; Back returns to the two family cards where another style can be chosen): a full-height pager of the agent's
+ * real draft rendered in each of that family's templates (SitePreview, injected as [preview]), the name and
+ * description below, and **Use this template**. Back from the pager returns to the family cards.
  */
 @Composable
 fun TemplatePickerScreen(
@@ -122,41 +115,30 @@ fun TemplatePickerScreen(
     onBack: () -> Unit,
     onUse: (String) -> Unit,
     preview: @Composable (TemplateSpec) -> Unit,
+    /** Opens on the family cards instead of the current template's pager (screenshots). */
+    startOnFamilyCards: Boolean = false,
 ) {
     val online = isOnline()
-    val initial = templates.indexOfFirst { it.key == selectedKey }.coerceAtLeast(0)
-    val pager = rememberPagerState(initialPage = initial) { templates.size }
-    val current = templates[pager.currentPage.coerceIn(0, templates.lastIndex)]
+    // Opens on the pager of the current template's family, positioned on the current template; Back returns to the cards.
+    val currentFamily = if (startOnFamilyCards) null else templates.firstOrNull { it.key == selectedKey }?.family
+    val chooser = rememberTemplateChooser(templates, selectedKey, currentFamily)
+    TemplateChooserBackHandler(chooser)
     AppScaffold(
-        topBar = { AppTopBar(title = stringResource(Res.string.website_template_picker_title), onBack = onBack) },
+        topBar = { AppTopBar(title = stringResource(Res.string.website_template_picker_title), onBack = { if (!chooser.back()) onBack() }) },
         offline = !online,
         bottomBar = {
-            BottomActionBar(
-                text = stringResource(Res.string.onboarding_use_template),
-                onClick = { onUse(current.key) },
-                enabled = online && !saving,
-                helperText = if (!online) stringResource(Res.string.needs_internet) else null,
-            )
+            chooser.current?.let { current ->
+                BottomActionBar(
+                    text = stringResource(Res.string.onboarding_use_template),
+                    onClick = { onUse(current.key) },
+                    enabled = online && !saving,
+                    helperText = if (!online) stringResource(Res.string.needs_internet) else null,
+                )
+            }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(vertical = Spacing.m)) {
-            HorizontalPager(
-                state = pager,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = Spacing.l),
-                pageSpacing = Spacing.m,
-            ) { page ->
-                AppCard(Modifier.fillMaxSize()) { preview(templates[page]) }
-            }
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = Spacing.m).padding(top = Spacing.m),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                Text(stringResource(current.name), style = AgentProTheme.text.title, modifier = Modifier.semantics { heading() })
-                Text(stringResource(current.description), style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                Text(stringResource(Res.string.onboarding_template_position, pager.currentPage + 1, templates.size), style = AgentProTheme.text.bodyMuted)
-            }
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            TemplateChooserBody(chooser) { template -> AppCard(Modifier.fillMaxSize()) { preview(template) } }
         }
     }
 }

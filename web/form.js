@@ -74,8 +74,11 @@ export function wireForm(root, ctx) {
       if (r.status === "invalid" || r.status === "unavailable") throw new Error(r.status);
       const name = firstName(profile.full_name);
       const call = tel(profile.phone || (ctx.site.content.contact || {}).phone);
-      const msg = r.status === "rate_limited" ? t("site.form_rate_limited", { name: esc(name) }) : t("site.form_thank_you", { name: esc(name) });
-      form.outerHTML = `<div class="enq done" role="status"><p>${msg}</p>${call ? `<a class="btn" href="${call}">${esc(t("site.call"))}</a>` : ""}</div>`;
+      // The thank-you is the agent speaking (DECISIONS #76): a bubble with the avatar the page already shows.
+      const avEl = root.querySelector("#contact .say .av");
+      const av = avEl && typeof avEl.outerHTML === "string" ? avEl.outerHTML : "";
+      const msg = r.status === "rate_limited" ? t("site.form_rate_limited", { name }) : t("site.say_thanks", { firstName: name });
+      form.outerHTML = `<div class="enq done" role="status"><div class="say">${av}<p class="bubble">${esc(msg)}</p></div>${call ? `<a class="btn" href="${call}">${esc(t("site.call"))}</a>` : ""}</div>`;
     } catch {
       btn.disabled = false; btn.textContent = label; show("form", t("site.form_error_generic"));
     }

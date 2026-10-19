@@ -118,7 +118,7 @@ fun FormRenderer(
     onDone: () -> Unit = {},
     onLink: (fieldKey: String, linkKey: String) -> Unit = { _, _ -> },
 ) {
-    val (visible, more) = splitVisibleFields(state.fields.filter { it.key !in hiddenKeys }, visibleKeys)
+    val (visible, more) = splitVisibleFields(state.fields.filter { it.key !in hiddenKeys && it.generated == null }, visibleKeys)
     var expanded by rememberSaveable { mutableStateOf(false) }
     // A hidden field with a showing error opens "More details" so the error is never out of sight.
     val forced = more.any { state.visibleError(it.key) != null }
@@ -252,6 +252,7 @@ private fun Field(
             onRemove = { state.set(spec.key, "") },
             modifier = tag,
             error = error,
+            helper = spec.helper?.let { stringResource(it) },
             enabled = enabled,
             preview = imagePreview?.let { preview -> { preview(state.text(spec.key)) } },
         )
@@ -299,6 +300,8 @@ private fun Field(
             enabled = enabled,
         )
         FieldType.ItemList -> ItemListField(state, spec, label, error, enabled, onPickImage, imagePreview, tag)
+        // Offer pickers arrive with feature/offers (OFFERS.md, 8b-4); until then the value is kept but not shown.
+        FieldType.OfferRef, FieldType.OfferList -> Unit
     }
 }
 

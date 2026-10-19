@@ -1,5 +1,8 @@
 package com.sledje.agentpro.app
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -12,6 +15,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.core.catalog.TemplateFamily
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.designsystem.gallery.GalleryFrame
 import com.sledje.agentpro.core.forms.FormState
@@ -22,7 +26,9 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormUiState
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.auth.ui.WelcomeScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingLinkScreen
+import com.sledje.agentpro.feature.onboarding.ui.LaunchStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingProfileScreen
+import com.sledje.agentpro.feature.onboarding.ui.SiteLaunchScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingUiState
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
@@ -45,6 +51,14 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w411dp-h891dp-xhdpi")
 class FoundationScreenshotTest {
+    @Composable
+    private fun LaunchScreenFor(step: LaunchStep) = SiteLaunchScreen(
+        step, "Ramesh Kumar", "https://agentpro.site/a/ramesh-kumar", "agentpro.site/a/ramesh-kumar",
+        onAddToHome = {}, onNext = {}, onOpen = {}, onShare = {}, onDone = {},
+        // The WebView isn't screenshotted; a surface stands in for the render.
+        preview = { Box(it.background(MaterialTheme.colorScheme.surfaceContainer)) },
+    )
+
     private fun screens(hindi: Boolean): List<Pair<String, @Composable () -> Unit>> = listOf(
         "Welcome" to {
             WelcomeScreen(if (hindi) AppLocale.Hi else AppLocale.En, onSwitchLocale = {}, onCreateAccount = {}, onSignIn = {})
@@ -62,6 +76,9 @@ class FoundationScreenshotTest {
             }
             OnboardingProfileScreen(form, OnboardingUiState(), onContinue = {})
         },
+        "LaunchAddToPhone" to { LaunchScreenFor(LaunchStep.AddToPhone) },
+        "LaunchPreview" to { LaunchScreenFor(LaunchStep.Preview) },
+        "LaunchShare" to { LaunchScreenFor(LaunchStep.Share) },
         "OnboardingProfileFromSignUp" to {
             val form = remember {
                 FormState(
@@ -71,8 +88,21 @@ class FoundationScreenshotTest {
             }
             OnboardingProfileScreen(form, OnboardingUiState(contactSummary = true), onContinue = {})
         },
-        "OnboardingTemplate" to {
+        // Step 2 asks for the family first (the two cards), then pages through that family's templates.
+        "OnboardingTemplateFamily" to {
             OnboardingTemplateScreen(Templates.all, Templates.all.first().key, "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {})
+        },
+        "OnboardingTemplate" to {
+            OnboardingTemplateScreen(
+                Templates.all, Templates.all.first().key, "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {},
+                initialFamily = TemplateFamily.Personal,
+            )
+        },
+        "OnboardingTemplateOffers" to {
+            OnboardingTemplateScreen(
+                Templates.all, "spotlight", "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {},
+                initialFamily = TemplateFamily.Offers,
+            )
         },
         "OnboardingLink" to {
             OnboardingLinkScreen(

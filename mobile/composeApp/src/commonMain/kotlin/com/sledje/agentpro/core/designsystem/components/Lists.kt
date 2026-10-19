@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.AppShapes
 import com.sledje.agentpro.core.designsystem.Dimens
+import com.sledje.agentpro.core.designsystem.Motion
 import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.action_see_all
@@ -145,3 +147,11 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, onSeeAll: (() -> 
         if (onSeeAll != null) TertiaryButton(stringResource(Res.string.action_see_all), onSeeAll)
     }
 }
+
+/**
+ * A lazy list row's motion (docs/DESIGN_SYSTEM.md, Motion): a new row fades in, a removed one fades
+ * out, and the others slide into place, e.g. when an enquiry arrives or a filter changes. The row
+ * needs a stable `key`.
+ */
+fun LazyItemScope.itemMotion(): Modifier =
+    Modifier.animateItem(fadeInSpec = Motion.stateChange(), placementSpec = Motion.navigation(), fadeOutSpec = Motion.stateChange())

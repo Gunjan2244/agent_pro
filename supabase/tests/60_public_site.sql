@@ -9,7 +9,7 @@ select tests.ok(public.get_public_site('ramesh-sharma') is not null, '#5 publish
 select tests.ok(public.get_public_site('RAMESH-SHARMA ') is not null, '#5 slug lookup is case/space-insensitive');
 select tests.ok(
   (select array_agg(k order by k) from jsonb_object_keys(public.get_public_site('ramesh-sharma')) k)
-  = array['accent', 'canonical_host', 'locale', 'profile', 'published_content', 'template_key'],
+  = array['accent', 'canonical_host', 'company', 'locale', 'offers', 'profile', 'published_at', 'published_content', 'template_key'],
   '#5 top-level keys are exactly the documented ones',
   (select string_agg(k, ',') from jsonb_object_keys(public.get_public_site('ramesh-sharma')) k));
 select tests.ok(
@@ -26,6 +26,10 @@ select tests.ok(public.get_public_site('ramesh-sharma')::text not like '%SECRET 
   and public.get_public_site('ramesh-sharma') #>> '{published_content,hero,headline}' = 'Secure your family''s future',
   '#5 serves published_content, never the unpublished draft');
 select tests.ok(public.get_public_site_by_host('unknown.example.in') is null, '#5 unknown host -> null');
+reset role;
+select tests.ok((public.get_public_site('ramesh-sharma') ->> 'published_at')::timestamptz
+                  = (select published_at from public.sites where slug = 'ramesh-sharma'),
+  '#5 published_at is the site''s last publish time (SSR Last-Modified)');
 rollback;
 
 -- publish_site validation (schema rules from site_schema())

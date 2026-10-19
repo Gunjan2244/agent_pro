@@ -652,3 +652,105 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
   - polling the sign-in on a timer (it eats into the Auth rate limit for no benefit);
   - putting the password in the navigation route (it would be saved to instance state).
 - **Status:** Accepted.
+
+### #72 — 2026-10-17 — Offers CHECKs arrive with the tables, not before
+- **Decision:** the 8b-1 `catalog_sync` emits only what needs no new table: `offer_schema()`, `catalog_locales()`, `catalog_default_locale()`, `catalog_offer_cta_kinds()`, `catalog_offer_cta_kinds_agent()`, `catalog_membership_reject_reasons()` and `catalog_offer_limits()`, plus the new `site_schema()`. The five CHECKs on `offers`, `admins` and `company_memberships` are added to the generator's `CHECKS` by 8b-2, together with the migration that creates those tables, and `catalog_sync` is regenerated then so it sorts after them.
+- **Why:** a `catalog_sync` that alters a table that doesn't exist fails to apply, and it would also break the local SQL tests, which apply every migration. P1 hit the same ordering (the privacy CHECKs landed with P1-2's migration).
+- **Trade-off:** OFFERS.md's plan put the CHECKs in 8b-1; 8b-2 now has one more step. Meanwhile `20261017085151_catalog_sync.sql` is safe to apply on its own: `validate_fields` skips the unknown `offerRef`/`offerList` types and ignores the new rules, and existing content has no `offers` key.
+- **Alternatives considered:** CHECKs guarded by `to_regclass(...)` (they'd silently not exist until the next catalog change); writing the 8b-2 tables in 8b-1 (outside its scope and files).
+- **Status:** Accepted.
+
+### #73 — 2026-10-17 — 8b-1 scope details: no OfferSchema.kt, reused icons, offers hidden until built
+- **Decision:**
+  - **No generated `OfferSchema.kt`.** The app only displays company offers (from `my_company_offers`); it never edits them. The admin panel reads `offer-schema.json` directly and SQL gets `offer_schema()`. Generate it if the app ever needs the fields.
+  - **Icons reuse ones already imported** (offers `savings`, statuses `edit`/`check_circle`/`block`, …; SHARED_DEFINITIONS.md, Offers). `local_offer` would suit offers better, but importing it means downloading `@material-symbols/svg-400`, which wasn't in the npm cache; swap it in later with the user's approval.
+  - **Until their builders land, the new schema stays invisible:** the app leaves `offers` out of the Content list (`SiteContent.pendingSections`) and renders nothing for `offerRef`/`offerList` fields, but keeps their values unchanged when a section is saved; the web renderer ignores the `offers` key, and `test-web.mjs` expects it only once 8b-3 renders it (`PENDING`).
+  - The custom offer's generated `id` field has a label (`field.offer_id`), because every schema field needs a `labelKey`; it's never shown.
+- **Why:** keep 8b-1 within `shared/` and the codegen, keep the test APK free of half-built screens, and never lose a placed offer when an older editor saves a section.
+- **Status:** Accepted.
+
+### #71 — 2026-10-17 — Three launch screens after "Publish now"
+- **Decision:**
+  - Once a site is published from onboarding step 3, three screens run before Home, in one scaffold with a sliding progress bar: **Add it to your phone** (a home-screen tile preview; Add to home screen opens the install sheet in the browser, then moves on; "Not now" skips), **This is what customers see** (the live render in a small phone frame; Open in the browser), and **Share it with customers** (the QR code, Share through other apps, Done).
+  - Back moves one screen back; on the first screen it skips ahead. Share records `SITE_SHARED` for the Home setup checklist, as the Website tab does.
+  - "Later" (a draft) skips the three screens, because a draft has nothing to add or share.
+- **Why:** the user asked for a smooth three-step hand-off once the site exists, so the agent sees the site, installs it, and shares it straight away.
+- **Trade-off:**
+  - The gate stays on onboarding until Done, so a failure while the screens run can't be recovered in place. Each screen only navigates and opens other apps, so there's little to fail.
+  - The preview is a WebView, like step 2, so it needs the bundled renderer.
+- **Alternatives considered:** a bottom sheet over Home (it would hide the site behind a dismissable card and be easy to miss), and a single screen with three sections (too much to read at once).
+- **Status:** Accepted.
+
+### #74 — 2026-10-18 — 8b-2 backend refinements to the offers plan
+- **Decision:** the backend (`20261017132241_companies_offers.sql`) follows OFFERS.md with these refinements, recorded there under "As built (8b-2)" and in BACKEND.md:
+  - **companies:** insert only for unscoped admins, update only for admins of that company (the plan said any admin for both);
+  - **client-chosen ids** on insert for companies and offers, so the admin panel can name `company-media` paths first;
+  - **storage writes** through `public.can_manage_company_media(name)` (path and scope checked in one SECURITY DEFINER function, granted to `authenticated` for the policies), plus an admin-only select policy for listing;
+  - **publish:** offers of a company the agent requested before (a changed, withdrawn or revoked link) are the warning `offer_unavailable`, never an error; unknown offer ids are `offer_wrong_company`; the custom-offer rules (`equals`, `maxDaysAhead`, agent CTA kinds, date format) are in the generic `validate_fields`;
+  - **`requested_at` defaults to `clock_timestamp()`**, so the latest request is well defined even within one transaction.
+- **Why:** least privilege for insurer staff; simpler uploads; switching company must not block publishing unrelated edits (OFFERS.md "Changing company"); one validator for every schema field; deterministic membership history (found by the tests).
+- **Status:** Accepted.
+
+### #75 — 2026-10-18 — Server-side rendering in the existing Worker
+- **Decision:** the Worker `agentpro-sites` renders `/`, `/a/*` and `/privacy` (custom domains use the same paths) with the same pure template `render()` the browser uses. The response carries the full page, head tags and JSON-LD; the browser only hydrates (enquiry form, Add to home screen, view count) through a slim `hydrate.js`. `index.html` and the client render stay for the in-app preview (`renderSite`) and as the fallback when the backend fails. `run_worker_first` stays an explicit path list, so static assets never invoke the Worker. Security headers are set by the Worker for its own responses (`_headers` applies only to assets), from one shared `web/headers.js`. No edge cache in v1, so a publish shows on the next load.
+- **Why:** the user asked for SSR and for SEO; a client-only page shows "Loading…" to crawlers and link previews, and its first paint waits for JS. The templates were built as pure functions for exactly this (WEB_RENDERER.md).
+- **Trade-off:** one Supabase RPC per page view on the server (the client no longer fetches the site); Worker invocations count against the Cloudflare plan only for page navigations.
+- **Alternatives considered:** pre-rendering static HTML at publish time (needs storage and purge on every lapse or domain change); `run_worker_first: true` (every font and CSS request would invoke the Worker).
+- **Status:** Accepted. Supersedes "server-side rendering" in PRODUCT.md "Designed in, built later".
+
+### #76 — 2026-10-18 — Two template families and a conversational layer
+- **Decision:** `shared/templates/index.json` gains `family` (`personal` | `offers`), labelled by `catalog.templateFamilies`. **"Meet me"** (`personal`) holds the refreshed `classic`, `modern` and `minimal`; **"Best offers"** (`offers`) adds `spotlight` (featured offer front and centre, offer grid, "ends on" urgency) and `guide` ("What would you like to protect?" chips leading to matching offer and plan cards). All templates share a conversational layer: an agent "speech bubble" line above each section's normal heading, a greeting and quick-reply chips in the hero, FAQs as visitor and agent bubbles, and a sticky Call/WhatsApp bar on phones. For the `offers` family only, offer cards may use the pale `--tint` surface and the offer's 16:9 image; never saturated accent blocks, and still no image in the hero banner (LCP).
+- **Why:** the user asked for two directions: one about the agent, one persuasive to acquire clients, both presenting the agent as the person providing the service, partly as a conversation but still a normal website.
+- **Supersedes:** "the three templates differ in layout only" (DESIGN_SYSTEM.md, WEB_RENDERER.md) for the `offers` family.
+- **Alternatives considered:** replacing the 3 templates with 2; a Personal/Offers mode switch inside every template (both offered to the user, who chose families).
+- **Status:** Accepted.
+
+### #77 — 2026-10-18 — Disguised offer names; no insurer name or logo on sites
+- **Decision:**
+  - The public payload never carries the company's name, the company's logo, or an offer's real product name. `company` in the payload is `{disclaimer}` only.
+  - `offers.content.title` is the offer's **public, generic name**, written by the admin. A new admin-only `offers.internal_name` keeps the real product name for the admin panel; it's never in any payload.
+  - A server-side check rejects public offer text (every localized field, company and custom offers) that contains a term from `catalog.publicTextRules.blockedTerms` or any company's name in any locale. The terms are multi-word product names and insurer names (Latin and Devanagari), never single everyday words like "jeevan" or "bima".
+  - The logo upload and permission columns stay, for the admin panel and the app only.
+- **Why:** the user asked that offers and policies on sites be disguised by name to prevent copyright and trademark issues, and chose to hide the company's name too.
+- **Partly supersedes #47:** company logos and names no longer appear on sites.
+- **Open (counsel):** IRDAI's advertising rules may require an agent's site to name the insurer they represent. An agent's own free text (e.g. a designation like "LIC Agent") isn't checked. Hiding the insurer's name also means sites can't rank for "<insurer> agent in <city>" searches.
+- **Status:** Accepted.
+
+### #78 — 2026-10-18 — New sites are seeded with complete starter content
+- **Decision:** `shared/site-seed.json` defines the starter content per section as i18n keys with `{name}`, `{firstName}` and `{city}` placeholders; the codegen resolves it for every locale into `SiteSeed.kt`, and `StarterContent` builds the draft from it at site creation (and for onboarding's template preview). Long texts have 3 variants, picked deterministically from the agent's user id (FNV-1a, per-field salt; SHARED_DEFINITIONS.md), so sites don't duplicate each other (SEO). The id is used rather than the slug because it exists before a slug is chosen (onboarding previews the seeded site) and never changes. Testimonials, achievements, years of experience and clients served are **never invented**: those sections start hidden and empty. The `offers` section starts visible only for the `offers` family. Existing sites aren't backfilled; there are no real users yet (launch gate), and the demo accounts are re-seeded by script.
+- **Why:** the user asked that a new site already contain all the general things, so the agent can see and approve it at once rather than face an empty page.
+- **Alternatives considered:** fallback copy at render time only (the agent would see text that isn't in the editor).
+- **Status:** Accepted.
+
+### #79 — 2026-10-18 — "Best offers" sites show the company's offers until the agent picks
+- **Decision:** when a site's `offers` section isn't hidden and has no picked or custom offers, `get_public_site*` returns up to 3 of the agent's company's running offers (by `sort`), resolved at read time like picked ones. The primary-host sitemap is fed by a new anon RPC `list_public_sites()` that returns only `slug` and `published_at` for published, non-lapsed sites.
+- **Why:** a new "Best offers" site must look finished without the agent picking anything (#78); the sitemap needs the published slugs, which are public pages anyway.
+- **Trade-off:** `list_public_sites()` lets anyone enumerate published agent slugs. Each site is already public and linkable; no other field is returned.
+- **Status:** Accepted.
+
+### #80 — 2026-10-18 — App transitions: shared-axis X, fade-through, crossfade; no container transform
+- **Decision:** every state change in the app animates with one of the four Material motion patterns that fit it, all built from the existing tokens (150/250ms, standard easing) in `Motion.kt`. Navigation uses shared-axis X (with predictive back), bottom-bar tabs and the app gate use a true fade-through (fade out 100ms, then fade in and scale from 92% over 150ms), screen states and in-place swaps crossfade (keyed on the state's kind, not its data), and lazy list rows animate in, out and into place. Linear flows use one `SharedAxisNavHost` wrapper in `core/ui`.
+- **Why:** user request ("transitions that look nice and necessary"). The motion spec in DESIGN_SYSTEM.md was mostly not wired: no NavHost set transitions, so every screen change used Navigation Compose's default 700ms crossfade (nearly 3× the 250ms spec), and screen states, gate changes and list updates snapped. Material's guidance maps each relationship to a pattern: spatial/navigational → shared axis, unrelated (tabs) → fade-through, in place → fade.
+- **Alternatives considered:** container transform or shared elements (a row growing into its detail): rejected for now, since they need a shared-transition scope threaded through every feature and the gain over shared-axis is small. KPI count-ups and an animated bottom bar: rejected (numbers should read at once; the bar would resize screens mid-transition). Springs: rejected (no bounce, DESIGN_SYSTEM.md).
+- **Status:** Accepted.
+
+
+### #81 — 2026-10-18 — Bundled site illustrations, one house style, no invented faces
+- **Decision:** sites get a small set of bundled, AI-generated illustrations in one flat editorial style (docs/IMAGES.md): 3 hero scenes for the Best offers family, one image per `catalog.interests` key (services cards, plan cards, and the default for an offer without an image), a "Let's talk" contact image, and 2 share (OG) images for agents with no photo. They live in `web/images/` as 400/800 px WebP. The renderer draws only the images listed in `web/images/manifest.json`, so it works before they exist. **No face is ever invented** for the agent (initials monogram fallback) or for customers and testimonials. No text, brands or insurer marks appear inside images. The agent's photo stays the only eager image (LCP).
+- **Why:** the user asked where the site needs images and for a prompt per image; pre-filled sites (#78) and the persuasive family (#76) look unfinished without pictures. Fabricated faces would be misleading social proof; text in images can't be translated or indexed.
+- **Trade-off:** about 300 KB of WebP in the repo (only the images in view load, lazily); every site shares the same illustrations (the hero scene varies by slug).
+- **Alternatives considered:** stock photos (licensing per image, inconsistent look, real faces); agent-uploaded images for every slot (contradicts "finished at once").
+- **Status:** Accepted. Generation is pending (the user, or a generator connected later).
+
+### #82 — 2026-10-18 — The desktop hero scene may be the LCP element
+- **Decision:** on wide screens (≥ 1024 px), Spotlight and Guide show the hero scene in the right column under the featured offer, 400 px wide, and it becomes the desktop LCP element. On phones the LCP element stays the `<h1>` (or the agent's photo), and the scene stays lazy and below the fold. This refines #81's "the agent's photo stays the only eager image (LCP)".
+- **Why:** the scene alone under the hero left an orphaned image and a large gap on desktop (screenshot review). Measured on the SSR output: desktop LCP 0.5 s (spotlight) and 0.7 s (guide), Performance 100, CLS 0, so the rule's purpose (speed) still holds.
+- **Alternative considered:** narrowing the scene to about 240 px on desktop so it doesn't win LCP (it looked too small beside the offer card).
+- **Status:** Accepted.
+
+### #83 — 2026-10-19 — Onboarding only after the server confirms the agent has no site
+- **Decision:** the app never offers to create a site (onboarding steps 2 and 3) without first checking that the agent has none. The gate reads the cache afresh and then asks the server (`SiteRepository.fetchMine()`, a direct owner-only select that also caches the row) before starting onboarding for an agent with a complete profile; onboarding asks the server again after step 1, and closes itself if the agent's site arrives. If the server can't be asked, the gate shows the startup error with Retry, and step 1 stays put with the error. A failed sync with no cached site is also the startup error, not onboarding.
+- **Why:** user report: after every app update the app reopened onboarding and asked for a new link. Cause: an update that changes the cache schema empties the cache; on the first sync the gate saw "sync done, no site" for a moment, because the sync marks itself Done before Room's live query re-emits the site, and that moment latched onboarding. Step 3 then inserted a new site, which the database refused (`unique (agent_id)`), shown as "this link is taken" for any link. The user asked for the site's existence to be checked before the creation flow starts. One server read at that point is cheap and authoritative, while the cache can be empty or behind.
+- **Alternatives considered:** only fixing the race (still trusts a cache that can be emptied while the sync cursors survive); letting step 3 adopt the existing site on a conflict (the agent would still walk through steps they don't need, and a conflict can also mean the link is taken).
+- **Status:** Accepted.
+

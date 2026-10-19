@@ -201,6 +201,18 @@ class FakeSiteRepository(initial: Site? = null) : SiteRepository {
 
     override fun observeMine(): Flow<Site?> = site
 
+    /** The site on the server when the cache doesn't have it (e.g. an emptied cache); [fetchMine] caches it. */
+    var serverSite: Site? = null
+    var fetchError: AppError? = null
+    var fetches = 0
+
+    override suspend fun fetchMine(): AppResult<Site?> {
+        fetches++
+        fetchError?.let { return Result.Err(it) }
+        serverSite?.let { site.value = it }
+        return Result.Ok(site.value)
+    }
+
     override suspend fun isSlugAvailable(slug: String): AppResult<Boolean> {
         availabilityChecks += slug
         availabilityError?.let { return Result.Err(it) }

@@ -1,5 +1,7 @@
 package com.sledje.agentpro.core.designsystem.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +38,7 @@ import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.AppChart
 import com.sledje.agentpro.core.designsystem.ChartData
 import com.sledje.agentpro.core.designsystem.Dimens
+import com.sledje.agentpro.core.designsystem.Motion
 import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.core.designsystem.TABULAR_FIGURES
 import com.sledje.agentpro.core.format.Money
@@ -123,8 +126,8 @@ fun ChartCard(
         Text(title, style = AgentProTheme.text.strong, modifier = Modifier.semantics { heading() })
         Text(takeaway, style = AgentProTheme.text.bodyMuted)
         Spacer(Modifier.height(Spacing.m))
-        when {
-            data.isEmpty -> Column(
+        if (data.isEmpty) {
+            Column(
                 Modifier.fillMaxWidth().heightIn(min = Dimens.chartHeight),
                 verticalArrangement = Arrangement.spacedBy(Spacing.s, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,8 +135,13 @@ fun ChartCard(
                 Icon(painterResource(Res.drawable.ic_bar_chart), null, Modifier.size(Dimens.icon), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(emptyMessage, style = AgentProTheme.text.bodyMuted, textAlign = TextAlign.Center)
             }
-            showTable -> ChartTable(data)
-            else -> AppChart(data)
+        } else {
+            // Chart ⇄ table crossfades while the card eases to the new height.
+            AnimatedContent(
+                showTable,
+                transitionSpec = { Motion.crossfade() using SizeTransform { _, _ -> Motion.navigation() } },
+                label = "chartTable",
+            ) { table -> if (table) ChartTable(data) else AppChart(data) }
         }
         if (!data.isEmpty) {
             TertiaryButton(

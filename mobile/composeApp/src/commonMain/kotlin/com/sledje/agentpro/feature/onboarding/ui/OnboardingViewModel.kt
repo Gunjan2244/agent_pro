@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sledje.agentpro.app.AppEvents
 import com.sledje.agentpro.app.AppMessage
 import com.sledje.agentpro.app.OnboardingSession
+import com.sledje.agentpro.core.catalog.SiteSeed
 import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.data.AppError
@@ -30,6 +31,7 @@ import com.sledje.agentpro.resources.cat_field_city
 import com.sledje.agentpro.resources.cat_field_designation
 import com.sledje.agentpro.resources.cat_field_name
 import com.sledje.agentpro.resources.cat_field_photo
+import com.sledje.agentpro.resources.onboarding_photo_tips
 import com.sledje.agentpro.resources.profile_agency_code
 import com.sledje.agentpro.resources.profile_branch
 import com.sledje.agentpro.resources.profile_mobile
@@ -38,12 +40,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 /** The onboarding steps (docs/UX.md, Onboarding: 1 Profile → 2 Template → 3 Your link). */
 enum class OnboardingStep(val number: Int) { Profile(1), Template(2), Link(3) }
+
+/** The three screens after "Publish now" (docs/UX.md, Site is live). */
+enum class LaunchStep { AddToPhone, Preview, Share }
+
+/** The live site the launch screens are about, and the screen showing. */
+data class SiteLaunch(val slug: String, val step: LaunchStep = LaunchStep.AddToPhone)
 
 /** Live state of the slug field on step 3. */
 sealed interface SlugStatus {
@@ -68,11 +77,15 @@ data class OnboardingUiState(
     val contactSummary: Boolean = false,
     val error: AppError? = null,
     val templateKey: String = Templates.all.first().key,
+    /** The site's language: the app's language at creation (set by the screen with [OnboardingViewModel.setLocale]). */
+    val locale: String = SiteSeed.DEFAULT_LOCALE,
     val slug: String = "",
     val slugStatus: SlugStatus = SlugStatus.Empty,
     /** One-shot: the step to open next. */
     val navigateTo: OnboardingStep? = null,
     val finished: Boolean = false,
+    /** Set once the site is live: the three launch screens (Add to phone, Preview, Share) run before Home. */
+    val launch: SiteLaunch? = null,
 ) {
     val template: TemplateSpec get() = Templates.fromKey(templateKey) ?: Templates.all.first()
     val canSubmitLink: Boolean get() = !saving && (slugStatus == SlugStatus.Available || slugStatus is SlugStatus.Unchecked)
@@ -105,6 +118,8 @@ class OnboardingViewModel(
     private var profile: Profile? = null
     private var prefilled = false
     private var siteCreated = false
+    /** True from the moment this onboarding starts creating the site, so its own new site isn't mistaken for an existing one. */
+    private var creatingSite = false
     private var slugJob: Job? = null
 
     init {
@@ -117,6 +132,20 @@ class OnboardingViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            // An agent who already has a site (it synced after onboarding opened, e.g. after an app
+            // update emptied the cache) keeps it: once the profile is complete, close onboarding
+            // instead of asking for a new link. An incomplete profile is finished on step 1 first.
+            combine(profiles.observeMine(), sites.observeMine()) { p, site -> p?.isComplete == true && site != null }
+                .collect { hasSite -> if (hasSite && !creatingSite) closeForExistingSite() }
+        }
+    }
+
+    /** Opens Main with the agent's existing site and link; no trial message, since they set up before. */
+    private fun closeForExistingSite() {
+        if (_state.value.finished) return
+        _state.update { it.copy(saving = false, finished = true) }
+        session.finish()
     }
 
     private fun prefill(p: Profile) {
@@ -168,7 +197,15 @@ class OnboardingViewModel(
                 is Result.Ok -> {
                     profile = result.value
                     if (_state.value.slug.isEmpty()) suggestSlug(result.value.fullName)
-                    _state.update { it.copy(saving = false, navigateTo = OnboardingStep.Template) }
+                    // Steps 2 and 3 create the site, so first ask the server whether the agent already has one.
+                    when (val existing = sites.fetchMine()) {
+                        is Result.Ok -> if (existing.value != null) {
+                            closeForExistingSite()
+                        } else {
+                            _state.update { it.copy(saving = false, navigateTo = OnboardingStep.Template) }
+                        }
+                        is Result.Err -> _state.update { it.copy(saving = false, error = existing.error) }
+                    }
                 }
                 is Result.Err -> _state.update { it.copy(saving = false, error = result.error) }
             }
@@ -176,6 +213,15 @@ class OnboardingViewModel(
     }
 
     // ---- Step 2 -------------------------------------------------------------------------------
+
+    /** The app's current language (a catalog locale key); the site is created in it and previewed in it. */
+    fun setLocale(locale: String) {
+        if (locale in SiteSeed.LOCALES) _state.update { it.copy(locale = locale) }
+    }
+
+    /** [template] with the agent's seeded starter content, as created in step 3 (the step-2 preview uses it). */
+    fun starterContent(template: TemplateSpec): JsonObject? =
+        profile?.let { StarterContent.from(it, template, _state.value.locale, it.id) }
 
     fun selectTemplate(key: String) {
         if (Templates.fromKey(key) == null) return
@@ -218,17 +264,20 @@ class OnboardingViewModel(
         viewModelScope.launch {
             if (!siteCreated) {
                 val p = profile
+                creatingSite = true
                 val created = sites.create(
                     NewSite(
                         slug = current.slug,
                         templateKey = current.template.key,
                         accent = current.template.defaultAccent.key,
-                        draftContent = if (p != null) StarterContent.from(p) else JsonObject(emptyMap()),
+                        draftContent = if (p != null) StarterContent.from(p, current.template, current.locale, p.id) else JsonObject(emptyMap()),
+                        locale = current.locale,
                     ),
                 )
                 when (created) {
                     is Result.Ok -> siteCreated = true
                     is Result.Err -> {
+                        creatingSite = false
                         _state.update {
                             if (created.error == AppError.Conflict) it.copy(saving = false, slugStatus = SlugStatus.Taken)
                             else it.copy(saving = false, error = created.error)
@@ -249,10 +298,37 @@ class OnboardingViewModel(
                     }
                 }
             }
-            events.post(AppMessage.TrialStarted())
-            _state.update { it.copy(saving = false, finished = true) }
-            session.finish()
+            if (publish) {
+                // Live: Add to phone → Preview → Share, then Home. The gate stays on onboarding until [finishLaunch].
+                _state.update { it.copy(saving = false, launch = SiteLaunch(current.slug)) }
+            } else {
+                finish()
+            }
         }
+    }
+
+    private fun finish() {
+        events.post(AppMessage.TrialStarted())
+        _state.update { it.copy(saving = false, finished = true) }
+        session.finish()
+    }
+
+    /** Next on a launch screen; after the last one, Home. */
+    fun launchNext() {
+        val launch = _state.value.launch ?: return
+        val next = LaunchStep.entries.getOrNull(launch.step.ordinal + 1)
+        if (next == null) finish() else _state.update { it.copy(launch = launch.copy(step = next)) }
+    }
+
+    /** Back from Preview or Share to the screen before. */
+    fun launchBack() {
+        val launch = _state.value.launch ?: return
+        LaunchStep.entries.getOrNull(launch.step.ordinal - 1)?.let { prev -> _state.update { it.copy(launch = launch.copy(step = prev)) } }
+    }
+
+    /** Done on the last launch screen. */
+    fun finishLaunch() {
+        if (_state.value.launch != null) finish()
     }
 
     fun onNavigated() = _state.update { it.copy(navigateTo = null) }
@@ -288,7 +364,7 @@ class OnboardingViewModel(
             FieldSpec(DESIGNATION, FieldType.Text, Res.string.cat_field_designation, maxLength = 60),
             FieldSpec(CITY, FieldType.Text, Res.string.cat_field_city, maxLength = 60),
             // The same square crop as the hero photo (site-schema hero.photo, aspect 1:1).
-            FieldSpec(PHOTO, FieldType.Image, Res.string.cat_field_photo, aspect = "1:1"),
+            FieldSpec(PHOTO, FieldType.Image, Res.string.cat_field_photo, aspect = "1:1", helper = Res.string.onboarding_photo_tips),
             FieldSpec(AGENCY_CODE, FieldType.Text, Res.string.profile_agency_code, maxLength = 30),
             FieldSpec(BRANCH, FieldType.Text, Res.string.profile_branch, maxLength = 60),
         )

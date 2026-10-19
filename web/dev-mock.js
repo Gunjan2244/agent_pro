@@ -1,9 +1,10 @@
 // DEV ONLY. Not copied into production builds (scripts/build-web.sh copies it only when WEB_DEV=1),
 // and app.js only imports it on localhost with ?mock=1. Serves web/dev-fixtures/*.json.
-// Slugs: demo (EN), demo-hi (HI), xss, minimal-empty, unpublished (-> null), error (-> throws).
-// ?t=classic|modern|minimal overrides the template. Phone ending 0000 => rate limited; 1111 => transport error, 2222 => unavailable, 3333 => invalid(email), 4444 => invalid(consent) on the enquiry form. Enquiry without a consent object => invalid(consent). Same 0000/1111/2222 for submit_data_request. Slug demo-hi has canonical_host.
+// Slugs: demo (EN), demo-hi (HI), offers (Best offers: spotlight + demo offers), seeded (a brand-new agent's site,
+// built by scripts/site-seed.mjs), xss, minimal-empty, unpublished (-> null), error (-> throws).
+// ?t=classic|modern|minimal|spotlight|guide overrides the template. Phone ending 0000 => rate limited; 1111 => transport error, 2222 => unavailable, 3333 => invalid(email), 4444 => invalid(consent) on the enquiry form. Enquiry without a consent object => invalid(consent). Same 0000/1111/2222 for submit_data_request. Slug demo-hi has canonical_host.
 export function mockApi(real, q) {
-  const FIX = { demo: "sample-en", "demo-hi": "sample-hi", xss: "sample-xss", "minimal-empty": "sample-empty" };
+  const FIX = { demo: "sample-en", "demo-hi": "sample-hi", offers: "sample-offers", seeded: "sample-seeded", xss: "sample-xss", "minimal-empty": "sample-empty" };
   const log = (...a) => console.info("[mock]", ...a);
   return {
     async getPublicSite(slug) {

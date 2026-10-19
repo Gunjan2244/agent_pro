@@ -9,6 +9,7 @@ import com.sledje.agentpro.buildlogic.codegen.PrivacyNoticesKotlinGenerator
 import com.sledje.agentpro.buildlogic.codegen.SharedDefinitions
 import com.sledje.agentpro.buildlogic.codegen.SharedDefinitionsException
 import com.sledje.agentpro.buildlogic.codegen.SiteSchemaKotlinGenerator
+import com.sledje.agentpro.buildlogic.codegen.SiteSeedKotlinGenerator
 import com.sledje.agentpro.buildlogic.codegen.StringsXmlGenerator
 import com.sledje.agentpro.buildlogic.codegen.TemplatesKotlinGenerator
 import com.sledje.agentpro.buildlogic.codegen.TokensCssGenerator
@@ -48,7 +49,8 @@ private fun File.writeIfChanged(text: String) {
 }
 
 /**
- * Generates Catalog.kt, Tokens.kt, SiteSchema.kt, Templates.kt, PrivacyNotices.kt, AppConfig.kt and the Compose resources directory
+ * Generates Catalog.kt, Tokens.kt, SiteSchema.kt, Templates.kt, SiteSeed.kt (when shared/site-seed.json exists), PrivacyNotices.kt,
+ * AppConfig.kt and the Compose resources directory
  * (a copy of src/commonMain/composeResources plus values{,-hi}/strings_catalog.xml).
  * Runs before Kotlin compilation and resource processing of composeApp. Not build-cached because
  * AppConfig.kt holds values from local.properties.
@@ -89,6 +91,7 @@ abstract class GenerateSharedCodeTask : DefaultTask() {
         File(catalogDir, "Catalog.kt").writeIfChanged(CatalogKotlinGenerator(defs).generate())
         File(catalogDir, "SiteSchema.kt").writeIfChanged(SiteSchemaKotlinGenerator(defs).generate())
         File(catalogDir, "Templates.kt").writeIfChanged(TemplatesKotlinGenerator(defs).generate())
+        if (defs.siteSeed != null) File(catalogDir, "SiteSeed.kt").writeIfChanged(SiteSeedKotlinGenerator(defs).generate())
         if (PrivacyNotices(defs).present) {
             File(catalogDir, "PrivacyNotices.kt").writeIfChanged(PrivacyNoticesKotlinGenerator(defs).generate())
         }

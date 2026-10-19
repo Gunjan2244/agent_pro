@@ -4,14 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -21,13 +18,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import com.sledje.agentpro.core.catalog.TemplateFamily
 import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.core.catalog.color
 import com.sledje.agentpro.core.catalog.label
@@ -54,6 +51,9 @@ import com.sledje.agentpro.core.ui.LocalIsOnline
 import com.sledje.agentpro.core.designsystem.components.NetworkImage
 import com.sledje.agentpro.feature.website.data.ImageUnreadable
 import com.sledje.agentpro.feature.website.data.SiteLinks
+import com.sledje.agentpro.feature.website.ui.TemplateChooserBackHandler
+import com.sledje.agentpro.feature.website.ui.TemplateChooserBody
+import com.sledje.agentpro.feature.website.ui.rememberTemplateChooser
 import com.sledje.agentpro.resources.website_photo_unreadable
 import com.sledje.agentpro.resources.website_photo_uploading
 import com.sledje.agentpro.resources.Res
@@ -70,7 +70,6 @@ import com.sledje.agentpro.resources.onboarding_link_taken
 import com.sledje.agentpro.resources.onboarding_link_title
 import com.sledje.agentpro.resources.onboarding_profile_title
 import com.sledje.agentpro.resources.onboarding_publish_now
-import com.sledje.agentpro.resources.onboarding_template_position
 import com.sledje.agentpro.resources.onboarding_template_title
 import com.sledje.agentpro.resources.onboarding_use_template
 import org.jetbrains.compose.resources.stringResource
@@ -160,9 +159,10 @@ private fun ContactSummary(form: FormState, enabled: Boolean, onEdit: () -> Unit
 }
 
 /**
- * Step 2: a full-height pager of the templates with the template name below and **Use this template**.
- * The app passes [preview] = the live render of the agent's starter content (SitePreview, the bundled
- * web renderer; Phase 8); the default placeholder shows the name in the template's accent (screenshots).
+ * Step 2: first the family on two cards ("Meet me" / "Best offers"), then a full-height pager of that family's
+ * templates with the template name below and **Use this template**. The app passes [preview] = the live render
+ * of the agent's seeded starter content in that template (SitePreview, the bundled web renderer); the default
+ * placeholder shows the name in the template's accent (screenshots). Back from the pager returns to the cards.
  */
 @Composable
 fun OnboardingTemplateScreen(
@@ -173,32 +173,22 @@ fun OnboardingTemplateScreen(
     onUse: (String) -> Unit,
     onBack: (() -> Unit)?,
     preview: @Composable (TemplateSpec) -> Unit = { TemplatePlaceholder(it, agentName, agentLine) },
+    initialFamily: TemplateFamily? = null,
 ) {
-    val initial = templates.indexOfFirst { it.key == selectedKey }.coerceAtLeast(0)
-    val pager = rememberPagerState(initialPage = initial) { templates.size }
-    val current = templates[pager.currentPage.coerceIn(0, templates.lastIndex)]
+    val chooser = rememberTemplateChooser(templates, selectedKey, initialFamily)
+    TemplateChooserBackHandler(chooser)
     AppScaffold(
-        topBar = { StepTopBar(stringResource(Res.string.onboarding_template_title), OnboardingStep.Template, onBack) },
+        topBar = {
+            StepTopBar(
+                stringResource(Res.string.onboarding_template_title),
+                OnboardingStep.Template,
+                onBack = if (chooser.family != null || onBack != null) ({ if (!chooser.back()) onBack?.invoke() }) else null,
+            )
+        },
         offline = !LocalIsOnline.current,
-        bottomBar = { BottomActionBar(stringResource(Res.string.onboarding_use_template), onClick = { onUse(current.key) }) },
+        bottomBar = { chooser.current?.let { current -> BottomActionBar(stringResource(Res.string.onboarding_use_template), onClick = { onUse(current.key) }) } },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(vertical = Spacing.m)) {
-            HorizontalPager(
-                state = pager,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = Spacing.l),
-                pageSpacing = Spacing.m,
-            ) { page -> preview(templates[page]) }
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = Spacing.m).padding(top = Spacing.m),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Spacing.s),
-            ) {
-                Text(stringResource(current.name), style = AgentProTheme.text.title, modifier = Modifier.semantics { heading() })
-                Text(stringResource(current.description), style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                Text(stringResource(Res.string.onboarding_template_position, pager.currentPage + 1, templates.size), style = AgentProTheme.text.bodyMuted)
-            }
-        }
+        Box(Modifier.fillMaxSize().padding(padding)) { TemplateChooserBody(chooser) { template -> preview(template) } }
     }
 }
 

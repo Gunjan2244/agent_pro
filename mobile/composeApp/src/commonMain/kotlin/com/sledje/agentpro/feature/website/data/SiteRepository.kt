@@ -28,6 +28,12 @@ import kotlin.time.Instant
 interface SiteRepository {
     fun observeMine(): Flow<Site?>
 
+    /**
+     * Asks the server, not the cache, whether the agent already has a site, and caches it if so.
+     * Checked before onboarding offers to create one, so an agent never makes a second site or a new link.
+     */
+    suspend fun fetchMine(): AppResult<Site?>
+
     /** `is_slug_available(slug)`: format, reserved words and other agents' sites (docs/BACKEND.md, RPCs). */
     suspend fun isSlugAvailable(slug: String): AppResult<Boolean>
 
@@ -74,6 +80,20 @@ class SupabaseSiteRepository(
 ) : SiteRepository {
     override fun observeMine(): Flow<Site?> = dao.observeMine().map { it?.toModel() }
 
+    override suspend fun fetchMine(): AppResult<Site?> = remoteCall {
+        val client = supabase.require()
+        val uid = client.auth.currentUserOrNull()?.id ?: error("no session")
+        val row = client.from(SITES_TABLE).select {
+            filter {
+                eq("agent_id", uid)
+                exact("deleted_at", null)
+            }
+            limit(1)
+        }.decodeList<JsonObject>().firstOrNull()
+        if (row != null) sync.applyLocal(SITES_TABLE, listOf(row))
+        row?.let { RowJson.decodeFromJsonElement(SiteDto.serializer(), it).toEntity().toModel() }
+    }
+
     override suspend fun isSlugAvailable(slug: String): AppResult<Boolean> = remoteCall {
         supabase.require().postgrest.rpc("is_slug_available", buildJsonObject { put("slug", slug) })
             .decodeAs<Boolean>()
@@ -88,6 +108,7 @@ class SupabaseSiteRepository(
                 put("slug", site.slug)
                 put("template_key", site.templateKey)
                 put("accent", site.accent)
+                site.locale?.let { put("locale", it) }
                 put("draft_content", site.draftContent)
             },
         ) { select() }.decodeSingle<JsonObject>()

@@ -1,0 +1,169 @@
+{
+  "_comment": "TEST DATA ONLY. Demo company and offers for the preview, the web dev fixtures and the SQL seed (supabase/demo/). Facts are taken from the insurer's public announcements (Sept-Oct 2026) and rewritten in our own words. `internalName` is admin-only and never reaches a site (DECISIONS #77); every public field uses a generic, disguised name. Check figures against the official brochure before any real use.",
+  "company": {
+    "slug": "demo-life",
+    "name": { "en": "Demo Life Insurer", "hi": "डेमो जीवन बीमा कंपनी" },
+    "disclaimer": {
+      "en": "Insurance is the subject matter of solicitation. Benefits depend on the policy terms and conditions. Please read the sales brochure carefully before buying.",
+      "hi": "बीमा आग्रह की विषय-वस्तु है। लाभ पॉलिसी के नियमों और शर्तों पर निर्भर करते हैं। खरीदने से पहले बिक्री विवरणिका ध्यान से पढ़ें।"
+    }
+  },
+  "offers": [
+    {
+      "key": "pension-locked-rate",
+      "internalName": "New Jeevan Dhara-II (Plan 892)",
+      "interest": "pension",
+      "ctaKind": "enquire",
+      "image": "offer-pension-locked-rate",
+      "startsAt": "2026-10-19",
+      "endsAt": "2027-03-31",
+      "sort": 1,
+      "content": {
+        "en": {
+          "title": "Lifelong pension, rate locked today",
+          "summary": "Save now and get a guaranteed income for life after you retire. The annuity rate is fixed on the day you start.",
+          "details": "Start from age 18. Pay once or regularly, then choose when income begins (from age 30). Pick income for yourself alone or for you and your spouse. Extra savings during the waiting years can buy more pension.",
+          "badge": "New",
+          "disclaimer": "Annuity rates and options are subject to the policy terms."
+        },
+        "hi": {
+          "title": "आजीवन पेंशन, दर आज ही तय",
+          "summary": "अभी बचत करें और रिटायरमेंट के बाद जीवन भर गारंटीड आय पाएँ। एन्युटी दर शुरुआत के दिन ही तय हो जाती है।",
+          "details": "18 वर्ष की उम्र से शुरू करें। एक बार या नियमित भुगतान करें, फिर चुनें कि आय कब शुरू हो (30 वर्ष से)। आय सिर्फ अपने लिए या पति/पत्नी के साथ संयुक्त रूप से चुनें। इंतज़ार के वर्षों में अतिरिक्त बचत से पेंशन बढ़ाई जा सकती है।",
+          "badge": "नया",
+          "disclaimer": "एन्युटी दरें और विकल्प पॉलिसी की शर्तों के अधीन हैं।"
+        }
+      }
+    },
+    {
+      "key": "family-health-cash",
+      "internalName": "Health Shield (Plan 907)",
+      "interest": "health",
+      "ctaKind": "enquire",
+      "image": "offer-family-health-cash",
+      "startsAt": "2026-10-19",
+      "endsAt": "2027-03-31",
+      "sort": 2,
+      "content": {
+        "en": {
+          "title": "Family health cash plan",
+          "summary": "A fixed daily cash amount in hospital, plus lump sums for major surgery, for you and your children under one plan.",
+          "details": "For adults aged 18 to 65; children from 90 days can be added. The premium stays the same for the full 15 years. Cover grows when you make no claim. If the main insured person dies, future premiums for the family are waived, subject to conditions.",
+          "badge": "New",
+          "disclaimer": "Benefits are fixed amounts for the listed events, subject to the policy terms."
+        },
+        "hi": {
+          "title": "पारिवारिक हेल्थ कैश प्लान",
+          "summary": "अस्पताल में हर दिन तय नकद राशि, और बड़ी सर्जरी पर एकमुश्त राशि — आपके और बच्चों के लिए एक ही प्लान में।",
+          "details": "18 से 65 वर्ष के वयस्कों के लिए; 90 दिन से बड़े बच्चे जोड़े जा सकते हैं। पूरे 15 वर्ष प्रीमियम एक जैसा रहता है। क्लेम न करने पर कवर बढ़ता है। मुख्य बीमित व्यक्ति के न रहने पर परिवार के आगे के प्रीमियम माफ़, शर्तों के अधीन।",
+          "badge": "नया",
+          "disclaimer": "लाभ सूचीबद्ध घटनाओं के लिए तय राशियाँ हैं, पॉलिसी की शर्तों के अधीन।"
+        }
+      }
+    },
+    {
+      "key": "cancer-care",
+      "internalName": "New Cancer Cover (Plan 908)",
+      "interest": "health",
+      "ctaKind": "enquire",
+      "image": "offer-cancer-care",
+      "startsAt": "2026-10-19",
+      "endsAt": "2027-03-31",
+      "sort": 3,
+      "content": {
+        "en": {
+          "title": "Cancer care cover",
+          "summary": "Money when you need it most: a payout on an early-stage cancer diagnosis, and the full cover with monthly income at a major stage.",
+          "details": "For ages 18 to 65. A quarter of the cover is paid on a listed early-stage diagnosis and the full cover on a listed major stage, with a monthly income for 10 years. Future premiums are waived after an eligible diagnosis. Choose a level or increasing cover.",
+          "badge": "New",
+          "disclaimer": "Payouts apply to the cancer stages listed in the policy, subject to its terms."
+        },
+        "hi": {
+          "title": "कैंसर केयर कवर",
+          "summary": "जब सबसे ज़्यादा ज़रूरत हो तब पैसा: शुरुआती चरण के कैंसर पर भुगतान, और गंभीर चरण पर पूरा कवर व मासिक आय।",
+          "details": "18 से 65 वर्ष के लिए। सूचीबद्ध शुरुआती चरण पर कवर का एक-चौथाई और गंभीर चरण पर पूरा कवर, साथ में 10 वर्ष तक मासिक आय। योग्य निदान के बाद आगे के प्रीमियम माफ़। स्थिर या बढ़ता कवर चुनें।",
+          "badge": "नया",
+          "disclaimer": "भुगतान पॉलिसी में सूचीबद्ध कैंसर चरणों पर, उसकी शर्तों के अधीन।"
+        }
+      }
+    },
+    {
+      "key": "savings-booster",
+      "internalName": "Bima Platinum (Plan 770)",
+      "interest": "endowment",
+      "ctaKind": "enquire",
+      "image": "offer-savings-booster",
+      "startsAt": "2026-09-07",
+      "endsAt": "2027-03-31",
+      "sort": 4,
+      "content": {
+        "en": {
+          "title": "Savings plan with a booster payout",
+          "summary": "Pay for a few years, earn guaranteed additions every year you pay, then get a regular income and a booster payout later.",
+          "details": "Pay for 7 to 18 years. Guaranteed additions build up each year you pay. After that you receive a yearly income, and a booster payout five years after the paying term ends. Life cover throughout. Entry from 30 days to 55 years, depending on the term.",
+          "badge": "Limited pay",
+          "disclaimer": "Additions, income and booster amounts depend on the policy terms."
+        },
+        "hi": {
+          "title": "बूस्टर भुगतान वाला बचत प्लान",
+          "summary": "कुछ ही वर्ष भुगतान करें, हर भुगतान वर्ष में गारंटीड एडिशन पाएँ, फिर नियमित आय और बाद में बूस्टर भुगतान।",
+          "details": "7 से 18 वर्ष तक भुगतान करें। हर भुगतान वर्ष में गारंटीड एडिशन जुड़ते हैं। उसके बाद सालाना आय, और भुगतान अवधि खत्म होने के पाँच वर्ष बाद बूस्टर भुगतान। पूरे समय जीवन सुरक्षा। अवधि के अनुसार 30 दिन से 55 वर्ष तक प्रवेश।",
+          "badge": "सीमित भुगतान",
+          "disclaimer": "एडिशन, आय और बूस्टर राशि पॉलिसी की शर्तों पर निर्भर हैं।"
+        }
+      }
+    },
+    {
+      "key": "simple-protection",
+      "internalName": "Jeevan Raksha (Plan 894)",
+      "interest": "term",
+      "ctaKind": "enquire",
+      "image": "offer-simple-protection",
+      "startsAt": "2026-09-07",
+      "endsAt": "2027-03-31",
+      "sort": 5,
+      "content": {
+        "en": {
+          "title": "Simple family protection plan",
+          "summary": "Pure life cover at a low cost, so your family gets a fixed, guaranteed amount if something happens to you.",
+          "details": "Cover from ₹5 lakh to ₹24 lakh, for ages 18 to 45. Pay once, regularly, or for a limited period. Special lower rates for women. There is no maturity payout: the plan is only about protecting your family.",
+          "badge": "Women save more",
+          "disclaimer": "Pure protection plan with no maturity benefit; subject to the policy terms."
+        },
+        "hi": {
+          "title": "सरल पारिवारिक सुरक्षा प्लान",
+          "summary": "कम लागत में शुद्ध जीवन सुरक्षा — आपको कुछ होने पर परिवार को तय, गारंटीड राशि मिलती है।",
+          "details": "₹5 लाख से ₹24 लाख तक कवर, 18 से 45 वर्ष के लिए। एक बार, नियमित या सीमित अवधि तक भुगतान करें। महिलाओं के लिए विशेष कम दरें। परिपक्वता पर कोई भुगतान नहीं: यह प्लान सिर्फ परिवार की सुरक्षा के लिए है।",
+          "badge": "महिलाओं की बचत",
+          "disclaimer": "परिपक्वता लाभ के बिना शुद्ध सुरक्षा प्लान; पॉलिसी की शर्तों के अधीन।"
+        }
+      }
+    },
+    {
+      "key": "couples-savings",
+      "internalName": "Jeevan Sathi (Plans 888/889)",
+      "interest": "endowment",
+      "ctaKind": "enquire",
+      "image": "offer-couples-savings",
+      "startsAt": "2026-06-01",
+      "endsAt": "2027-03-31",
+      "sort": 6,
+      "content": {
+        "en": {
+          "title": "Savings plan for couples",
+          "summary": "One plan that covers both of you. If one partner passes away, the remaining premiums are waived and the savings continue.",
+          "details": "Pay once, or for 5, 10 or 15 years. Guaranteed additions build up every year. Cover starts from ₹3 lakh. Loans and payouts in instalments are available.",
+          "badge": "For two",
+          "disclaimer": "Waiver and additions apply as per the policy terms."
+        },
+        "hi": {
+          "title": "दंपति के लिए बचत प्लान",
+          "summary": "एक ही प्लान में दोनों की सुरक्षा। एक साथी के न रहने पर बाकी प्रीमियम माफ़ और बचत जारी।",
+          "details": "एक बार, या 5, 10 या 15 वर्ष तक भुगतान करें। हर वर्ष गारंटीड एडिशन जुड़ते हैं। कवर ₹3 लाख से शुरू। लोन और किस्तों में भुगतान की सुविधा।",
+          "badge": "दो के लिए",
+          "disclaimer": "प्रीमियम माफ़ी और एडिशन पॉलिसी की शर्तों के अनुसार।"
+        }
+      }
+    }
+  ]
+}

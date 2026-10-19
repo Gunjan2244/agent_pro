@@ -137,12 +137,17 @@ class CatalogKotlinGenerator(private val defs: SharedDefinitions) {
     }
 
     private class Extra(val json: String, val property: String, val type: String, val nullable: Boolean, val kind: Kind)
-    private enum class Kind { BOOLEAN, INT, LONG, DOUBLE, STRING }
+    private enum class Kind { BOOLEAN, INT, LONG, DOUBLE, STRING, RESOURCE }
 
     private fun extraFields(list: CatalogList): List<Extra> {
         val names = LinkedHashSet<String>()
         list.entries.forEach { e -> e.keys.filterTo(names) { it !in STANDARD_FIELDS } }
         return names.map { name ->
+            if (name == DESCRIPTION_KEY) {
+                // An i18n key, like labelKey: becomes `description: StringResource` (e.g. templateFamilies).
+                require(list.entries.all { it.string(name) != null }) { "catalog.${list.jsonName}: every entry needs \"$name\" when one has it" }
+                return@map Extra(name, "description", "StringResource", false, Kind.RESOURCE)
+            }
             val values = list.entries.map { it[name] }
             val nullable = values.any { it == null || it is JsonNull }
             val present = values.filterNotNull().filter { it !is JsonNull }
@@ -161,7 +166,7 @@ class CatalogKotlinGenerator(private val defs: SharedDefinitions) {
             }
             val base = when (kind) {
                 Kind.BOOLEAN -> "Boolean"; Kind.INT -> "Int"; Kind.LONG -> "Long"
-                Kind.DOUBLE -> "Double"; Kind.STRING -> "String"
+                Kind.DOUBLE -> "Double"; Kind.STRING, Kind.RESOURCE -> "String"
             }
             val property = Naming.propertyName(name)
             require(property !in RESERVED) { "catalog.${list.jsonName}.$name: \"$name\" can't be used as a field name" }
@@ -176,6 +181,7 @@ class CatalogKotlinGenerator(private val defs: SharedDefinitions) {
             Kind.STRING -> Naming.kotlinString(p.content)
             Kind.LONG -> p.content + "L"
             Kind.DOUBLE -> p.content.toDouble().toString()
+            Kind.RESOURCE -> "Res.string.${Naming.stringResourceName(p.content)}"
             else -> p.content
         }
     }
@@ -195,6 +201,8 @@ class CatalogKotlinGenerator(private val defs: SharedDefinitions) {
 
     companion object {
         private val STANDARD_FIELDS = setOf("key", "labelKey", "icon", "tone", "order", "deprecated")
+        /** Extra entry field holding an i18n key; generated as `description: StringResource`. */
+        const val DESCRIPTION_KEY = "descriptionKey"
         private val RESERVED = setOf("name", "ordinal", "entries", "key", "label", "icon", "tone", "order", "deprecated")
 
         /** Writes a JSON object as nested Kotlin objects with `const val`s and `listOf(...)`s. */

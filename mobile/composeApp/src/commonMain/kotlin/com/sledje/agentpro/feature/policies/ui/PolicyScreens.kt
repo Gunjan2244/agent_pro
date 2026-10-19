@@ -31,6 +31,7 @@ import com.sledje.agentpro.core.designsystem.components.AppScaffold
 import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
 import com.sledje.agentpro.core.designsystem.components.EmptyState
+import com.sledje.agentpro.core.designsystem.components.StateCrossfade
 import com.sledje.agentpro.core.designsystem.components.HairlineDivider
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.ListSkeleton
@@ -241,10 +242,12 @@ fun PolicyDetailContent(
             }
         },
     ) { padding ->
-        when (state) {
-            PolicyDetailState.Loading -> ListSkeleton(Modifier.padding(padding))
-            PolicyDetailState.Gone -> EmptyState(FeatureId.Policies.icon, stringResource(Res.string.policy_not_found), Modifier.padding(padding))
-            is PolicyDetailState.Shown -> PolicyDetailBody(state, today, onOpenCustomer, Modifier.padding(padding))
+        StateCrossfade(state, key = { it::class }) { s ->
+            when (s) {
+                PolicyDetailState.Loading -> ListSkeleton(Modifier.padding(padding))
+                PolicyDetailState.Gone -> EmptyState(FeatureId.Policies.icon, stringResource(Res.string.policy_not_found), Modifier.padding(padding))
+                is PolicyDetailState.Shown -> PolicyDetailBody(s, today, onOpenCustomer, Modifier.padding(padding))
+            }
         }
     }
 }

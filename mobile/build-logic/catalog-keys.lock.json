@@ -78,7 +78,8 @@
       "csvExport",
       "servicePlan",
       "payments",
-      "customDomains"
+      "customDomains",
+      "offers"
     ],
     "locales": [
       "en",
@@ -101,6 +102,42 @@
       "open",
       "done",
       "not_genuine"
+    ],
+    "offerStatuses": [
+      "draft",
+      "live",
+      "archived"
+    ],
+    "offerPhases": [
+      "upcoming",
+      "running",
+      "ended"
+    ],
+    "offerCtaKinds": [
+      "enquire",
+      "call",
+      "link"
+    ],
+    "adminRoles": [
+      "owner",
+      "editor"
+    ],
+    "membershipStatuses": [
+      "pending",
+      "approved",
+      "rejected",
+      "revoked",
+      "withdrawn"
+    ],
+    "membershipRejectReasons": [
+      "not_found",
+      "details_mismatch",
+      "not_agent",
+      "other"
+    ],
+    "templateFamilies": [
+      "personal",
+      "offers"
     ]
   },
   "privacyNoticeHashes": {

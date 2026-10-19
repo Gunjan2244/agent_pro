@@ -46,10 +46,11 @@ export function manifestFor(site, target, { catalog, tokens }) {
   return m;
 }
 
-// web/dist/config.js (written by scripts/build-web.sh) -> { SUPABASE_URL, SUPABASE_ANON_KEY, SITE_BASE_URL }.
+// web/dist/config.js (written by scripts/build-web.sh) -> { SUPABASE_URL, SUPABASE_ANON_KEY, SITE_BASE_URL, BUILD_TIME }.
+// BUILD_TIME (ISO) feeds the Worker's Last-Modified; "" when absent.
 export function parseConfig(text) {
   const out = {};
-  for (const k of ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SITE_BASE_URL"]) {
+  for (const k of ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SITE_BASE_URL", "BUILD_TIME"]) {
     const m = String(text).match(new RegExp(k + ':\\s*"((?:[^"\\\\]|\\\\.)*)"'));
     out[k] = m ? JSON.parse(`"${m[1]}"`) : "";
   }

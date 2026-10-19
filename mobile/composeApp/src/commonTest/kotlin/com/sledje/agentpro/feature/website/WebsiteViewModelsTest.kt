@@ -183,7 +183,7 @@ class WebsiteViewModelsTest {
     fun hidingASectionSavesTheDraftPinnedOnesCannotBeHidden() = runTest {
         val vm = ContentViewModel(sites)
         runCurrent()
-        assertEquals(SiteSchema.sections.size, vm.state.value.rows.size)
+        assertEquals(SiteContent.sections.size, vm.state.value.rows.size)
         vm.setHidden(section("testimonials"), true)
         runCurrent()
         val hidden = sites.drafts.single()[SiteContent.HIDDEN]!!.jsonArray.map { it.jsonPrimitive.content }
@@ -247,6 +247,42 @@ class WebsiteViewModelsTest {
         vm.selectAccent("not-a-swatch")
         runCurrent()
         assertEquals(3, sites.appearances.size, "only catalog swatches")
+    }
+
+    @Test
+    fun switchingToAnOffersTemplateUnhidesOffersAfterHeroOnce() = runTest {
+        val draft = buildJsonObject {
+            put("hero", buildJsonObject { put("headline", "Ramesh") })
+            put("sectionOrder", buildJsonArray { listOf("hero", "about", "services", "offers", "faq", "contact").forEach { add(it) } })
+            put("hidden", buildJsonArray { add("offers"); add("testimonials") })
+        }
+        sites.site.value = sites.site.value!!.copy(draftContent = draft)
+        val vm = AppearanceViewModel(sites)
+        runCurrent()
+        vm.selectTemplate("spotlight")
+        runCurrent()
+        val saved = sites.drafts.single()
+        assertEquals(listOf("hero", "offers", "about", "services", "faq", "contact"), saved["sectionOrder"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("testimonials"), saved["hidden"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("spotlight", sites.appearances.last().templateKey)
+        // Offers -> offers and back to personal change nothing in the draft.
+        vm.selectTemplate("guide")
+        runCurrent()
+        vm.selectTemplate("classic")
+        runCurrent()
+        assertEquals(1, sites.drafts.size)
+        assertEquals("classic", sites.appearances.last().templateKey)
+    }
+
+    @Test
+    fun aFailedDraftWriteKeepsTheOldTemplate() = runTest {
+        val vm = AppearanceViewModel(sites)
+        runCurrent()
+        sites.writeError = AppError.Offline
+        vm.selectTemplate("spotlight")
+        runCurrent()
+        assertEquals(AppError.Offline, vm.state.value.error)
+        assertEquals("classic", vm.state.value.site?.templateKey)
     }
 
     // ---- Link ----------------------------------------------------------------------------------

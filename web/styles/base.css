@@ -19,7 +19,8 @@ h3{font-size:var(--text-s);line-height:var(--line-s);font-weight:600}
 .lead{font-size:var(--text-m);line-height:var(--line-m);color:var(--c-onSurfaceVariant);margin-top:var(--space-m);white-space:pre-line}
 .meta{color:var(--c-muted);margin-top:var(--space-s)}
 .prose{white-space:pre-line;color:var(--c-onSurfaceVariant)}
-.hero-photo{width:160px;height:160px;border-radius:50%;object-fit:cover}
+.hero-photo{width:160px;height:160px;border-radius:50%;object-fit:cover;flex:none}
+.hero-photo.mono{display:grid;place-items:center;background:var(--tint);color:var(--accent);font-size:var(--text-l);line-height:var(--line-l);font-weight:600}
 .hero-text .btn{margin-top:var(--space-l)}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:var(--space-s) var(--space-m);border:1px solid var(--accent);border-radius:var(--shape-sm);background:var(--accent);color:var(--on-accent);font-family:inherit;font-weight:600;font-size:var(--text-s);line-height:var(--line-s);text-decoration:none;cursor:pointer;overflow-wrap:anywhere}
 .btn.ghost{background:transparent;color:var(--accent)}
@@ -35,9 +36,6 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 .card blockquote{white-space:pre-line}
 .list li{display:flex;justify-content:space-between;gap:var(--space-m);padding:var(--space-s) 0;border-bottom:1px solid var(--c-outlineVariant)}
 .list .meta{margin:0}
-.faq details{border-bottom:1px solid var(--c-outlineVariant);padding:var(--space-m) 0}
-.faq summary{font-weight:600;cursor:pointer}
-.faq .prose{margin-top:var(--space-s)}
 .contact-grid{display:grid;gap:var(--space-l)}
 .contact-info p{margin-top:var(--space-m)}
 .contact-info .actions{margin-top:0}
@@ -70,3 +68,66 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 .doc h1{font-size:var(--text-l);line-height:var(--line-l)}
 .doc .enq{margin-top:var(--space-s)}
 .doc{--on-accent:var(--c-onPrimary)}
+
+/* Conversational layer (DECISIONS #76): the agent's bubbles, the visitor's FAQ bubbles, quick replies. */
+.say{display:flex;align-items:flex-end;gap:var(--space-s);max-width:600px;margin-bottom:var(--space-m)}
+.av{flex:none;width:32px;height:32px;border-radius:50%;object-fit:cover}
+.av.mono{display:grid;place-items:center;background:var(--tint);color:var(--accent);font-size:var(--text-s);line-height:1;font-weight:600}
+.bubble{padding:var(--space-s) var(--space-m);border-radius:var(--shape-lg) var(--shape-lg) var(--shape-lg) 0;background:var(--c-surfaceContainer);color:var(--c-onSurface);white-space:pre-line;overflow-wrap:anywhere}
+.bubble.hi{font-size:var(--text-m);line-height:var(--line-m);font-weight:500}
+.hero-id{display:flex;align-items:flex-end;gap:var(--space-m)}
+.qr-h{margin-top:var(--space-l);color:var(--c-onSurfaceVariant);font-weight:500}
+.qr{display:flex;flex-wrap:wrap;gap:var(--space-s);margin-top:var(--space-s)}
+.chip{display:inline-flex;align-items:center;min-height:40px;padding:0 var(--space-m);border:1px solid var(--c-outline);border-radius:var(--shape-lg);background:var(--c-surface);color:var(--accent);font-weight:500;text-decoration:none;transition:background-color var(--motion-short) ease-out}
+.chip:hover{background:var(--tint)}
+.faq details{padding:var(--space-s) 0}
+.faq summary{display:flex;justify-content:flex-end;list-style:none;cursor:pointer}
+.faq summary::-webkit-details-marker{display:none}
+.you{max-width:85%;padding:var(--space-s) var(--space-m);border-radius:var(--shape-lg) var(--shape-lg) 0 var(--shape-lg);background:var(--tint);font-weight:500}
+.you::after{content:"+";padding-left:var(--space-s);color:var(--accent);font-weight:600}
+details[open] .you::after{content:"\2212"}
+.faq .say{max-width:85%;margin:var(--space-s) 0 0}
+.enq.done .say{margin:0}
+/* Offers (OFFERS.md): hairline white cards; the accent only on links and the hero button. */
+.offers{display:grid;gap:var(--space-m)}
+.offer{display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surface)}
+.offer .pic{width:100%;aspect-ratio:16/9;object-fit:cover}
+.offer-b{display:grid;gap:var(--space-s);align-content:start;padding:var(--space-m)}
+.offer h3,.offer .ttl{font-size:var(--text-m);line-height:var(--line-m);font-weight:600}
+.offer-top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-s);color:var(--c-muted)}
+.pill{padding:0 var(--space-s);border-radius:var(--shape-lg);background:var(--c-surfaceContainer);color:var(--c-onSurfaceVariant);font-weight:600}
+.sum{color:var(--c-onSurfaceVariant)}
+.ends{color:var(--c-onSurface);font-weight:500}
+.lnk{font-weight:600;text-decoration:none}
+.lnk::after{content:" \2192"}
+.fine{color:var(--c-muted)}
+.disc{margin-top:var(--space-m)}
+.more summary{cursor:pointer;color:var(--accent);font-weight:500}
+.more .prose{margin-top:var(--space-s)}
+.feat .btn{justify-self:start}
+.hero-offer{margin-top:var(--space-l)}
+.hero-side{display:contents}
+.fam-offers .feat{border-color:transparent;background:var(--tint)}
+.fam-offers .feat .pill{background:var(--c-surface)}
+.fam-offers .feat .src,.fam-offers .feat .fine,.fam-offers .feat .sum{color:var(--c-onSurfaceVariant)}
+.need{padding-top:var(--space-l);scroll-margin-top:var(--space-m)}
+.need h3{font-size:var(--text-m);line-height:var(--line-m);font-weight:600;margin-bottom:var(--space-m)}
+.need:target .say .bubble{background:var(--tint)}
+.trust{display:flex;flex-wrap:wrap;gap:var(--space-s)}
+.trust li{display:flex;align-items:center;gap:var(--space-s);padding:var(--space-s) var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg)}
+.trust .ico{color:var(--accent)}
+.trust strong,.stats strong{color:var(--accent)}
+/* Bundled illustrations (docs/IMAGES.md): white-edged, so they sit on white cards without a frame. */
+.svc.has-pic{display:grid;grid-template-columns:128px 1fr;grid-template-rows:auto 1fr;column-gap:var(--space-m);align-items:start}
+.svc .pic{grid-row:span 2;width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-sm)}
+.svc.has-pic p{margin-top:var(--space-s)}
+.talk{width:100%;max-width:360px;margin-top:var(--space-l)}
+.scene{width:100%;max-width:400px;margin:var(--space-l) auto 0}
+/* Sticky Call / WhatsApp bar on phones. Fixed from the first paint; .has-bar reserves its height (CLS 0). */
+.callbar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--space-s);padding:var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom));border-top:1px solid var(--c-outlineVariant);background:var(--c-surface)}
+.tpl.has-bar{padding-bottom:calc(var(--space-l)*2 + var(--space-m) + env(safe-area-inset-bottom))}
+@media(min-width:720px){.callbar{display:none}.tpl.has-bar{padding-bottom:0}.offers{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1024px){.fam-offers .sec-offers>.offers{grid-template-columns:repeat(3,1fr)}}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}details[open]>.say{animation:rise var(--motion-medium) ease-out}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}}

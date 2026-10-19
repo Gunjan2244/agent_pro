@@ -6,8 +6,12 @@ import com.sledje.agentpro.buildlogic.codegen.Naming
 import com.sledje.agentpro.buildlogic.codegen.NoticeHashes
 import com.sledje.agentpro.buildlogic.codegen.PrivacyNoticeHashing
 import com.sledje.agentpro.buildlogic.codegen.PrivacyNotices
+import com.sledje.agentpro.buildlogic.codegen.PublicText
+import com.sledje.agentpro.buildlogic.codegen.SeedForm
 import com.sledje.agentpro.buildlogic.codegen.SharedDefinitions
 import com.sledje.agentpro.buildlogic.codegen.SiteSchemaKotlinGenerator
+import com.sledje.agentpro.buildlogic.codegen.SiteSeedJson
+import com.sledje.agentpro.buildlogic.codegen.TemplatesKotlinGenerator
 import com.sledje.agentpro.buildlogic.codegen.array
 import com.sledje.agentpro.buildlogic.codegen.bool
 import com.sledje.agentpro.buildlogic.codegen.double
@@ -15,9 +19,12 @@ import com.sledje.agentpro.buildlogic.codegen.long
 import com.sledje.agentpro.buildlogic.codegen.obj
 import com.sledje.agentpro.buildlogic.codegen.string
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
+import java.text.Normalizer
+import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.pow
 import kotlin.math.roundToLong
@@ -57,6 +64,10 @@ class SharedVerifier(private val inputs: VerifyInputs) {
             checkSchemaAndTemplates() +
             checkHandWrittenStrings() +
             checkPrivacy() +
+            checkOffers() +
+            checkTemplateFamilies() +
+            checkPublicText() +
+            checkSeed() +
             checkKotlinSpacing()
 
     /**
@@ -153,6 +164,15 @@ class SharedVerifier(private val inputs: VerifyInputs) {
             list.entries.forEachIndexed { i, e ->
                 if (e.string("key").isNullOrEmpty()) v += "catalog.${list.jsonName}[$i]: missing \"key\""
                 if (e.string("labelKey").isNullOrEmpty()) v += "catalog.${list.jsonName}[$i]: missing \"labelKey\""
+            }
+        }
+        defs.catalogLists.forEach { list ->
+            list.entries.forEach { e ->
+                if (e.containsKey(IMAGE)) {
+                    val name = e.string(IMAGE)
+                    if (name == null || !IMAGE_NAME.matches(name))
+                        v += "catalog.${list.jsonName}.${e.string("key")}: \"$IMAGE\" must be a file base name (a-z, 0-9, -), e.g. \"interest-term\""
+                }
             }
         }
         defs.catalogList("premiumModes")?.entries?.forEach { e ->
@@ -303,6 +323,7 @@ class SharedVerifier(private val inputs: VerifyInputs) {
                         if (!it.startsWith("catalog.") || defs.catalogList(it.removePrefix("catalog.")) == null)
                             v += "$at: optionsFrom \"$it\" is not a catalog list"
                     }
+                    checkFieldRules(f, at, type, inList = where.count { it == '.' } > 1, v)
                 }
             }
         }
@@ -318,6 +339,322 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         }
         return v
     }
+
+    /**
+     * The site-schema field rules added for offers (docs/OFFERS.md, "New field rules"): `generated` is "uuid" on a
+     * text field, `equals` is `true` on a toggle, `maxDaysAhead` is a whole number >= 1 on a date, `requiredIf` is for
+     * admin forms (offer-schema.json) only, and `offerRef`/`offerList` sit at section level (`offerList` with maxItems).
+     */
+    private fun checkFieldRules(f: JsonObject, at: String, type: String?, inList: Boolean, v: MutableList<String>) {
+        f["generated"]?.let { if (f.string("generated") != "uuid" || type != "text") v += "$at: \"generated\" must be \"uuid\" on a text field" }
+        f["equals"]?.let { if (f.bool("equals") != true || type != "toggle") v += "$at: \"equals\" must be true on a toggle" }
+        f["maxDaysAhead"]?.let { if ((f.long("maxDaysAhead") ?: 0) < 1 || type != "date") v += "$at: \"maxDaysAhead\" must be a whole number >= 1 on a date" }
+        if (f.containsKey("requiredIf")) v += "$at: \"requiredIf\" is only for offer-schema.json (admin forms)"
+        if (type == "offerRef" || type == "offerList") {
+            if (inList) v += "$at: $type can't be inside a list"
+            if (type == "offerList" && (f.long("maxItems") ?: 0) < 1) v += "$at: offerList needs \"maxItems\""
+        }
+    }
+
+    /**
+     * Companies and offers (docs/OFFERS.md):
+     * - `offerCtaKinds` entries carry a boolean `agentAllowed`, and at least one kind is allowed for agents;
+     * - `catalog.offers` holds whole numbers >= 1 and an `imageAspect` like "16:9";
+     * - offer-schema.json: whole `version` >= 1; non-empty `localized` (text/multiline only) and `fields`
+     *   ([OFFER_FIELD_TYPES]); unique keys; selects with a catalog `optionsFrom`; `requiredIf` naming another field and,
+     *   for a catalog select, one of its keys; the image aspect equal to `catalog.offers.imageAspect`. (Its labelKeys
+     *   are checked by [checkI18n].)
+     * - site-schema `offerList.maxItems` never exceeds `offers.maxSectionItems`, nor `maxDaysAhead` `offers.maxValidityDays`.
+     */
+    fun checkOffers(): List<String> {
+        val v = mutableListOf<String>()
+        defs.catalogList("offerCtaKinds")?.let { kinds ->
+            kinds.entries.forEach { e ->
+                if (e.bool(SiteSchemaKotlinGenerator.AGENT_ALLOWED) == null) v += "catalog.offerCtaKinds.${e.string("key")}: \"agentAllowed\" must be true or false"
+            }
+            if (kinds.entries.none { it.bool(SiteSchemaKotlinGenerator.AGENT_ALLOWED) == true && it.bool("deprecated") != true })
+                v += "catalog.offerCtaKinds: no active kind is agentAllowed"
+        }
+        val limits = defs.catalog["offers"]
+        if (limits != null && limits !is JsonObject) v += "catalog.json: \"offers\" must be an object"
+        (limits as? JsonObject)?.forEach { (k, value) ->
+            val ok = if (k == "imageAspect") (value as? JsonPrimitive)?.takeIf { it.isString }?.content?.matches(ASPECT) == true
+            else (value as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toLongOrNull()?.let { it >= 1 } == true
+            if (!ok) v += "catalog.offers.$k: must be ${if (k == "imageAspect") "an aspect such as \"16:9\"" else "a whole number >= 1"}"
+        }
+        val maxItems = (limits as? JsonObject)?.long("maxSectionItems")
+        val maxDays = (limits as? JsonObject)?.long("maxValidityDays")
+        sections().forEach { sec ->
+            fieldTree(sec.array("fields"), "site-schema.${sec.string("key")}") { where, fields ->
+                fields.forEach { f ->
+                    val at = "$where.${f.string("key")}"
+                    if (f.string("type") == "offerList" && maxItems != null && (f.long("maxItems") ?: 0) > maxItems)
+                        v += "$at: maxItems ${f.long("maxItems")} is more than catalog.offers.maxSectionItems ($maxItems)"
+                    if (maxDays != null && (f.long("maxDaysAhead") ?: 0) > maxDays)
+                        v += "$at: maxDaysAhead ${f.long("maxDaysAhead")} is more than catalog.offers.maxValidityDays ($maxDays)"
+                }
+            }
+        }
+        val schema = defs.offerSchema ?: return v
+        val at = "offer-schema.json"
+        if ((schema.long("version") ?: 0) < 1) v += "$at: \"version\" must be a whole number >= 1"
+        val localized = schema.array("localized").orEmpty().filterIsInstance<JsonObject>()
+        val fields = schema.array("fields").orEmpty().filterIsInstance<JsonObject>()
+        if (localized.isEmpty()) v += "$at: \"localized\" must be a non-empty array of fields"
+        if (fields.isEmpty()) v += "$at: \"fields\" must be a non-empty array of fields"
+        dupes((localized + fields).map { it.string("key").orEmpty() }).forEach { v += "$at: duplicated field \"$it\"" }
+        localized.forEach { f ->
+            val where = "$at.localized.${f.string("key")}"
+            if (f.string("type") !in setOf("text", "multiline")) v += "$where: a localized field must be text or multiline"
+            if ((f.long("maxLength") ?: 0) < 1) v += "$where: needs \"maxLength\""
+            if (f.containsKey(ADMIN_ONLY)) v += "$where: \"$ADMIN_ONLY\" is only for non-localized fields (localized text is public)"
+        }
+        val byKey = fields.associateBy { it.string("key").orEmpty() }
+        fields.forEach { f ->
+            val where = "$at.fields.${f.string("key")}"
+            val type = f.string("type")
+            if (f.containsKey(ADMIN_ONLY) && f.bool(ADMIN_ONLY) == null) v += "$where: \"$ADMIN_ONLY\" must be true or false"
+            if (type !in OFFER_FIELD_TYPES) v += "$where: unknown field type \"$type\" (allowed: ${OFFER_FIELD_TYPES.joinToString()})"
+            val from = f.string("optionsFrom")
+            if (type == "select" && from == null) v += "$where: select needs \"optionsFrom\""
+            if (from != null && (!from.startsWith("catalog.") || defs.catalogList(from.removePrefix("catalog.")) == null))
+                v += "$where: optionsFrom \"$from\" is not a catalog list"
+            if (type == "image") {
+                val expected = (limits as? JsonObject)?.string("imageAspect")
+                if (expected != null && f.string("aspect") != expected) v += "$where: aspect must be catalog.offers.imageAspect (\"$expected\")"
+            }
+            f["requiredIf"]?.let { cond ->
+                val (other, value) = (cond as? JsonObject)?.entries?.singleOrNull()?.let { it.key to (it.value as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
+                    ?: (null to null)
+                val target = other?.let { byKey[it] }
+                when {
+                    other == null || value == null -> v += "$where: \"requiredIf\" must be one {\"field\": \"value\"} pair"
+                    target == null || other == f.string("key") -> v += "$where: requiredIf names unknown field \"$other\""
+                    else -> target.string("optionsFrom")?.removePrefix("catalog.")?.let { defs.catalogList(it) }?.let { list ->
+                        if (value !in list.keys) v += "$where: requiredIf value \"$value\" is not a key of ${target.string("optionsFrom")}"
+                    }
+                }
+            }
+        }
+        return v
+    }
+
+    /**
+     * Template families (DECISIONS #76): with `catalog.templateFamilies`, every template names one of its keys in
+     * `family` and every active family has at least one template; without the list, no template may name a family.
+     */
+    fun checkTemplateFamilies(): List<String> {
+        val v = mutableListOf<String>()
+        val families = defs.catalogList(TemplatesKotlinGenerator.FAMILIES)
+        val keys = families?.keys.orEmpty().toSet()
+        templates().forEach { t ->
+            val at = "templates/index.json.${t.string("key")}"
+            val family = t.string("family")
+            when {
+                families == null -> if (t.containsKey("family")) v += "$at: \"family\" needs catalog.templateFamilies"
+                family == null -> v += "$at: \"family\" is missing (one of ${keys.joinToString()})"
+                family !in keys -> v += "$at: unknown family \"$family\" (allowed: ${keys.joinToString()})"
+            }
+        }
+        families?.entries?.filterNot { it.bool("deprecated") == true }?.forEach { e ->
+            val key = e.string("key")
+            if (templates().none { it.string("family") == key }) v += "catalog.templateFamilies.$key: no template has this family"
+        }
+        return v
+    }
+
+    /**
+     * Public site text (DECISIONS #77): `catalog.publicTextRules.blockedTerms` is a non-empty list of unique, trimmed,
+     * lowercase, NFC strings with no single generic word ([PublicText.GENERIC_SINGLE_WORDS]); and no `site.*` or
+     * `seed.*` i18n text contains a blocked term ([PublicText.violations]: word-bounded, case-insensitive).
+     */
+    fun checkPublicText(): List<String> {
+        val rules = defs.catalog["publicTextRules"] ?: return emptyList()
+        val v = mutableListOf<String>()
+        val at = "catalog.publicTextRules"
+        val list = (rules as? JsonObject)?.get("blockedTerms") as? JsonArray
+        if (rules !is JsonObject || list.isNullOrEmpty()) return listOf("$at: must be an object with a non-empty \"blockedTerms\" array")
+        val terms = list.mapIndexedNotNull { i, e ->
+            val term = (e as? JsonPrimitive)?.takeIf { it.isString }?.content
+            when {
+                term == null -> { v += "$at.blockedTerms[$i]: must be a string"; null }
+                term.isBlank() -> { v += "$at.blockedTerms[$i]: is empty"; null }
+                else -> {
+                    if (term != term.trim() || "  " in term) v += "$at.blockedTerms[$i]: \"$term\" has extra spaces"
+                    if (term != term.lowercase(Locale.ROOT)) v += "$at.blockedTerms[$i]: \"$term\" must be lowercase"
+                    if (term != Normalizer.normalize(term, Normalizer.Form.NFC)) v += "$at.blockedTerms[$i]: \"$term\" must be NFC-normalized"
+                    if (term.trim().lowercase(Locale.ROOT) in PublicText.GENERIC_SINGLE_WORDS)
+                        v += "$at.blockedTerms[$i]: \"$term\" is a generic everyday word; block multi-word names only"
+                    term
+                }
+            }
+        }
+        dupes(terms.map { it.trim().lowercase(Locale.ROOT) }).forEach { v += "$at.blockedTerms: duplicated term \"$it\"" }
+        for (locale in listOf("en", "hi")) {
+            val dict = defs.i18n(locale) ?: continue
+            dict.entries.sortedBy { it.key }.filter { it.key.startsWith("site.") || it.key.startsWith("seed.") }.forEach { (key, text) ->
+                PublicText.violations(text, terms).forEach { v += "i18n/$locale.json: \"$key\" contains the blocked term \"$it\"" }
+            }
+        }
+        return v
+    }
+
+    /**
+     * `site-seed.json` (DECISIONS #78; docs/SHARED_DEFINITIONS.md, site-seed.json), when present:
+     * - whole `version` >= 1; `placeholders` map to [SiteSeedJson.PROFILE_FIELDS]; `requiredPlaceholders` are placeholders;
+     * - `visibility.hidden` names non-pinned schema sections; `visibleOnlyInFamily` names sections and template families;
+     * - every seeded section/field exists in site-schema.json and has exactly one valid form: `variants` (text and
+     *   multiline fields only), `fromProfile`, `value`/`byLocale` (valid for the field type and its options; byLocale
+     *   covers every active locale) or `items` (list fields only; at most `maxItems`, each with its required item fields);
+     * - every variant key (and fallback) exists in every locale; uses only declared placeholders; a text using an
+     *   optional placeholder has a fallback that uses only required ones; and with [SAMPLE_PLACEHOLDERS] filled in it fits
+     *   the field's `maxLength` in every locale.
+     */
+    fun checkSeed(): List<String> {
+        val seed = defs.siteSeed ?: return emptyList()
+        val v = mutableListOf<String>()
+        val at = "site-seed.json"
+        if ((seed.long("version") ?: 0) < 1) v += "$at: \"version\" must be a whole number >= 1"
+        val placeholders = SiteSeedJson.placeholders(seed)
+        if (placeholders.isEmpty()) v += "$at: \"placeholders\" must map each placeholder to a profile field"
+        placeholders.forEach { (p, field) ->
+            if (field !in SiteSeedJson.PROFILE_FIELDS) v += "$at.placeholders.$p: \"$field\" is not a profile field (${SiteSeedJson.PROFILE_FIELDS.joinToString()})"
+        }
+        val required = SiteSeedJson.requiredPlaceholders(seed).toSet()
+        (required - placeholders.keys).forEach { v += "$at.requiredPlaceholders: \"$it\" is not in \"placeholders\"" }
+        val sectionsByKey = sections().associateBy { it.string("key").orEmpty() }
+        SiteSeedJson.hidden(seed).forEach {
+            val s = sectionsByKey[it]
+            if (s == null) v += "$at.visibility.hidden: unknown section \"$it\""
+            else if (s.bool("pinned") == true) v += "$at.visibility.hidden: \"$it\" is pinned and can't be hidden"
+        }
+        val familyKeys = defs.catalogList(TemplatesKotlinGenerator.FAMILIES)?.keys.orEmpty().toSet()
+        SiteSeedJson.visibleOnlyInFamily(seed).forEach { (section, family) ->
+            if (section !in sectionsByKey) v += "$at.visibility.visibleOnlyInFamily: unknown section \"$section\""
+            if (family !in familyKeys) v += "$at.visibility.visibleOnlyInFamily.$section: unknown template family \"$family\""
+        }
+        val ctx = SeedContext(placeholders.keys, required, activeLocales(), v)
+        SiteSeedJson.sections(seed).forEach { (sectionKey, fields) ->
+            val section = sectionsByKey[sectionKey]
+            if (section == null) { v += "$at.sections: unknown section \"$sectionKey\""; return@forEach }
+            val schemaFields = section.array("fields").orEmpty().filterIsInstance<JsonObject>().associateBy { it.string("key").orEmpty() }
+            fields.forEach { (fieldKey, json) ->
+                val where = "$at.$sectionKey.$fieldKey"
+                val field = schemaFields[fieldKey]
+                if (field == null) v += "$where: unknown field of section $sectionKey"
+                else checkSeedForm(SiteSeedJson.form(json), field, where, ctx)
+            }
+        }
+        return v
+    }
+
+    private class SeedContext(val placeholders: Set<String>, val required: Set<String>, val locales: List<String>, val v: MutableList<String>)
+
+    private fun checkSeedForm(form: SeedForm, field: JsonObject, where: String, ctx: SeedContext) {
+        val v = ctx.v
+        val type = field.string("type")
+        when (form) {
+            is SeedForm.Invalid -> v += "$where: ${form.reason}"
+            is SeedForm.FromProfile -> if (form.field !in SiteSeedJson.PROFILE_FIELDS)
+                v += "$where: fromProfile \"${form.field}\" is not a profile field (${SiteSeedJson.PROFILE_FIELDS.joinToString()})"
+            is SeedForm.Literal -> checkSeedValue(form.value, field, where, v)
+            is SeedForm.ByLocale -> {
+                (ctx.locales - form.values.keys).forEach { v += "$where: byLocale has no value for locale \"$it\"" }
+                (form.values.keys - ctx.locales.toSet()).forEach { v += "$where: byLocale names unknown locale \"$it\"" }
+                form.values.forEach { (l, value) -> checkSeedValue(value, field, "$where.$l", v) }
+            }
+            is SeedForm.Variants -> {
+                if (type != "text" && type != "multiline") { v += "$where: variants are only for text and multiline fields"; return }
+                val maxLength = field.long("maxLength")
+                form.variants.forEach { variant ->
+                    checkSeedText(variant.key, maxLength, where, ctx, isFallback = false, hasFallback = variant.fallback != null)
+                    variant.fallback?.let { checkSeedText(it, maxLength, "$where (fallback of ${variant.key})", ctx, isFallback = true, hasFallback = false) }
+                }
+            }
+            is SeedForm.Items -> {
+                if (type != "list") { v += "$where: items are only for list fields"; return }
+                val maxItems = field.long("maxItems")
+                if (maxItems != null && form.items.size > maxItems) v += "$where: ${form.items.size} items is more than maxItems ($maxItems)"
+                val itemFields = field.array("itemFields").orEmpty().filterIsInstance<JsonObject>().associateBy { it.string("key").orEmpty() }
+                form.items.forEachIndexed { i, item ->
+                    itemFields.values.filter { it.bool("required") == true && it.string("generated") == null }.forEach { f ->
+                        if (f.string("key") !in item) v += "$where[$i]: required item field \"${f.string("key")}\" is missing"
+                    }
+                    item.forEach { (k, f) ->
+                        val itemField = itemFields[k]
+                        if (itemField == null) v += "$where[$i]: unknown item field \"$k\""
+                        else checkSeedForm(f, itemField, "$where[$i].$k", ctx)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun checkSeedText(key: String, maxLength: Long?, where: String, ctx: SeedContext, isFallback: Boolean, hasFallback: Boolean) {
+        val v = ctx.v
+        if (!key.startsWith("seed.")) v += "$where: seed text key \"$key\" must start with \"seed.\""
+        for (locale in ctx.locales) {
+            val text = defs.i18n(locale)?.get(key)
+            if (text == null) { v += "$where: i18n key \"$key\" is missing from i18n/$locale.json"; continue }
+            val used = SiteSeedJson.PLACEHOLDER.findAll(text).map { it.groupValues[1] }.toSet()
+            (used - ctx.placeholders).forEach { v += "$where: \"$key\" ($locale) uses unknown placeholder {$it}" }
+            val optional = used - ctx.required
+            if (isFallback && optional.isNotEmpty()) v += "$where: fallback \"$key\" ($locale) may only use ${ctx.required.joinToString { "{$it}" }}, not ${optional.joinToString { "{$it}" }}"
+            if (!isFallback && !hasFallback && optional.isNotEmpty()) v += "$where: \"$key\" ($locale) uses ${optional.joinToString { "{$it}" }}, which can be blank; give it a \"fallback\""
+            val filled = SiteSeedJson.PLACEHOLDER.replace(text) { SAMPLE_PLACEHOLDERS[it.groupValues[1]] ?: it.value }
+            if (maxLength != null && filled.length > maxLength)
+                v += "$where: \"$key\" ($locale) is ${filled.length} characters with sample values, more than maxLength $maxLength"
+        }
+    }
+
+    private fun checkSeedValue(value: JsonElement, field: JsonObject, where: String, v: MutableList<String>) {
+        val type = field.string("type")
+        val options = optionKeys(field)
+        fun str(e: JsonElement) = (e as? JsonPrimitive)?.takeIf { it.isString }?.content
+        when (type) {
+            "select" -> {
+                val s = str(value)
+                if (s == null || (options != null && s !in options)) v += "$where: $value is not an option of this select (${options?.joinToString()})"
+            }
+            "multiSelect" -> {
+                val arr = value as? JsonArray
+                if (arr == null) v += "$where: a multiSelect value must be an array of option keys"
+                else arr.forEach { e ->
+                    val s = str(e)
+                    if (s == null || (options != null && s !in options)) v += "$where: $e is not an option (${options?.joinToString()})"
+                }
+                arr?.mapNotNull { str(it) }?.let { keys -> dupes(keys).forEach { v += "$where: option \"$it\" is listed twice" } }
+            }
+            "toggle" -> {
+                val p = (value as? JsonPrimitive)?.takeIf { !it.isString }
+                if (p == null || p.content !in setOf("true", "false")) v += "$where: a toggle value must be true or false"
+            }
+            "number" -> {
+                val p = (value as? JsonPrimitive)?.takeIf { !it.isString }
+                if (p == null || p.content.toDoubleOrNull() == null) v += "$where: a number value must be a number"
+            }
+            "list", "offerRef", "offerList", "image" -> v += "$where: a $type field can't have a fixed value"
+            else -> {
+                val s = str(value)
+                if (s == null) v += "$where: a $type value must be a string"
+                else field.long("maxLength")?.let { if (s.length > it) v += "$where: value is longer than maxLength $it" }
+            }
+        }
+    }
+
+    /** Option keys of a select/multiSelect (inline options or the catalog list's keys); null when it has neither. */
+    private fun optionKeys(field: JsonObject): Set<String>? {
+        field.array("options")?.let { opts -> return opts.mapNotNull { (it as? JsonObject)?.string("key") }.toSet() }
+        val from = field.string("optionsFrom") ?: return null
+        val list = defs.catalogList(from.removePrefix("catalog.")) ?: return emptySet()
+        val agentOnly = list.entries.any { it.containsKey(SiteSchemaKotlinGenerator.AGENT_ALLOWED) }
+        return list.entries.filter { it.bool("deprecated") != true && (!agentOnly || it.bool(SiteSchemaKotlinGenerator.AGENT_ALLOWED) == true) }
+            .mapNotNull { it.string("key") }.toSet()
+    }
+
+    private fun activeLocales(): List<String> =
+        defs.catalogList("locales")?.entries.orEmpty().filterNot { it.bool("deprecated") == true }
+            .sortedBy { it.long("order") ?: 0 }.mapNotNull { it.string("key") }
 
     /** Every hand-written string in composeResources/values also exists in values-hi; `cat_` is reserved. */
     fun checkHandWrittenStrings(): List<String> {
@@ -354,7 +691,10 @@ class SharedVerifier(private val inputs: VerifyInputs) {
     private fun referencedLabelKeys(): List<Pair<String, String>> {
         val refs = mutableListOf<Pair<String, String>>()
         defs.catalogLists.forEach { list ->
-            list.entries.forEach { e -> e.string("labelKey")?.let { refs += "catalog.${list.jsonName}.${e.string("key")}" to it } }
+            list.entries.forEach { e ->
+                e.string("labelKey")?.let { refs += "catalog.${list.jsonName}.${e.string("key")}" to it }
+                e.string("descriptionKey")?.let { refs += "catalog.${list.jsonName}.${e.string("key")}.descriptionKey" to it }
+            }
         }
         sections().forEach { s ->
             val sk = "site-schema.${s.string("key")}"
@@ -373,6 +713,13 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         defs.catalogList(PrivacyNoticeHashing.LIST)?.entries?.forEach { e ->
             e.array("textKeys")?.forEach { t ->
                 t.primitiveStringOrNull()?.let { refs += "catalog.privacyNotices.${e.string("key")}.textKeys" to it }
+            }
+        }
+        defs.offerSchema?.let { schema ->
+            listOf("localized", "fields").forEach { group ->
+                schema.array(group).orEmpty().filterIsInstance<JsonObject>().forEach { f ->
+                    refs += "offer-schema.json.$group.${f.string("key")}" to (f.string("labelKey") ?: "(missing labelKey)")
+                }
             }
         }
         templates().forEach { t ->
@@ -434,7 +781,20 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         /** Catalog lists whose entries have no icon. */
         val LISTS_WITHOUT_ICONS = setOf("accentSwatches", "locales", PrivacyNoticeHashing.LIST)
         private val RESERVED_SLUG = Regex("^[a-z0-9-]+$")
+        /** Optional catalog entry field (interests): the base name of web/images/<name>-{400,800}.webp. The files aren't checked. */
+        const val IMAGE = "image"
+        private val IMAGE_NAME = Regex("^[a-z0-9-]+$")
+        private val ASPECT = Regex("^[1-9][0-9]*:[1-9][0-9]*$")
+        /** Field types a company offer (offer-schema.json `fields`) may use; the admin panel renders these. */
+        val OFFER_FIELD_TYPES = setOf("text", "multiline", "url", "image", "select", "date")
         const val CATALOG_LOCK = "mobile/build-logic/catalog-keys.lock.json"
+        /** offer-schema.json field flag: shown and editable in the admin panel only, never in any public payload. */
+        const val ADMIN_ONLY = "adminOnly"
+        /** Values the seed texts are filled with for the maxLength check (a long but realistic profile). */
+        val SAMPLE_PLACEHOLDERS = mapOf(
+            "name" to "Ramesh Kumar Sharma", "firstName" to "Ramesh",
+            "city" to "Thiruvananthapuram", "designation" to "Insurance Advisor · Club Member",
+        )
         private val PLACEHOLDER = Regex("\\{[A-Za-z0-9_]+}")
 
         /** Every i18n value that still holds a `{UPPER_CASE}` fill-in placeholder, e.g. `{GRIEVANCE_EMAIL}`. */

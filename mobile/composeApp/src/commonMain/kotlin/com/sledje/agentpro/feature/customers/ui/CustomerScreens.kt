@@ -33,8 +33,10 @@ import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
 import com.sledje.agentpro.core.designsystem.components.ConfirmDialog
 import com.sledje.agentpro.core.designsystem.components.EmptyState
+import com.sledje.agentpro.core.designsystem.components.StateCrossfade
 import com.sledje.agentpro.core.designsystem.components.FilterChipRow
 import com.sledje.agentpro.core.designsystem.components.HairlineDivider
+import com.sledje.agentpro.core.designsystem.components.itemMotion
 import com.sledje.agentpro.core.designsystem.components.ListLeading
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.ListSkeleton
@@ -156,8 +158,10 @@ fun CustomerListContent(
                 } else {
                     LazyColumn(Modifier.fillMaxSize()) {
                         itemsIndexed(data.rows, key = { _, r -> r.customer.id }) { index, row ->
-                            if (index > 0) HairlineDivider()
-                            CustomerListRow(row, today, onOpen)
+                            Column(itemMotion()) {
+                                if (index > 0) HairlineDivider()
+                                CustomerListRow(row, today, onOpen)
+                            }
                         }
                     }
                 }
@@ -282,35 +286,39 @@ fun CustomerDetailContent(
             }
         },
     ) { padding ->
-        when (state) {
-            CustomerDetailState.Loading -> ListSkeleton(Modifier.padding(padding))
-            CustomerDetailState.Gone -> EmptyState(FeatureId.Customers.icon, stringResource(Res.string.customer_not_found), Modifier.padding(padding))
-            is CustomerDetailState.Shown -> {
-                val d = state.detail
-                val c = d.customer
-                Column(Modifier.fillMaxSize().padding(padding)) {
-                    val line = listOfNotNull(c.phone?.let { Phone.display(it) }, c.city).joinToString(" · ").takeIf { it.isNotEmpty() }
-                    DetailHeader(c.name, line)
-                    Spacer(Modifier.height(Spacing.m))
-                    ContactActionRow(
-                        listOf(
-                            ContactAction(stringResource(Res.string.crm_call), Res.drawable.ic_call, enabled = c.phone != null) { c.phone?.let(onCall) },
-                            ContactAction(stringResource(Res.string.crm_sms), Res.drawable.ic_sms, enabled = c.phone != null) { c.phone?.let(onSms) },
-                            ContactAction(stringResource(Res.string.crm_edit), Res.drawable.ic_edit, enabled = online, onClick = onEdit),
-                        ),
-                    )
-                    Spacer(Modifier.height(Spacing.l))
-                    SegmentedControl(
-                        options = tabs.map { SegmentOption(it.key, stringResource(it.label)) },
-                        selectedKey = tab,
-                        onSelect = { tab = it },
-                        modifier = Modifier.padding(horizontal = Spacing.m),
-                    )
-                    Spacer(Modifier.height(Spacing.s))
-                    when (tab) {
-                        CustomerTab.Policies.key -> PoliciesTab(d.policies, today, onOpenPolicy)
-                        CustomerTab.Details.key -> DetailsTab(d)
-                        else -> ActivityTab(d.activity)
+        StateCrossfade(state, key = { it::class }) { s ->
+            when (s) {
+                CustomerDetailState.Loading -> ListSkeleton(Modifier.padding(padding))
+                CustomerDetailState.Gone -> EmptyState(FeatureId.Customers.icon, stringResource(Res.string.customer_not_found), Modifier.padding(padding))
+                is CustomerDetailState.Shown -> {
+                    val d = s.detail
+                    val c = d.customer
+                    Column(Modifier.fillMaxSize().padding(padding)) {
+                        val line = listOfNotNull(c.phone?.let { Phone.display(it) }, c.city).joinToString(" · ").takeIf { it.isNotEmpty() }
+                        DetailHeader(c.name, line)
+                        Spacer(Modifier.height(Spacing.m))
+                        ContactActionRow(
+                            listOf(
+                                ContactAction(stringResource(Res.string.crm_call), Res.drawable.ic_call, enabled = c.phone != null) { c.phone?.let(onCall) },
+                                ContactAction(stringResource(Res.string.crm_sms), Res.drawable.ic_sms, enabled = c.phone != null) { c.phone?.let(onSms) },
+                                ContactAction(stringResource(Res.string.crm_edit), Res.drawable.ic_edit, enabled = online, onClick = onEdit),
+                            ),
+                        )
+                        Spacer(Modifier.height(Spacing.l))
+                        SegmentedControl(
+                            options = tabs.map { SegmentOption(it.key, stringResource(it.label)) },
+                            selectedKey = tab,
+                            onSelect = { tab = it },
+                            modifier = Modifier.padding(horizontal = Spacing.m),
+                        )
+                        Spacer(Modifier.height(Spacing.s))
+                        StateCrossfade(tab, Modifier.fillMaxSize(), key = { it }) { shownTab ->
+                            when (shownTab) {
+                                CustomerTab.Policies.key -> PoliciesTab(d.policies, today, onOpenPolicy)
+                                CustomerTab.Details.key -> DetailsTab(d)
+                                else -> ActivityTab(d.activity)
+                            }
+                        }
                     }
                 }
             }
@@ -348,8 +356,10 @@ private fun PoliciesTab(policies: List<Policy>, today: LocalDate, onOpen: (Strin
     }
     LazyColumn(Modifier.fillMaxSize()) {
         itemsIndexed(policies, key = { _, p -> p.id }) { index, p ->
-            if (index > 0) HairlineDivider()
-            PolicyListRow(p, today, onOpen)
+            Column(itemMotion()) {
+                if (index > 0) HairlineDivider()
+                PolicyListRow(p, today, onOpen)
+            }
         }
     }
 }

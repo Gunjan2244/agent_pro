@@ -9,6 +9,7 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -21,7 +22,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
  * Motion (docs/DESIGN_SYSTEM.md, Motion): Material 3 standard easing, 150ms for state changes and
- * 250ms for navigation, shared-axis X forward/back, fade-through for tabs, no bounce.
+ * 250ms for navigation, shared-axis X forward/back, fade-through for tabs, crossfade for in-place
+ * state changes, no bounce.
  *
  * "Remove animations": Compose scales every animation by the platform's [MotionDurationScale]
  * (on Android, the system animator duration scale), so a scale of 0 makes them instant.
@@ -49,8 +51,22 @@ object Motion {
     fun sharedAxisXExit(forward: Boolean): ExitTransition =
         slideOutHorizontally(navigation()) { width -> if (forward) -width / 10 else width / 10 } + fadeOut(navigation())
 
-    /** Fade-through for tab switches. */
-    fun fadeThrough(): ContentTransform = fadeIn(navigation()) togetherWith fadeOut(stateChange())
+    /**
+     * Fade-through for tab switches and the app gate: the old screen fades out first (100ms), then
+     * the new one fades in while growing from 92% (150ms), 250ms in all.
+     */
+    fun fadeThroughEnter(): EnterTransition =
+        fadeIn(tween(SHORT_MILLIS, delayMillis = FADE_THROUGH_OUT_MILLIS, easing = StandardEasing)) +
+            scaleIn(tween(SHORT_MILLIS, delayMillis = FADE_THROUGH_OUT_MILLIS, easing = StandardEasing), initialScale = 0.92f)
+
+    fun fadeThroughExit(): ExitTransition = fadeOut(tween(FADE_THROUGH_OUT_MILLIS, easing = StandardEasing))
+
+    fun fadeThrough(): ContentTransform = fadeThroughEnter() togetherWith fadeThroughExit()
+
+    /** Crossfade for content that changes in place: skeleton → content, chart ↔ table. */
+    fun crossfade(): ContentTransform = fadeIn(stateChange()) togetherWith fadeOut(stateChange())
+
+    private const val FADE_THROUGH_OUT_MILLIS: Int = MEDIUM_MILLIS - SHORT_MILLIS
 }
 
 /** True when the platform's animation scale is 0 ("remove animations"). */

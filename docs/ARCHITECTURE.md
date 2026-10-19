@@ -16,11 +16,14 @@
         ▲ bundled copy of web/ for preview                                         │
 ┌────────────────────┐  fetch → rpc/get_public_site*, submit_enquiry, record_site_view (anon)
 │ Web renderer       │ ────────────────────────────────────────────────────────────┘
-│ (Cloudflare)       │  serves /a/{slug} and custom hostnames (static assets)
-└────────────────────┘  worker.js: /manifest.webmanifest only → rpc/get_public_site* (DECISIONS #65)
+│ (Cloudflare)       │  Worker SSR: /, /a/{slug}/, /privacy → rpc/get_public_site* → HTML (DECISIONS #75)
+└────────────────────┘  also /manifest.webmanifest, /robots.txt, /sitemap.xml (list_public_sites); assets for the rest
 App ─JWT→ Edge Functions (billing, domains) ─→ Razorpay · Registrar API · Cloudflare API
 Razorpay ─webhook→ razorpay-webhook ; pg_cron → cron   (details: BILLING.md, DOMAINS.md)
 ```
+
+## Public-site data flow (Worker SSR, DECISIONS #75)
+`GET /a/<slug>/` → `worker.js` (`run_worker_first`) → `resolveTarget` → anon RPC `get_public_site` (or `get_public_site_by_host` on a custom domain) → `ssr.js renderDocument()` calls the same pure template `render()` the browser uses (from the static map in `templates/index.js`) → full HTML with head tags and JSON-LD, security headers from `headers.js`, `Last-Modified`. The browser then loads `app.js` → `hydrate.js` to wire the enquiry form, install button and view count; it never re-renders. Static data (config, schema, catalog, dictionaries, notices) is read through `env.ASSETS` and cached per isolate. `?preview=1` (in-app preview) and a backend failure use the static `index.html` shell and the client render. Details: WEB_RENDERER.md.
 
 ## Repo layout
 ```
@@ -80,7 +83,7 @@ core/
                 translated month names via DateText), Phone (+91, same rule as the backend)
   features/     AppFeature, FeatureRegistry, FeatureFlags
   platform/     interfaces for platform seams (below)
-  ui/           ScreenState, UiState<T>, LocalIsOnline (connectivity composition local)
+  ui/           ScreenState, UiState<T>, LocalIsOnline (connectivity composition local), SharedAxisNavHost (the NavHost for linear flows)
 feature/<name>/ data/ (Dto, Entity, Dao, Repository) · ui/ (Screen, ViewModel, components) · <Name>Feature.kt
   names: auth, onboarding, home, insights, enquiries, customers, policies, dues,
          website, domains, billing, settings, export
@@ -101,8 +104,8 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
 - `feature/website` (Phase 8, the Website hub):
   - `data/`: `Site` (+ `publishedContent`, `hasUnpublishedChanges`), `SiteDto`/`SiteEntity`/`SiteDao`, `SiteRepository`
     (`SupabaseSiteRepository`: `is_slug_available`, insert, `publish_site`, `saveDraft` (only `draft_content`; the 64 KB cap is
-    checked first, `ContentTooLarge`), `updateAppearance` (`template_key`, `accent`, `locale`), `changeSlug`), `StarterContent`,
-    `SiteLinks`; `SiteContent` (pure: section order, `hidden`, pinned sections, schema values ⇄ `FormState`, summaries, size
+    checked first, `ContentTooLarge`), `updateAppearance` (`template_key`, `accent`, `locale`), `changeSlug`; `NewSite` carries the site `locale`), `StarterContent` (`from(profile, template, locale, agentId)`: the generated `SiteSeed` resolved into the first draft, with `sectionOrder`, `hidden`, `maxLength` cuts and publish-safe list items; `isOwnBio` for Home's checklist),
+    `SiteLinks`; `SiteContent` (pure: section order, `withOffersAfterHero` for the Appearance switch, `hidden`, pinned sections, schema values ⇄ `FormState`, summaries, size
     cap) and `PublishIssues` (`publish_site` errors → schema field + `ValidationError`); `SitePreviewPayload` (the
     `renderSite` JSON); `SiteMedia` (`SiteMediaRepository` / `SupabaseSiteMediaRepository`: Storage upload to
     `site-media/<uid>/<name>-<millis>-<nonce>.webp` and its public URL; `ImageUploader` = `ImageProcessor` + upload;
@@ -210,6 +213,7 @@ object FeatureRegistry {
 
 ## Data flow and offline cache
 - **Reads.** Repositories expose Room `Flow`s, so screens render from the cache immediately.
+  - **One exception, the site check (DECISIONS #83):** before onboarding offers to create a site, `SiteRepository.fetchMine()` reads the agent's `sites` row straight from Supabase (owner-only RLS) and caches it, because an empty cache can't prove the agent has no site. `RootViewModel.confirmOnboarding` (the gate) and `OnboardingViewModel` (after step 1) call it.
 - **Refresh.** `SyncEngine.refresh(table)` pulls rows where `updated_at > lastSyncAt`, upserts them, and removes rows with `deleted_at` set. The cursor for each table is stored in DataStore.
   - It runs at app start, on pull-to-refresh, when the app returns to the foreground, and after each write.
   - **Details (Phase 5):** pages of 500 ordered by `updated_at, id`, continued with a keyset `(updated_at, id)` so rows sharing a timestamp are never skipped at a page boundary; the cursor is stored only after every page applied; offline it returns `Offline` without a request; one mutex per table. `applyLocal(table, rows)` writes a returned row without moving the cursor.
@@ -296,7 +300,7 @@ The library versions are in `gradle/libs.versions.toml`: coroutines 1.11.0, seri
 ## Configuration
 - **`mobile/local.properties`** (git-ignored; `local.properties.example` is committed) holds `sdk.dir`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SITE_BASE_URL`.
   - `build-logic` turns them into a generated `AppConfig` object in `commonMain`, because `BuildConfig` is Android-only.
-- **`web/config.js`** is generated by `build-web.sh` from environment variables. Only `config.example.js` is committed. The Cloudflare Worker (`web/worker.js`, manifest only) reads the same values from the deployed `config.js` asset, so `wrangler.jsonc` holds no keys or `vars`.
+- **`web/config.js`** is generated by `build-web.sh` from environment variables. Only `config.example.js` is committed. The Cloudflare Worker (`web/worker.js`: server-side rendering, manifest, robots.txt, sitemap.xml) reads the same values from the deployed `config.js` asset, so `wrangler.jsonc` holds no keys or `vars`.
 - **Android:** minSdk 26, compileSdk 37, targetSdk 36 (the `android-*` entries in `libs.versions.toml`; build-tools 36.0.0, AGP's default).
   - compileSdk 37 is required by Compose 1.12.1 and current AndroidX.
   - The app's data is excluded from backup and device transfer (`allowBackup="false"`, `res/xml/data_extraction_rules.xml` for Android 12+, `res/xml/backup_rules.xml` for older versions). A session is re-created by signing in.

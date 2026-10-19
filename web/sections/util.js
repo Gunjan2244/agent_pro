@@ -36,3 +36,9 @@ export function textOr(ctx, section, key, value) {
   const f = field(ctx.schema, section, key);
   return f && f.defaultKey ? ctx.t(f.defaultKey) : "";
 }
+
+// Only https URLs (offer CTA links, uploaded offer images).
+export const httpsUrl = (v) => {
+  const s = String(v ?? "").trim();
+  return /^https:\/\/[^\s"'<>]+$/i.test(s) ? esc(s) : "";
+};

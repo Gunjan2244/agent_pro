@@ -164,6 +164,16 @@
     <string name="onboarding_use_template">यह टेम्पलेट चुनें</string>
     <string name="onboarding_publish_now">अभी प्रकाशित करें</string>
     <string name="onboarding_later">बाद में</string>
+    <string name="launch_title">आपकी वेबसाइट लाइव है</string>
+    <string name="launch_install_title">इसे अपने फ़ोन में जोड़ें</string>
+    <string name="launch_install_text">अपनी वेबसाइट को किसी ऐप की तरह, सीधे होम स्क्रीन से खोलें।</string>
+    <string name="launch_not_now">अभी नहीं</string>
+    <string name="launch_preview_title">ग्राहकों को ऐसी दिखती है</string>
+    <string name="launch_preview_text">स्क्रॉल करके देखें। आप बाद में कुछ भी बदल सकते हैं।</string>
+    <string name="launch_next">आगे</string>
+    <string name="launch_share_title">ग्राहकों के साथ साझा करें</string>
+    <string name="launch_share_text">लिंक WhatsApp, SMS या किसी भी ऐप पर भेजें, या कोड स्कैन करवाएँ।</string>
+    <string name="launch_done">हो गया</string>
     <string name="onboarding_link_label">लिंक</string>
     <string name="onboarding_link_checking">जाँच हो रही है…</string>
     <string name="onboarding_link_available">उपलब्ध है</string>
@@ -171,6 +181,8 @@
     <string name="onboarding_link_preview">आपकी साइट: %1$s</string>
     <string name="onboarding_trial_started">आपका %1$d दिन का निःशुल्क ट्रायल शुरू हो गया है</string>
     <string name="onboarding_template_position">%2$d में से %1$d</string>
+    <string name="template_family_prompt">पहले एक शैली चुनें। इसे बाद में बदल सकते हैं।</string>
+    <string name="onboarding_photo_tips">चेहरा और कंधे, कैमरे की ओर देखते हुए, खिड़की की दिन की रोशनी में।\nसादी पृष्ठभूमि और साफ़-सुथरे रोज़ के कपड़े।\nधूप का चश्मा, ग्रुप फ़ोटो, बीमा कंपनी की वर्दी या लोगो नहीं।</string>
     <string name="profile_mobile">मोबाइल</string>
     <string name="profile_agency_code">एजेंसी कोड</string>
     <string name="profile_branch">शाखा</string>
@@ -183,6 +195,7 @@
     <string name="setup_title">सेटअप पूरा करें</string>
     <string name="setup_profile">अपनी प्रोफ़ाइल भरें</string>
     <string name="setup_publish">अपनी वेबसाइट प्रकाशित करें</string>
+    <string name="setup_about">अपना परिचय खुद के शब्दों में लिखें</string>
     <string name="setup_share">अपना लिंक शेयर करें</string>
     <string name="setup_customer">अपना पहला ग्राहक जोड़ें</string>
     <string name="setup_done">पूरा</string>

@@ -2,7 +2,178 @@
 
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
+## 2026-10-19
+- **Onboarding no longer reopens after an app update, and never asks an agent with a site for a new link** (user report: "every time I update the app it goes through onboarding … it makes me recreate the link"; the user asked to check for an existing site before the creation flow; DECISIONS #83).
+  - **Cause, confirmed on the user's phone and in tests:** the phone's cache held a complete profile and the published site `gunjan23`; a cold start with that cache reaches Home. The fault is on a start with an **empty** cache (an update that changes the cache schema, a fresh install, sign-in after sign-out). (1) The sync marks itself Done before Room's live query re-emits the site, so the gate saw "no site" for a moment, resolved to Onboarding and latched it. (2) A failed sync with no cached site also led to onboarding. Step 3 then tried to insert a second site, which the database refuses (`unique (agent_id)`), shown as "this link is taken" for any link. The live site and its link were never changed.
+  - **Fix:** `RootViewModel.confirmOnboarding` reads the cache afresh and then asks the server (new `SiteRepository.fetchMine()`, an owner-only select that caches the row) before starting onboarding for an agent with a complete profile. A site opens Main; no answer gives the startup error with Retry. `resolveGate`: a failed sync with no cached site is `Error`, not `Onboarding`. `OnboardingViewModel`: Continue on step 1 asks the server before steps 2–3 (a site → Main; an error → stays on step 1), and onboarding closes if the agent's site arrives once the profile is complete.
+  - **Tests:** new `AppGateStartupTest` (5: late live query, no site after a good sync, failed sync then Retry, site only on the server, server unreachable). The race and failed-sync tests failed on the old code with `Onboarding`, before the fix. Also 3 new `OnboardingViewModelTest` cases and a new `gate()` assertion. **288 app tests, 0 failures, 0 screenshot diffs**; `assembleDebug` passes; lint 0 errors (2 warnings as before).
+  - **Device:** installed as an update on the user's phone (SM-F127G, `adb install -r`, data kept). It started without a crash, but the phone was locked, so Home wasn't seen. Test APK: `~/AgentPRO-test/AgentPRO-test-2026-10-19-gate.apk`.
+  - **Files:** `app/AppGate.kt`, `feature/website/data/SiteRepository.kt`, `feature/onboarding/ui/OnboardingViewModel.kt`; tests `app/AppGateStartupTest.kt` (new), `app/AppFoundationTest.kt`, `feature/onboarding/OnboardingViewModelTest.kt`, `testing/Fakes.kt`; docs UX (Navigation map, Onboarding), ARCHITECTURE (Data flow), DECISIONS #83, TESTING (End to end #11), STATUS.
+
+## 2026-10-18
+- **Fixed the onboarding crash on the template step (user report; confirmed from the phone's logcat).** `PatternSyntaxException` on `\{([A-Za-z0-9_]+)}`: Android's ICU regex rejects an unescaped `}`, while the JVM (where all tests run) accepts it, so `SiteSeed.fill` crashed as soon as the Trust preview built its starter content. The closing brace is now escaped in the generator (`SiteSeedKotlinGenerator`, which emits `SiteSeed.placeholdersIn`/`fill`) and in `StarterContent.patternOf`. The `onRenderProcessGone` guard from earlier today stays as a safety net. Test APK: `~/AgentPRO-test/AgentPRO-test-2026-10-18-regexfix.apk`, installed on the phone.
+  - **Lesson:** regexes in `commonMain` must escape `{` and `}`; JVM unit tests can't catch ICU differences.
+  - Files: `mobile/build-logic/.../codegen/SiteSeedKotlinGenerator.kt`, `mobile/composeApp/.../feature/website/data/StarterContent.kt`.
+- **Template preview no longer lets a dead WebView kill the app (user report, unconfirmed root cause).** An agent who updated the app was taken to Profile → family choice → the "Trust" template, and the app then crashed. No device or logcat was available, so the cause is not confirmed. `AssetSiteClient` had no `onRenderProcessGone`, which makes Android kill the whole app when a WebView renderer process dies (e.g. out of memory with two previews in the pager). It now returns true and leaves the preview blank. **Still needed:** a logcat from the phone (`adb logcat -b crash`) to confirm.
+  - Files: `mobile/composeApp/src/androidMain/kotlin/com/sledje/agentpro/core/platform/AndroidSitePreview.kt`.
+- **Latest debug test APK built (2026-10-18, user request "build the latest apk").** `./gradlew :androidApp:assembleDebug` under `flock /tmp/agentpro-gradle.lock` succeeded (exit 0, 67 tasks). No source changes. The APK includes all uncommitted work in the tree, the same as the 12:41 `transitions` build. Copied to `~/AgentPRO-test/AgentPRO-test-2026-10-18-latest.apk`. Tests and lint were not run for this build.
+  - Files: none changed. Build output `mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk`.
+- **Agent website v2, part 1** (user request; DECISIONS #75–#79, #81, #82; PRODUCT.md requirement log; #80 is another session's transitions decision). The plan covers server-side rendering, pre-filled sites, two design families with a conversational layer, disguised offer names, SEO, and site images. **Done so far:** WP1 and WP3a. WP2 (backend), WP3b (templates, offers, images) and WP4 (app) are in progress.
+  - **WP1, shared definitions and codegen:**
+    - `catalog.templateFamilies` (`personal` "Meet me", `offers` "Best offers"); `family` on every template; new templates `spotlight` and `guide` (offers family, `offers` right after `hero`).
+    - `catalog.publicTextRules.blockedTerms`: 149 insurer product and company names, Latin and Devanagari, provisional.
+    - `catalog.interests[].image`.
+    - New `shared/site-seed.json`: starter content with 3 variants per long text, picked by FNV-1a of the agent id, with city- and designation-less fallbacks. No invented testimonials or achievements.
+    - `offer-schema.json` gains the admin-only `internalName`; the title is labelled as the public, generic name.
+    - New i18n keys (EN/HI): seed copy, families, the new templates, the conversational `site.say_*` lines, quick replies, offers and SEO fallbacks. `site.offer_from` is removed (unused).
+    - **Codegen:** new `SiteSeed.kt` (texts for every locale, plus `pick`/`resolve`/`hiddenSections`); `TemplateSpec.family`; catalog_sync regenerated as `20261018073025_catalog_sync.sql`, with `catalog_blocked_terms()`, `catalog_template_families()` and `catalog_template_family(text)`. The unapplied `20261018060943` is deleted.
+    - **New verifier checks:** families, seed keys, seed lengths with sample values, valid options, blocked-term hygiene, and no blocked term in the seed or `site.*` copy.
+    - **Tests:** 122 build-logic tests pass (23 new); composeApp compiles; SQL 476/476 on Postgres 15 and 17.
+    - **Files:** `shared/{catalog.json,templates/index.json,site-seed.json,offer-schema.json,i18n/*}`, `mobile/build-logic/**` (new `SiteSeedKotlinGenerator.kt`, `SeedTest.kt`), `catalog-keys.lock.json`, `supabase/migrations/20261018073025_catalog_sync.sql`; docs SHARED_DEFINITIONS.
+  - **WP3a, SSR and SEO plumbing** (DECISIONS #75):
+    - The Worker renders `/a/<slug>/`, privacy, and custom-domain `/` and `/privacy` with the same pure templates.
+    - It 301s `/a/<slug>` to `/a/<slug>/`, and serves a 404 with `noindex` for unavailable sites. A backend error falls back to the static shell.
+    - It sends `Last-Modified` and answers 304, and serves `/robots.txt` and `/sitemap.xml`.
+    - Security headers come from the new `web/headers.js`, which a test keeps equal to `_headers`.
+    - The client is split: `app.js` (about 1 KB), `hydrate.js` (form, quick-reply chips, install, view count) for SSR pages, and `client.js` (the old render path, for the preview and the fallback).
+    - The `head.js` JSON-LD `@graph` covers InsuranceAgency, Person, FAQPage and Service.
+    - **SSR first paint is CSS only** (10.4 KB raw).
+    - `run_worker_first` is extended.
+    - **Tests:** 143 web checks pass (37 new, in the new `scripts/test-web-ssr.mjs`). A `wrangler dev` check against the live anon `get_public_site` passed for the 301, the SSR 200 and the 404. **Not deployed.**
+    - **Files:** `web/{worker,ssr,hydrate,client,headers,head,app,i18n,api,route}.js`, `web/templates/index.js`, `web/wrangler.jsonc`, `web/_headers`, `web/sections/{hero,index}.js`, `scripts/{build-web.sh,test-web*.mjs}`; docs WEB_RENDERER, ARCHITECTURE, TESTING.
+  - **WP3b, web visual layer** (DECISIONS #76, #77, #81).
+    - **Conversational layer** (new `web/sections/say.js`):
+      - an agent speech bubble above every section heading;
+      - a hero greeting with quick-reply chips;
+      - the FAQ as a visitor/agent chat;
+      - a thank-you bubble;
+      - a sticky Call/WhatsApp bar on phones, with its space reserved so there's no layout shift.
+    - **Offers** (`offer.js`, `offers.js`, plus the featured banner):
+      - "My pick for you", or "Details provided by the agent" for custom offers;
+      - never a company name or logo, even if one is present in the payload;
+      - the company disclaimer once, under the section;
+      - the "Best offers" templates fall back to plan cards when there are no offers.
+    - **Templates:** classic, modern and minimal refreshed ("Meet me"); new **spotlight** (featured offer above the fold, an offer grid, a trust strip) and **guide** ("What would you like to protect?" chips leading to grouped offer and plan cards).
+    - **Images:**
+      - `scripts/gen-site-images.py` turned the user's 18 masters into 36 WebP files (400 px 5.7–12 KB, 800 px 15–33 KB; 640 KB in all) and `web/images/manifest.json`;
+      - `web/sections/media.js` draws only the images in the manifest;
+      - the hero scene appears on the offers family only and is never the LCP element.
+    - **Stale-cache fix:** `Last-Modified` = max(`published_at`, the build's `BUILD_TIME`).
+    - **Fixtures:**
+      - the demo offers in the EN/HI fixtures;
+      - new `sample-offers.json` and `sample-seeded.json`;
+      - `scripts/site-seed.mjs`, which mirrors the Kotlin `SiteSeed.resolve` and is checked against its test vectors;
+      - mock slugs `offers` and `seeded`.
+    - **Tests:** 207 web checks pass (64 new); the CSS lint is clean.
+      - **Sizes:** SSR first paint (CSS only) 16 KB raw, about 4 KB gzip; hydration JS 16.5 KB raw.
+      - **Budget raised:** the client-render budget (preview and fallback only) goes from 55 to 85 KB, because the source is unminified.
+      - **Lighthouse on SSR output:** spotlight 100/100/96/100 (LCP 1.5 s), classic 96/100/96/100.
+      - **Previews:** regenerated for all 5 templates.
+    - **Follow-up:** Spotlight and Guide get a two-column desktop hero (the featured offer with the scene under it; DECISIONS #82). The renderer reads the top-level offer `interest` for image fallbacks and guide groups. 208 web checks pass.
+    - **Files:** `web/sections/*`, `web/templates/{spotlight,guide}/*`, `web/images/*`, `web/{api,form,head,ssr,worker,client,manifest}.js`, `web/styles/base.css`, the template CSS, `web/dev-fixtures/*`, `web/dev-mock.js`, `scripts/{gen-site-images.py,site-seed.mjs,test-web-offers.mjs,build-web.sh,test-web*.mjs}`, `web/config.example.js`; docs WEB_RENDERER, DESIGN_SYSTEM, OFFERS, IMAGES, TESTING.
+  - **WP2, backend** (DECISIONS #77, #79; edits the unapplied `20261017132241_companies_offers.sql` in place). **Not applied to `AGENT_PRO`.**
+    - **`offers.internal_name`:** the real product name, ≤ 120, admin RLS only, never in any payload.
+    - **`private.public_text_violation(txt)`:** matches `catalog_blocked_terms()` plus every company name in every locale, NFC and lowercase, with word boundaries that treat Devanagari matras as part of a word.
+      - The offer guard checks every localized field, `cta_url` and `image_url`; the company guard checks the disclaimer. Both raise `blocked_term:<field>:<locale>:<term>`.
+      - Publish rejects custom offers with `rule: blocked_term`.
+    - **Public payload:** `company` is `{disclaimer}` only, with no name or logo, and `published_at` is added.
+    - **Auto offers:** up to 3 running company offers when the agent picked none. The first is featured only for the `offers` family, and the featured offer isn't repeated in the items.
+    - **New anon RPC `list_public_sites()`:** `{slug, published_at}` only, for the sitemap.
+    - **Follow-up:** every resolved offer carries a top-level `interest` (any CTA kind), so the web can choose fallback images and guide groups. `list_public_sites()` leaves out sites with an active custom domain, whose canonical URL and sitemap are on that domain. SQL **565/565** on Postgres 15 and 17.
+    - **Demo seed:** `supabase/demo/gen_demo_offers.py` writes `demo_offers.sql` (company `demo-life` and its 6 offers; postgres role, SQL Editor). It's applied only in local tests.
+    - **Tests:** `95_offers.sql` grows from 144 to 224 checks; **557/557 on Postgres 15 and 17**. `run.sh` honours `CONTAINER_NAME`.
+    - **Files:** the migration, `supabase/demo/*`, `supabase/tests/{run.sh,60_public_site,80_static_review,95_offers}.sql`; docs BACKEND (which also had a stale catalog_sync filename, now fixed), OFFERS, TESTING.
+  - **WP4, app** (DECISIONS #76, #78):
+    - **`StarterContent.from(profile, template, locale, agentId)`** builds a complete seeded draft from `SiteSeed`: the section order from the template, the hidden sections from the family, nothing invented, every text within `maxLength`. `NewSite.locale` is set from the app's language.
+    - **Onboarding step 2 and Appearance → Template** share the new `TemplateChooser`: "Meet me" / "Best offers" cards, then that family's pager, previewing the seeded content. Switching to an offers template un-hides `offers` and puts it after `hero`.
+    - **Home checklist:** "Make your About section your own" (`StarterContent.isOwnBio`).
+    - **Photo tips:** helper text under the photo slot (a new optional `FieldSpec.helper`).
+    - **Appearance → Template** opens on the current template's family pager, at the current template; Back returns to the family cards. Onboarding still starts on the cards. New baseline `WebsiteTemplatePicker` (4 variants).
+    - **Bug fixed:** `SiteContent.move` dropped `offers` from `sectionOrder` on reorder.
+    - **Tests:** 280 unit and screenshot tests, 0 failures; new baselines `OnboardingTemplateFamily`, `OnboardingTemplateOffers` and `WebsiteTemplateFamily` (4 variants each); `TabShell` changed. Lint and `assembleDebug` pass.
+    - **Files:** `feature/website/{data,ui}/*`, `feature/onboarding/*`, `feature/home/HomeFeature.kt`, `core/forms/{FieldSpec,FormRenderer}.kt`, `core/designsystem/components/Inputs.kt`, strings EN/HI, tests; docs UX, ARCHITECTURE, TESTING, IMAGES.
+  - **Images designed** (DECISIONS #81; user request): the new `docs/IMAGES.md` lists every image slot, its rules, and a separate generation prompt per image. That's 20 bundled illustrations, with no invented faces and no text or brands inside images. It's added to the CLAUDE.md doc map. The images aren't generated yet.
+  - **Demo offers from the insurer's public site** (user request: "for the offers go to the LIC site"): `supabase/demo/demo-offers.json` holds 6 current plans (the three 19 Oct 2026 launches, two September launches, one June launch). The public names are disguised and the text is in our own words, EN/HI; the real names are only in the admin-only `internalName`. Test data only.
+  - **Image prompts aligned with the brand** (user question: "do the image prompts complement our brand colours, themes and texts?"). They didn't fully:
+    - The warm off-white background would show as a cream box on the pure-white pages. It's now pure white, fading into the page.
+    - The warm earth palette clashed with the cool-grey brand and several accent swatches. It's now the brand's cool greys, soft ink outlines and two pale tints, so the agent's accent stays the only strong colour.
+    - Three prompts showed an illustrated advisor, which would read as a second agent beside the first-person copy. They now show the customer's side.
+    - The gimmicky "booster lever" offer image became a calm scene.
+    - The negative prompt gains warm colours, tinted backdrops and agents/salespeople.
+    - Files: docs/IMAGES.md (rules 4, 4a and 5a, the style prefix, the negative prompt, 6 prompts).
+  - **Site images generated by the user** (22 PNGs dropped in `web/images/`). They were reviewed against the slots:
+    - 18 match their prompts and the brand palette; they were renamed by slot and moved to `design/site-images/source/` (mapping in `MAPPING.md`), so the 1.5 MB masters never ship.
+    - 3 spares are kept in `spare/`.
+    - `interest-money-back` is set aside in `needs-fix/`: text on the markers, which also look like gravestones.
+    - `offer-simple-protection` is missing.
+    - The WebP conversion and manifest are part of WP3b.
+  - **The last two images arrived:** `interest-money-back` (regenerated without markers) and `offer-simple-protection`. The rejected first money-back image moved to `design/site-images/source/rejected/`. `gen-site-images.py` re-run: 20 images, 38 WebP files. Docs: IMAGES, MAPPING, STATUS.
+  - **Old-app sites refill prepared** (the user: "there might be other sites as well"). The public sitemap and API showed two published sites made with the old app: `gunjan` (the user chose "Best offers": spotlight, linked to the demo company) and `shatrughan-sinha` ("Meet me": classic, no company link).
+    - `gen_demo_sites.mjs` now takes `--slug/--name/--city/--template/--no-link` and writes `supabase/demo/refill_<slug>.sql`.
+    - Both were rehearsed on a throwaway Postgres 17: they pass `validate_site_content`, keep the designation and phone, and get the expected offers.
+    - **Waiting for the user to paste them.**
+  - **WENT LIVE** (the user said "go live", 2026-10-18 ~21:15 IST):
+    - The user pasted the two migrations, `demo_offers.sql` and `demo_sites.sql` into `AGENT_PRO`'s SQL Editor; everything was verified through the connector (metadata only).
+    - Advisors: no errors, with the expected 0028/0029 WARNs, plus Auth's leaked-password protection off.
+    - Worker `agentpro-sites` redeployed (version `8a8ef744`). Live checks passed: redirects, SSR, 404, headers, `Last-Modified`, robots, sitemap, and the demo pages with offers and images and no company name.
+    - The last two images were also added before the deploy.
+  - **Go-live prepared (the user said "go live"):**
+    - The new `supabase/demo/gen_demo_sites.mjs` writes `demo_sites.sql`: the demo memberships plus a re-seed of the two demo sites, keeping their contact, photo and designation server-side.
+    - The whole paste sequence was rehearsed on a throwaway Postgres 17 in `AGENT_PRO`'s state.
+    - **Production build** done (preview URL, `BUILD_TIME`); `wrangler deploy --dry-run` passes.
+    - **Waiting for the user** to paste the migrations in the SQL Editor. The connector would need about 120 KB of SQL re-typed, and reading profiles on production was refused by the safety check.
+    - Docs: BACKEND (demo sites refill).
+  - **Final verification on the combined tree:** 208 web checks, the CSS lint and `site-seed --check`; `generateShared` (no drift), `verifyShared` and the build-logic tests; SQL 565/565 (Postgres 17); app 280/280 tests including screenshots. Nothing was deployed or applied to `AGENT_PRO`; nothing was committed. STATUS updated.
+  - **Decision numbers fixed:** another session added #80 (app transitions) at the same time, so the image decision is renumbered to **#81** and the desktop-LCP decision to **#82**, with every reference updated (DECISIONS, CHANGELOG, PRODUCT, IMAGES, WEB_RENDERER, TESTING, `scripts/test-web-offers.mjs`, `scripts/gen-site-images.py`).
+  - **Decision #78 wording fixed:** seed variants are picked from the agent's user id, not the slug.
+
+- **App transitions** (user request: research transitions for state changes and use the ones that look nice and are necessary; DECISIONS #80). The motion spec in DESIGN_SYSTEM.md is now wired everywhere.
+  - **Was:** no NavHost set transitions, so every screen change used Navigation Compose's default 700ms crossfade; screen states, gate changes and list updates snapped.
+  - **Navigation:** shared-axis X forward and back (and predictive back) in all four NavHosts; fade-through between bottom-bar tabs (`MainShell.isTabSwitch`). Auth, password recovery and onboarding use the new `core/ui/SharedAxisNavHost`.
+  - **App gate:** fade-through between Splash, Welcome, Onboarding and Main (`AppNavHost`).
+  - **Screen states:** `ScreenState` crossfades between loading, empty, error and content, keyed on the state's kind so refreshes don't flash; the new `StateCrossfade` does the same on the policy, customer and enquiry detail screens and the customer's Policies / Details / Activity switch.
+  - **Lists:** `itemMotion()` (`animateItem` with the motion tokens) on customer, policy, enquiry and dues rows.
+  - **Chart card:** chart ⇄ table crossfades and the card eases to its new height.
+  - **`Motion.kt`:** `fadeThrough` is now the real Material pattern (fade out, then fade in and scale from 92%; 250ms in all) with `fadeThroughEnter`/`Exit`; new `crossfade()`.
+  - **Tests:** 266 app tests run, 262 pass; screenshot verify fails only `OnboardingTemplate` (4 variants). That diff is the picker's "1 of 3" → "1 of 5" from the in-progress "Best offers" templates (`spotlight`, `guide`; DECISIONS #76), not from motion. Left for that work to re-record. `assembleDebug` passes; lint 0 errors, 2 warnings as before. Test APK: `~/AgentPRO-test/AgentPRO-test-2026-10-18-transitions.apk`.
+  - **Files:** `core/designsystem/Motion.kt`, `core/designsystem/components/{States,Lists,DataDisplay}.kt`, `core/ui/SharedAxisNavHost.kt` (new), `app/{App,MainShell}.kt`, `feature/auth/AuthNavigation.kt`, `feature/onboarding/OnboardingNavigation.kt`, `feature/{policies/ui/PolicyScreens,customers/ui/CustomerScreens,enquiries/ui/EnquiryDetailScreen,enquiries/ui/EnquiryListScreen,dues/ui/Dues}.kt`; docs DESIGN_SYSTEM (Motion), ARCHITECTURE, TESTING (End to end #10), DECISIONS #80, STATUS (also: the Gradle lock is `/tmp/agentpro-gradle.lock` for every session).
+- **VS Code Gradle sync fixed** (user report: "Could not run phased build action… Gradle build daemon has been stopped").
+  - **Cause:** the VS Code Java extension ran the Gradle import with its bundled JRE 25 while the terminal uses JDK 21. Daemons can't be shared across JVMs, so up to three 2 GB daemons ran at once on a 7 GB machine already 5 GB into swap, and the IDE's daemon was stopped mid-sync.
+  - **Fix:** `java.import.gradle.java.home` points at JDK 21. Stray daemons were stopped. `./gradlew help` passes.
+  - **Files:** `.vscode/settings.json`; docs STATUS.
+- **Phase 8b-2: companies and offers backend** (OFFERS.md; DECISIONS #72, #74). Built and tested locally; **not applied to `AGENT_PRO`** (needs the user's approval).
+  - **New migration `20261017132241_companies_offers.sql`:** tables `companies`, `offers`, `admins`, `company_memberships` with admin-only RLS (and owner-only select for memberships); `is_admin()`/`is_admin_for()` requiring an MFA session (aal2); guard triggers (localized content, transitions, CTA, interest and date rules; Hindi required to go live), actor stamps and an audit trigger into `audit_log` (whose owner-admin select policy now exists); the `company-media` bucket (public read, WebP/PNG only, admin writes by path and scope); RPCs `list_companies`, `request_company`, `withdraw_company_request`, `my_company_offers`, `admin_review_membership`, `admin_link_membership`, `admin_membership_queue`, `admin_offer_usage`; `publish_site` checks offer references (errors and warnings); the public payload gains `company` and `offers`; the signup trigger skips admin accounts.
+  - **Generator:** the five offers CHECKs are in `CHECKS`; `catalog_sync` regenerated as `20261018060943_catalog_sync.sql`, sorting after the new tables (the unapplied `20261017085151` is deleted).
+  - **Tests:** new `supabase/tests/95_offers.sql` (144 checks); `60_public_site`, `80_static_review` and `96_privacy` updated for the new payload keys, RPC list, tables, CHECK count and the audit_log policy. **476/476 on Postgres 17 and 15.** 99 build-logic tests and `verifyShared` pass. Advisors can't run until it's applied.
+  - **Files:** `supabase/migrations/20261017132241_companies_offers.sql`, `supabase/migrations/20261018060943_catalog_sync.sql` (generated), `supabase/tests/{95_offers,60_public_site,80_static_review,96_privacy}.sql`, `mobile/build-logic/.../CatalogSyncGenerator.kt`, `OffersTest.kt`; docs BACKEND, OFFERS, SHARED_DEFINITIONS, PRIVACY, TESTING, DECISIONS, STATUS.
+
 ## 2026-10-17
+- **Auth redirect allow list fixed on `AGENT_PRO`** (user report: the confirmation link opened the sites domain, not the app).
+  - **Cause:** the auth logs show the app sending `redirect_to=agentpro://auth-callback`, but `/verify` redirected to the site URL, because the address wasn't on Auth's Redirect URLs allow list.
+  - **Fix:** the user added `agentpro://auth-callback**` under Authentication → URL Configuration → Redirect URLs (screenshot checked). No app change; the manifest and `AuthCallbackLink` already handle the link. Emails sent before the change still point at the site URL.
+  - **Also seen in the logs:** one real sign-up clicked an old confirmation link about 8 times ("link is invalid or has expired") after the app had sent a newer one.
+  - **Docs:** BACKEND (Auth), STATUS.
+- **Three launch screens after "Publish now"** (user request; DECISIONS #71): Add it to your phone, This is what customers see, and Share it with customers, then Home. A draft ("Later") skips them.
+  - **Code:** `feature/onboarding/ui/LaunchScreens.kt` (`SiteLaunchScreen`, a shared-axis X `AnimatedContent`); `OnboardingViewModel` gets `launch`, `launchNext`, `launchBack` and `finishLaunch`, and the trial snackbar and session release move to the end; `OnboardingNavigation.kt` adds the `Launch` route and `LaunchRoute` (Add to home screen opens `SiteLinks.installUrl`, Share records `SITE_SHARED`).
+  - **Progress bar:** `StepProgressBar` animates its progress with `Motion.navigation()`.
+  - **Strings (EN/HI):** `launch_*`.
+  - **Tests:** full run on the combined tree: 266 app tests, 0 failures; `verifyShared`, `:build-logic:test` and `assembleDebug` pass; lint 0 errors and 2 warnings (`OldTargetApi`, `UnusedAttribute`, as before); screenshot verify 0 diffs. The new `LaunchAddToPhone`, `LaunchPreview` and `LaunchShare` baselines were checked by eye (the preview frame is a stand-in, since the WebView isn't screenshotted).
+  - **Lint fix:** the screenshot helper was a lowercase `@Composable` returning Unit (`ComposableNaming`); renamed `LaunchScreenFor`.
+  - **Test APK (14:43):** `~/AgentPRO-test/AgentPRO-test-2026-10-17-launch.apk`, including the sign-up changes.
+  - **Gradle:** the shared lock is `/tmp/agentpro-gradle.lock`, agreed with the other session.
+  - **Docs:** PRODUCT, UX, DECISIONS #71, STATUS.
+- **Phase 8b-1: companies and offers in `shared/` and the codegen** (OFFERS.md; DECISIONS #72, #73). Nothing user-visible yet: this is the foundation for 8b-2 (backend), 8b-3 (web), 8b-4 (app) and 8c (admin panel).
+  - **`catalog.json`:** six lists, `offerStatuses`, `offerPhases`, `offerCtaKinds` (with `agentAllowed`: `link` is admin-only), `adminRoles`, `membershipStatuses` and `membershipRejectReasons`; the feature flag `offers` (default on); and the `offers` limits object. Icons reuse ones already imported (provisional).
+  - **New `shared/offer-schema.json`:** the company offer fields (5 localized, 6 others, `requiredIf` for the link URL).
+  - **`site-schema.json`:** `hero.featuredOffer` (`offerRef`) and a new `offers` section (`defaultVisible: false`) with a title, placed offers (`offerList`, ≤ 6) and custom offers (generated id, title, summary, end date ≤ 366 days ahead, agent CTA kinds, interest, confirmation). The templates registry lists `offers` for all three templates.
+  - **i18n:** 46 new keys in EN and HI (labels, the offer form fields, and site copy such as "Details provided by the agent").
+  - **Codegen:** field types `offerRef`/`offerList`; `FieldSpec.generated`, `mustBeTrue` and `maxDaysAhead`; CTA options narrowed to `agentAllowed` in `SiteSchema.kt`; `catalog_sync` emits `offer_schema()`, `catalog_locales()`, `catalog_default_locale()`, `catalog_offer_cta_kinds()`, `catalog_offer_cta_kinds_agent()`, `catalog_membership_reject_reasons()` and `catalog_offer_limits()`. `offer-schema.json` is optional to the loader and joins the catalog hash.
+  - **`verifyShared`:** new field-rule checks, offer limit checks and `offer-schema.json` checks.
+  - **Generated:** `supabase/migrations/20261017085151_catalog_sync.sql` (**not applied**; it includes the earlier unapplied `20261017050728`), and new keys in `catalog-keys.lock.json`.
+  - **App shims** so the generated schema compiles and nothing half-built shows: the new `FieldType`s, offer values kept as raw JSON through `FormState` and `SiteContent` (so saving the hero never drops a placed offer), generated fields hidden and given a UUID, and the `offers` section left out of the Content list until 8b-4 (`SiteContent.pendingSections`).
+  - **Changed from the plan:** the table CHECKs move to 8b-2 (DECISIONS #72); no `OfferSchema.kt` (DECISIONS #73).
+  - **Tests:** 99 build-logic tests (new `OffersTest`, 15 cases), `verifyShared` passes; web 106 checks (with `offers` pending in `test-web.mjs`); SQL 323/323 on Postgres 17 with the new migration; app `:composeApp:testAndroidHostTest` with Roborazzi verify: 266 tests, 0 failures, 0 screenshot diffs (the tree also held the parallel launch-screens work, #71). Lint and `assembleDebug` weren't run.
+  - **Files:** `shared/{catalog,site-schema,offer-schema}.json`, `shared/templates/index.json`, `shared/i18n/{en,hi}.json`, `mobile/build-logic/` (`SharedDefinitions`, `SiteSchemaKotlinGenerator`, `CatalogSyncGenerator`, `SharedVerifier`, `Plugins`, `catalog-keys.lock.json`, tests `Fixture`, `GeneratorsTest`, `OffersTest`), `core/forms/{FieldSpec,FormState,FormRenderer}.kt`, `feature/website/data/SiteContent.kt`, tests `SiteContentTest`, `WebsiteViewModelsTest`, `scripts/test-web.mjs`, `supabase/migrations/20261017085151_catalog_sync.sql`; docs SHARED_DEFINITIONS, OFFERS, BACKEND, TESTING, DECISIONS, STATUS.
 - **A fuller Create account, no repeated questions, and automatic sign-in** (user request; DECISIONS #70).
   - **Create account:**
     - full name, mobile, email, password and **Confirm password** ("Passwords don't match"), plus the consent box;

@@ -21,6 +21,12 @@ enum class FieldType(val key: String) {
     /** `list`: a repeatable group of [FieldSpec.itemFields]. */
     ItemList("list"),
 
+    /** `offerRef`: one placed offer, `{"source": "company"|"agent", "id": …}` (docs/OFFERS.md). Kept as raw JSON. */
+    OfferRef("offerRef"),
+
+    /** `offerList`: placed offers, an array of `offerRef` values. Kept as raw JSON. */
+    OfferList("offerList"),
+
     /** App-only (sign-in and sign-up forms): masked with a show/hide toggle. Never a site-schema type. */
     Password("password"),
 
@@ -84,6 +90,14 @@ data class FieldSpec(
     val links: List<FieldLink> = emptyList(),
     /** App forms only: the key of a field this one must equal (Confirm password); otherwise [ValidationError.Mismatch]. */
     val mustMatch: String? = null,
+    /** Schema `generated`: the app fills the value ("uuid") and FormRenderer never shows the field. */
+    val generated: String? = null,
+    /** Schema `equals: true` (toggles): the value must be true, e.g. the custom-offer confirmation. */
+    val mustBeTrue: Boolean = false,
+    /** Schema `maxDaysAhead` (dates): no later than today (Asia/Kolkata) + this many days. */
+    val maxDaysAhead: Int? = null,
+    /** App forms only: one helper text under the field (e.g. the photo tips); FormRenderer shows it on image fields. */
+    val helper: StringResource? = null,
 )
 
 /** A tappable substring of a consent field's label (`label` is a string resource whose text contains it). */

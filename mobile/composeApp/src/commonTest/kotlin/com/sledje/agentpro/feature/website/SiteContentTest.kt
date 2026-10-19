@@ -31,7 +31,8 @@ class SiteContentTest {
     @Test
     fun defaultOrderIsTheSchemaOrderWithPinnedHeroFirstAndContactLast() {
         val keys = SiteContent.orderedSections(empty).map { it.key }
-        assertEquals(SiteSchema.sections.map { it.key }, keys)
+        assertEquals(SiteContent.sections.map { it.key }, keys)
+        assertTrue("offers" !in keys, "the offers section stays hidden until its editor exists")
         assertEquals("hero", keys.first())
         assertEquals("contact", keys.last())
     }
@@ -147,5 +148,27 @@ class SiteContentTest {
         assertEquals(ValidationError.Email, issues[4].error)
         assertEquals(ValidationError.Range(0, 70), issues[5].error)
         assertEquals(FieldType.Email, issues[4].field?.type)
+    }
+
+    @Test
+    fun movingSectionsKeepsTheStoredOffersPlace() {
+        val content = buildJsonObject {
+            put("sectionOrder", JsonArray(listOf("hero", "offers", "about", "services", "faq", "contact").map(::JsonPrimitive)))
+        }
+        val moved = SiteContent.move(content, 0, 1)
+        val order = moved["sectionOrder"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertEquals("hero", order.first())
+        assertTrue("offers" in order, "offers isn't stripped by a move")
+        assertEquals(order.indexOf("hero") + 1, order.indexOf("offers"), "still right after hero")
+    }
+
+    @Test
+    fun offersAfterHeroUnhidesAndMovesOnlyOffers() {
+        val content = buildJsonObject {
+            put("hidden", JsonArray(listOf("offers", "faq").map(::JsonPrimitive)))
+        }
+        val out = SiteContent.withOffersAfterHero(content, listOf("hero", "about", "offers", "contact"))
+        assertEquals(listOf("faq"), out["hidden"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("hero", "offers", "about", "contact"), out["sectionOrder"]!!.jsonArray.map { it.jsonPrimitive.content })
     }
 }

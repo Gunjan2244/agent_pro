@@ -48,56 +48,64 @@
       "labelKey": "interest.term",
       "icon": "shield",
       "tone": "neutral",
-      "order": 1
+      "order": 1,
+      "image": "interest-term"
     },
     {
       "key": "endowment",
       "labelKey": "interest.endowment",
       "icon": "savings",
       "tone": "neutral",
-      "order": 2
+      "order": 2,
+      "image": "interest-endowment"
     },
     {
       "key": "money_back",
       "labelKey": "interest.money_back",
       "icon": "payments",
       "tone": "neutral",
-      "order": 3
+      "order": 3,
+      "image": "interest-money-back"
     },
     {
       "key": "child",
       "labelKey": "interest.child",
       "icon": "child_care",
       "tone": "neutral",
-      "order": 4
+      "order": 4,
+      "image": "interest-child"
     },
     {
       "key": "pension",
       "labelKey": "interest.pension",
       "icon": "elderly",
       "tone": "neutral",
-      "order": 5
+      "order": 5,
+      "image": "interest-pension"
     },
     {
       "key": "health",
       "labelKey": "interest.health",
       "icon": "health_and_safety",
       "tone": "neutral",
-      "order": 6
+      "order": 6,
+      "image": "interest-health"
     },
     {
       "key": "ulip",
       "labelKey": "interest.ulip",
       "icon": "trending_up",
       "tone": "neutral",
-      "order": 7
+      "order": 7,
+      "image": "interest-ulip"
     },
     {
       "key": "other",
       "labelKey": "interest.other",
       "icon": "more_horiz",
       "tone": "neutral",
-      "order": 8
+      "order": 8,
+      "image": "interest-other"
     }
   ],
   "enquirySources": [
@@ -325,6 +333,159 @@
     "New Endowment Plan",
     "Saral Pension"
   ],
+  "publicTextRules": {
+    "blockedTerms": [
+      "jeevan anand",
+      "new jeevan anand",
+      "jeevan labh",
+      "jeevan umang",
+      "jeevan lakshya",
+      "jeevan shanti",
+      "new jeevan shanti",
+      "jeevan akshay",
+      "jeevan utsav",
+      "jeevan azad",
+      "jeevan kiran",
+      "jeevan tarun",
+      "jeevan dhara",
+      "jeevan arogya",
+      "jeevan saral",
+      "jeevan amar",
+      "jeevan shiromani",
+      "bima jyoti",
+      "bima ratna",
+      "bima shree",
+      "bima lakshmi",
+      "dhan varsha",
+      "dhan rekha",
+      "dhan sanchay",
+      "dhan vriddhi",
+      "tech term",
+      "new tech term",
+      "digi term",
+      "yuva term",
+      "amritbaal",
+      "amrit baal",
+      "saral pension",
+      "saral jeevan bima",
+      "new endowment plan",
+      "nivesh plus",
+      "index plus",
+      "arogya rakshak",
+      "new pension plus",
+      "click 2 protect",
+      "click2protect",
+      "iprotect smart",
+      "sanchay plus",
+      "poorna suraksha",
+      "smart platina",
+      "lic",
+      "l.i.c.",
+      "licindia",
+      "lic of india",
+      "life insurance corporation",
+      "hdfc life",
+      "hdfc ergo",
+      "sbi life",
+      "sbi general",
+      "icici prudential",
+      "icici pru",
+      "icici lombard",
+      "max life",
+      "axis max life",
+      "bajaj allianz",
+      "tata aia",
+      "tata aig",
+      "kotak life",
+      "kotak mahindra life",
+      "aditya birla sun life",
+      "aditya birla health",
+      "pnb metlife",
+      "metlife",
+      "star health",
+      "niva bupa",
+      "max bupa",
+      "care health",
+      "religare health",
+      "canara hsbc",
+      "edelweiss tokio",
+      "edelweiss life",
+      "shriram life",
+      "indiafirst life",
+      "aviva life",
+      "reliance nippon",
+      "reliance general",
+      "future generali",
+      "bharti axa",
+      "pramerica life",
+      "ageas federal",
+      "exide life",
+      "aegon life",
+      "bandhan life",
+      "star union dai-ichi",
+      "sud life",
+      "new india assurance",
+      "united india insurance",
+      "oriental insurance",
+      "national insurance",
+      "manipalcigna",
+      "manipal cigna",
+      "royal sundaram",
+      "iffco tokio",
+      "universal sompo",
+      "go digit",
+      "एलआईसी",
+      "एल आई सी",
+      "एल.आई.सी.",
+      "भारतीय जीवन बीमा निगम",
+      "लाइफ इंश्योरेंस कॉरपोरेशन",
+      "एचडीएफसी लाइफ",
+      "एसबीआई लाइफ",
+      "आईसीआईसीआई प्रूडेंशियल",
+      "मैक्स लाइफ",
+      "बजाज आलियांज",
+      "बजाज एलियांज",
+      "टाटा एआईए",
+      "कोटक लाइफ",
+      "स्टार हेल्थ",
+      "केयर हेल्थ",
+      "निवा बूपा",
+      "पीएनबी मेटलाइफ",
+      "न्यू इंडिया एश्योरेंस",
+      "यूनाइटेड इंडिया इंश्योरेंस",
+      "ओरिएंटल इंश्योरेंस",
+      "नेशनल इंश्योरेंस",
+      "जीवन आनंद",
+      "न्यू जीवन आनंद",
+      "जीवन लाभ",
+      "जीवन उमंग",
+      "जीवन लक्ष्य",
+      "जीवन शांति",
+      "जीवन अक्षय",
+      "जीवन उत्सव",
+      "जीवन आज़ाद",
+      "जीवन आजाद",
+      "जीवन किरण",
+      "जीवन तरुण",
+      "जीवन धारा",
+      "जीवन आरोग्य",
+      "बीमा ज्योति",
+      "बीमा रत्न",
+      "बीमा श्री",
+      "बीमा लक्ष्मी",
+      "धन वर्षा",
+      "धन रेखा",
+      "अमृतबाल",
+      "अमृत बाल",
+      "टेक टर्म",
+      "सरल पेंशन",
+      "सरल जीवन बीमा",
+      "निवेश प्लस",
+      "इंडेक्स प्लस",
+      "आरोग्य रक्षक",
+      "न्यू पेंशन प्लस"
+    ]
+  },
   "reservedSlugs": [
     "a",
     "s",
@@ -448,6 +609,22 @@
       "order": 2
     }
   ],
+  "templateFamilies": [
+    {
+      "key": "personal",
+      "labelKey": "template_family.personal.name",
+      "descriptionKey": "template_family.personal.description",
+      "icon": "person",
+      "order": 1
+    },
+    {
+      "key": "offers",
+      "labelKey": "template_family.offers.name",
+      "descriptionKey": "template_family.offers.description",
+      "icon": "savings",
+      "order": 2
+    }
+  ],
   "features": [
     {
       "key": "siteBuilder",
@@ -524,6 +701,13 @@
       "labelKey": "feature.customDomains",
       "icon": "public",
       "order": 11,
+      "default": true
+    },
+    {
+      "key": "offers",
+      "labelKey": "feature.offers",
+      "icon": "savings",
+      "order": 12,
       "default": true
     }
   ],
@@ -673,6 +857,161 @@
       "terminal": true
     }
   ],
+  "offerStatuses": [
+    {
+      "key": "draft",
+      "labelKey": "offer_status.draft",
+      "icon": "edit",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "live",
+      "labelKey": "offer_status.live",
+      "icon": "check_circle",
+      "tone": "success",
+      "order": 2
+    },
+    {
+      "key": "archived",
+      "labelKey": "offer_status.archived",
+      "icon": "block",
+      "tone": "neutral",
+      "order": 3
+    }
+  ],
+  "offerPhases": [
+    {
+      "key": "upcoming",
+      "labelKey": "offer_phase.upcoming",
+      "icon": "schedule",
+      "tone": "info",
+      "order": 1
+    },
+    {
+      "key": "running",
+      "labelKey": "offer_phase.running",
+      "icon": "check_circle",
+      "tone": "success",
+      "order": 2
+    },
+    {
+      "key": "ended",
+      "labelKey": "offer_phase.ended",
+      "icon": "event_busy",
+      "tone": "neutral",
+      "order": 3
+    }
+  ],
+  "offerCtaKinds": [
+    {
+      "key": "enquire",
+      "labelKey": "offer_cta_kind.enquire",
+      "icon": "inbox",
+      "tone": "neutral",
+      "order": 1,
+      "agentAllowed": true
+    },
+    {
+      "key": "call",
+      "labelKey": "offer_cta_kind.call",
+      "icon": "call",
+      "tone": "neutral",
+      "order": 2,
+      "agentAllowed": true
+    },
+    {
+      "key": "link",
+      "labelKey": "offer_cta_kind.link",
+      "icon": "public",
+      "tone": "neutral",
+      "order": 3,
+      "agentAllowed": false
+    }
+  ],
+  "adminRoles": [
+    {
+      "key": "owner",
+      "labelKey": "admin_role.owner",
+      "icon": "verified_user",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "editor",
+      "labelKey": "admin_role.editor",
+      "icon": "edit",
+      "tone": "neutral",
+      "order": 2
+    }
+  ],
+  "membershipStatuses": [
+    {
+      "key": "pending",
+      "labelKey": "membership_status.pending",
+      "icon": "hourglass_empty",
+      "tone": "info",
+      "order": 1
+    },
+    {
+      "key": "approved",
+      "labelKey": "membership_status.approved",
+      "icon": "verified",
+      "tone": "success",
+      "order": 2
+    },
+    {
+      "key": "rejected",
+      "labelKey": "membership_status.rejected",
+      "icon": "block",
+      "tone": "danger",
+      "order": 3
+    },
+    {
+      "key": "revoked",
+      "labelKey": "membership_status.revoked",
+      "icon": "close",
+      "tone": "danger",
+      "order": 4
+    },
+    {
+      "key": "withdrawn",
+      "labelKey": "membership_status.withdrawn",
+      "icon": "assignment_return",
+      "tone": "neutral",
+      "order": 5
+    }
+  ],
+  "membershipRejectReasons": [
+    {
+      "key": "not_found",
+      "labelKey": "membership_reject_reason.not_found",
+      "icon": "search",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "details_mismatch",
+      "labelKey": "membership_reject_reason.details_mismatch",
+      "icon": "error",
+      "tone": "neutral",
+      "order": 2
+    },
+    {
+      "key": "not_agent",
+      "labelKey": "membership_reject_reason.not_agent",
+      "icon": "person",
+      "tone": "neutral",
+      "order": 3
+    },
+    {
+      "key": "other",
+      "labelKey": "membership_reject_reason.other",
+      "icon": "more_horiz",
+      "tone": "neutral",
+      "order": 4
+    }
+  ],
   "pricing": {
     "service": {
       "purchaseInr": 499,
@@ -744,5 +1083,13 @@
     "auditLogMonths": 13,
     "orphanMediaDays": 30,
     "endedPolicySuggestDeleteYears": 3
+  },
+  "offers": {
+    "maxSectionItems": 6,
+    "maxValidityDays": 366,
+    "logoMaxBytes": 262144,
+    "imageMaxBytes": 524288,
+    "imageAspect": "16:9",
+    "logoMaxPx": 512
   }
 }

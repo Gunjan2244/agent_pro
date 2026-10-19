@@ -17,7 +17,10 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import com.sledje.agentpro.core.designsystem.Motion
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
@@ -126,8 +129,10 @@ fun SegmentedControl(
 @Composable
 fun StepProgressBar(step: Int, total: Int, modifier: Modifier = Modifier) {
     val description = stringResource(Res.string.onboarding_step_of, step, total)
+    // Slides to the new step when the step changes on the same screen (the launch screens).
+    val progress by animateFloatAsState(step.toFloat() / total.coerceAtLeast(1), Motion.navigation())
     LinearProgressIndicator(
-        progress = { step.toFloat() / total.coerceAtLeast(1) },
+        progress = { progress },
         modifier = modifier.fillMaxWidth().semantics {
             contentDescription = description
             stateDescription = description

@@ -198,7 +198,8 @@ select tests.throws($$insert into public.data_requests (agent_id, kind, status, 
   '#R authenticated cannot insert data_requests directly', '%permission denied%');
 select tests.throws($$update public.consents set withdrawn_at = now()$$,
   '#R authenticated cannot update consents directly', '%permission denied%');
-select tests.throws($$select * from public.audit_log$$, '#R authenticated cannot read audit_log', '%permission denied%');
+select tests.ok(tests.count('select * from public.audit_log') = 0, '#R an agent reads no audit_log rows (owners only, OFFERS.md)');
+select tests.throws($$insert into public.audit_log (actor_kind, action) values ('agent', 'x')$$, '#R authenticated cannot write audit_log', '%permission denied%');
 reset role;
 
 select tests.as_agent(:A);

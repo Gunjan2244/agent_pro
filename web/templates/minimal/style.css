@@ -1,9 +1,18 @@
-/* Simple: type-led, single column */
+/* Simple ("Meet me"): type-led single column; small square portrait beside the greeting; hairline lists */
 .tpl-minimal .sec{max-width:640px}
 .tpl-minimal .sec+.sec{border-top:0}
 .tpl-minimal .hero-in{display:grid;gap:var(--space-l)}
 .tpl-minimal .hero-photo{width:80px;height:80px;border-radius:var(--shape-sm)}
-.tpl-minimal .cards{grid-template-columns:1fr;gap:0}
-.tpl-minimal .card{border:0;border-bottom:1px solid var(--c-outlineVariant);border-radius:0;padding:var(--space-m) 0;background:transparent}
+.tpl-minimal .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-minimal .hero-offer{margin-top:0}
+.tpl-minimal .cards,.tpl-minimal .offers{grid-template-columns:1fr;gap:0}
+.tpl-minimal .card,.tpl-minimal .offer{border:0;border-bottom:1px solid var(--c-outlineVariant);border-radius:0;background:transparent}
+.tpl-minimal .card{padding:var(--space-m) 0}
+.tpl-minimal .offer-b{padding:var(--space-m) 0}
+.tpl-minimal .offer.feat{border-top:1px solid var(--c-outlineVariant)}
 .tpl-minimal .contact-grid{grid-template-columns:1fr}
 .tpl-minimal .enq{background:transparent}
+.tpl-minimal .talk{max-width:240px}
+.tpl-minimal h1{font-weight:600}
+.tpl-minimal .qr{gap:var(--space-s) var(--space-m)}
+.tpl-minimal .chip{min-height:24px;padding:0;border:0;background:transparent;text-decoration:underline;text-underline-offset:4px}

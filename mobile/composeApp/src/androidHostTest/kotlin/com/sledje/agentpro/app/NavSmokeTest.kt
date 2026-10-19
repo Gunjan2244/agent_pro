@@ -105,6 +105,8 @@ class NavSmokeTest {
 
         // Step 2: template (from the generated Templates).
         awaitText("Pick a design")
+        onNodeWithTag(com.sledje.agentpro.feature.website.ui.templateFamilyTag(com.sledje.agentpro.core.catalog.TemplateFamily.Personal)).performClick()
+        awaitText("Use this template")
         button("Use this template").performClick()
 
         // Step 3: the link is suggested from the name and checked after the pause.
@@ -114,6 +116,14 @@ class NavSmokeTest {
         awaitText("Available")
         assertTrue("sunita-rao" in deps.sites.availabilityChecks)
         button("Publish now").performClick()
+
+        // Live: Add to phone → Preview → Share, then Done.
+        awaitText("Add it to your phone")
+        button("Not now").performClick()
+        awaitText("This is what customers see")
+        button("Next").performClick()
+        awaitText("Share it with customers")
+        button("Done").performClick()
 
         // Done: Main, with the trial snackbar.
         awaitText("Namaste, Sunita")

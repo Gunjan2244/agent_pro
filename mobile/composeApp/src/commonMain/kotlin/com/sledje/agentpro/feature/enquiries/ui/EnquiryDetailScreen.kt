@@ -36,6 +36,7 @@ import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
 import com.sledje.agentpro.core.designsystem.components.DateField
 import com.sledje.agentpro.core.designsystem.components.EmptyState
+import com.sledje.agentpro.core.designsystem.components.StateCrossfade
 import com.sledje.agentpro.core.designsystem.components.ListLeading
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.ListSkeleton
@@ -220,20 +221,22 @@ fun EnquiryDetailContent(
             }
         },
     ) { padding ->
-        when (state) {
-            EnquiryDetailState.Loading -> ListSkeleton(Modifier.padding(padding))
-            is EnquiryDetailState.Gone -> EmptyState(FeatureId.Enquiries.icon, stringResource(Res.string.enquiry_not_found), Modifier.padding(padding))
-            is EnquiryDetailState.Shown -> EnquiryDetailBody(
-                state.enquiry,
-                Modifier.padding(padding),
-                writable = online && !busy,
-                onStatus = { statusSheet = true },
-                onFollowUp = { followUpSheet = FollowUpRequest(asStatus = false, current = state.enquiry.followUpAt) },
-                onOpenNotes = onOpenNotes,
-                onCall = onCall,
-                onSms = onSms,
-                onEmail = onEmail,
-            )
+        StateCrossfade(state, key = { it::class }) { s ->
+            when (s) {
+                EnquiryDetailState.Loading -> ListSkeleton(Modifier.padding(padding))
+                is EnquiryDetailState.Gone -> EmptyState(FeatureId.Enquiries.icon, stringResource(Res.string.enquiry_not_found), Modifier.padding(padding))
+                is EnquiryDetailState.Shown -> EnquiryDetailBody(
+                    s.enquiry,
+                    Modifier.padding(padding),
+                    writable = online && !busy,
+                    onStatus = { statusSheet = true },
+                    onFollowUp = { followUpSheet = FollowUpRequest(asStatus = false, current = s.enquiry.followUpAt) },
+                    onOpenNotes = onOpenNotes,
+                    onCall = onCall,
+                    onSms = onSms,
+                    onEmail = onEmail,
+                )
+            }
         }
     }
     if (statusSheet && shown != null) {

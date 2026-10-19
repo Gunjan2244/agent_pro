@@ -1,7 +1,10 @@
-/* Trust: centred portrait hero, stacked sections */
-.tpl-classic .hero-in{display:grid;justify-items:center;text-align:center}
-.tpl-classic .hero-photo{margin-bottom:var(--space-l)}
-.tpl-classic .sec{text-align:left}
+/* Trust ("Meet me"): centred portrait hero with the greeting under it, calm stacked sections */
 .tpl-classic .sec-hero{text-align:center;padding-top:calc(var(--space-l)*2)}
-.tpl-classic .cards{grid-template-columns:1fr}
-@media(min-width:720px){.tpl-classic .sec-highlights .cards{grid-template-columns:repeat(2,1fr)}}
+.tpl-classic .hero-in{display:grid;justify-items:center}
+.tpl-classic .hero-id{flex-direction:column;align-items:center;gap:var(--space-m);margin-bottom:var(--space-l)}
+.tpl-classic .hero-id .hi{border-radius:var(--shape-lg)}
+.tpl-classic .hero-text{max-width:720px}
+.tpl-classic .qr{justify-content:center}
+.tpl-classic .hero-offer{width:100%;max-width:560px;text-align:left}
+.tpl-classic .cards,.tpl-classic .offers{grid-template-columns:1fr}
+@media(min-width:720px){.tpl-classic .sec-highlights .cards,.tpl-classic .sec-services .cards{grid-template-columns:repeat(2,1fr)}}

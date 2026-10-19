@@ -33,6 +33,11 @@
           "labelKey": "field.cta_label",
           "maxLength": 30,
           "defaultKey": "site.cta_default"
+        },
+        {
+          "key": "featuredOffer",
+          "type": "offerRef",
+          "labelKey": "field.featured_offer"
         }
       ]
     },
@@ -161,6 +166,80 @@
               "type": "multiline",
               "labelKey": "field.description",
               "maxLength": 160
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "offers",
+      "labelKey": "section.offers",
+      "icon": "savings",
+      "defaultVisible": false,
+      "fields": [
+        {
+          "key": "title",
+          "type": "text",
+          "maxLength": 40,
+          "labelKey": "field.offers_title",
+          "defaultKey": "site.offers_title_default"
+        },
+        {
+          "key": "items",
+          "type": "offerList",
+          "maxItems": 6,
+          "labelKey": "field.offers_items"
+        },
+        {
+          "key": "custom",
+          "type": "list",
+          "maxItems": 6,
+          "labelKey": "field.custom_offers",
+          "itemFields": [
+            {
+              "key": "id",
+              "type": "text",
+              "generated": "uuid",
+              "labelKey": "field.offer_id"
+            },
+            {
+              "key": "title",
+              "type": "text",
+              "required": true,
+              "maxLength": 60,
+              "labelKey": "offer_field.title"
+            },
+            {
+              "key": "summary",
+              "type": "multiline",
+              "maxLength": 160,
+              "labelKey": "offer_field.summary"
+            },
+            {
+              "key": "endsOn",
+              "type": "date",
+              "required": true,
+              "maxDaysAhead": 366,
+              "labelKey": "offer_field.ends_at"
+            },
+            {
+              "key": "ctaKind",
+              "type": "select",
+              "required": true,
+              "optionsFrom": "catalog.offerCtaKinds",
+              "labelKey": "offer_field.cta_kind"
+            },
+            {
+              "key": "interest",
+              "type": "select",
+              "optionsFrom": "catalog.interests",
+              "labelKey": "offer_field.interest"
+            },
+            {
+              "key": "confirmed",
+              "type": "toggle",
+              "equals": true,
+              "labelKey": "field.custom_offer_confirm"
             }
           ]
         }

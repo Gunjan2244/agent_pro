@@ -1,0 +1,304 @@
+{
+  "version": 1,
+  "comment": "Starter content for a new site (DECISIONS #78; docs/SHARED_DEFINITIONS.md, site-seed.json). Text is i18n keys; the codegen resolves it for every locale into SiteSeed.kt.",
+  "placeholders": {
+    "name": "fullName",
+    "firstName": "firstName",
+    "city": "city",
+    "designation": "designation"
+  },
+  "requiredPlaceholders": [
+    "name",
+    "firstName"
+  ],
+  "visibility": {
+    "hidden": [
+      "achievements",
+      "testimonials"
+    ],
+    "visibleOnlyInFamily": {
+      "offers": "offers"
+    }
+  },
+  "sections": {
+    "hero": {
+      "headline": {
+        "variants": [
+          "seed.hero.headline_1",
+          "seed.hero.headline_2",
+          "seed.hero.headline_3"
+        ]
+      },
+      "subheadline": {
+        "variants": [
+          {
+            "key": "seed.hero.subheadline_1",
+            "fallback": "seed.hero.subheadline_1_short"
+          },
+          {
+            "key": "seed.hero.subheadline_2",
+            "fallback": "seed.hero.subheadline_2_short"
+          },
+          "seed.hero.subheadline_3"
+        ]
+      }
+    },
+    "about": {
+      "bio": {
+        "variants": [
+          {
+            "key": "seed.about.bio_1",
+            "fallback": "seed.about.bio_1_short"
+          },
+          {
+            "key": "seed.about.bio_2",
+            "fallback": "seed.about.bio_2_short"
+          },
+          {
+            "key": "seed.about.bio_3",
+            "fallback": "seed.about.bio_3_short"
+          }
+        ]
+      },
+      "designation": {
+        "fromProfile": "designation"
+      },
+      "languagesSpoken": {
+        "byLocale": {
+          "en": [
+            "english"
+          ],
+          "hi": [
+            "hindi"
+          ]
+        }
+      }
+    },
+    "services": {
+      "offered": {
+        "value": [
+          "term",
+          "endowment",
+          "child",
+          "pension",
+          "health"
+        ]
+      },
+      "items": {
+        "items": [
+          {
+            "interest": {
+              "value": "term"
+            },
+            "description": {
+              "variants": [
+                "seed.services.term"
+              ]
+            }
+          },
+          {
+            "interest": {
+              "value": "endowment"
+            },
+            "description": {
+              "variants": [
+                "seed.services.endowment"
+              ]
+            }
+          },
+          {
+            "interest": {
+              "value": "child"
+            },
+            "description": {
+              "variants": [
+                "seed.services.child"
+              ]
+            }
+          },
+          {
+            "interest": {
+              "value": "pension"
+            },
+            "description": {
+              "variants": [
+                "seed.services.pension"
+              ]
+            }
+          },
+          {
+            "interest": {
+              "value": "health"
+            },
+            "description": {
+              "variants": [
+                "seed.services.health"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "highlights": {
+      "items": {
+        "items": [
+          {
+            "icon": {
+              "value": "support_agent"
+            },
+            "title": {
+              "variants": [
+                "seed.highlights.guidance.title"
+              ]
+            },
+            "text": {
+              "variants": [
+                "seed.highlights.guidance.text_1",
+                "seed.highlights.guidance.text_2",
+                "seed.highlights.guidance.text_3"
+              ]
+            }
+          },
+          {
+            "icon": {
+              "value": "schedule"
+            },
+            "title": {
+              "variants": [
+                "seed.highlights.reminders.title"
+              ]
+            },
+            "text": {
+              "variants": [
+                "seed.highlights.reminders.text_1",
+                "seed.highlights.reminders.text_2",
+                "seed.highlights.reminders.text_3"
+              ]
+            }
+          },
+          {
+            "icon": {
+              "value": "handshake"
+            },
+            "title": {
+              "variants": [
+                "seed.highlights.honest.title"
+              ]
+            },
+            "text": {
+              "variants": [
+                "seed.highlights.honest.text_1",
+                "seed.highlights.honest.text_2",
+                "seed.highlights.honest.text_3"
+              ]
+            }
+          },
+          {
+            "icon": {
+              "value": "verified_user"
+            },
+            "title": {
+              "variants": [
+                "seed.highlights.claims.title"
+              ]
+            },
+            "text": {
+              "variants": [
+                "seed.highlights.claims.text_1",
+                "seed.highlights.claims.text_2",
+                "seed.highlights.claims.text_3"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "faq": {
+      "items": {
+        "items": [
+          {
+            "question": {
+              "variants": [
+                "seed.faq.cover.question"
+              ]
+            },
+            "answer": {
+              "variants": [
+                "seed.faq.cover.answer_1",
+                "seed.faq.cover.answer_2",
+                "seed.faq.cover.answer_3"
+              ]
+            }
+          },
+          {
+            "question": {
+              "variants": [
+                "seed.faq.term_vs_savings.question"
+              ]
+            },
+            "answer": {
+              "variants": [
+                "seed.faq.term_vs_savings.answer_1",
+                "seed.faq.term_vs_savings.answer_2",
+                "seed.faq.term_vs_savings.answer_3"
+              ]
+            }
+          },
+          {
+            "question": {
+              "variants": [
+                "seed.faq.documents.question"
+              ]
+            },
+            "answer": {
+              "variants": [
+                "seed.faq.documents.answer_1",
+                "seed.faq.documents.answer_2",
+                "seed.faq.documents.answer_3"
+              ]
+            }
+          },
+          {
+            "question": {
+              "variants": [
+                "seed.faq.premium.question"
+              ]
+            },
+            "answer": {
+              "variants": [
+                "seed.faq.premium.answer_1",
+                "seed.faq.premium.answer_2",
+                "seed.faq.premium.answer_3"
+              ]
+            }
+          },
+          {
+            "question": {
+              "variants": [
+                "seed.faq.claims.question"
+              ]
+            },
+            "answer": {
+              "variants": [
+                "seed.faq.claims.answer_1",
+                "seed.faq.claims.answer_2",
+                "seed.faq.claims.answer_3"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "contact": {
+      "phone": {
+        "fromProfile": "phone"
+      },
+      "whatsapp": {
+        "fromProfile": "phone"
+      },
+      "email": {
+        "fromProfile": "email"
+      }
+    }
+  }
+}

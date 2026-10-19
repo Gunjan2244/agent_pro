@@ -8,7 +8,8 @@ import kotlinx.serialization.json.JsonPrimitive
 /**
  * Generates `SiteSchema.kt` (package com.sledje.agentpro.core.catalog): the website sections as
  * `SectionSpec`s holding `FieldSpec`s (hand-written model in core/forms). `optionsFrom: "catalog.<list>"`
- * is resolved to that list's active entries, so `FormRenderer` never needs a catalog lookup.
+ * is resolved to that list's active entries, so `FormRenderer` never needs a catalog lookup. A list with an
+ * `agentAllowed` field (offerCtaKinds) is narrowed to the entries agents may use, since every site field is the agent's.
  */
 class SiteSchemaKotlinGenerator(private val defs: SharedDefinitions) {
 
@@ -90,7 +91,8 @@ class SiteSchemaKotlinGenerator(private val defs: SharedDefinitions) {
                 val list = defs.catalogList(listName)
                 require(from.startsWith("catalog.") && list != null) { "$where: optionsFrom \"$from\" is not a catalog list" }
                 val icon = if (list.hasIcon) ", it.icon" else ""
-                line("options = ${list.kotlinName}.active.map { FieldOption(it.key, it.label$icon) },")
+                val agentOnly = if (list.entries.any { it.containsKey(AGENT_ALLOWED) }) ".filter { it.${AGENT_ALLOWED} }" else ""
+                line("options = ${list.kotlinName}.active$agentOnly.map { FieldOption(it.key, it.label$icon) },")
                 line("optionsFrom = ${Naming.kotlinString(from)},")
             }
             f["default"]?.let { d ->
@@ -106,6 +108,9 @@ class SiteSchemaKotlinGenerator(private val defs: SharedDefinitions) {
             }
             f.string("defaultKey")?.let { line("defaultText = Res.string.${Naming.stringResourceName(it)},") }
             f.string("aspect")?.let { line("aspect = ${Naming.kotlinString(it)},") }
+            f.string("generated")?.let { line("generated = ${Naming.kotlinString(it)},") }
+            if (f.bool("equals") == true) line("mustBeTrue = true,")
+            f.long("maxDaysAhead")?.let { line("maxDaysAhead = $it,") }
             f.array("itemFields")?.let { items ->
                 line("itemFields = listOf(")
                 indent { items.forEach { writeField(this, it as JsonObject, where) } }
@@ -129,8 +134,11 @@ class SiteSchemaKotlinGenerator(private val defs: SharedDefinitions) {
             "text" to "Text", "multiline" to "Multiline", "number" to "Number", "phone" to "Phone",
             "email" to "Email", "url" to "Url", "image" to "Image", "select" to "Select",
             "multiSelect" to "MultiSelect", "toggle" to "Toggle", "swatch" to "Swatch", "date" to "Date",
-            "list" to "ItemList",
+            "list" to "ItemList", "offerRef" to "OfferRef", "offerList" to "OfferList",
         )
+
+        /** Extra field of a catalog list marking the entries agents may pick (docs/OFFERS.md, offerCtaKinds). */
+        const val AGENT_ALLOWED = "agentAllowed"
     }
 }
 

@@ -1,0 +1,160 @@
+{
+ "contact-talk": {
+  "h": 600,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "hero-scene-1": {
+  "h": 600,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "hero-scene-2": {
+  "h": 600,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "hero-scene-3": {
+  "h": 600,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-child": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-endowment": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-health": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-money-back": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-other": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-pension": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-term": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-ulip": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "offer-cancer-care": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "offer-couples-savings": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "offer-family-health-cash": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "offer-pension-locked-rate": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "offer-savings-booster": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "offer-simple-protection": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "og-offers": {
+  "h": 630,
+  "sizes": [
+   1200
+  ],
+  "w": 1200
+ },
+ "og-personal": {
+  "h": 630,
+  "sizes": [
+   1200
+  ],
+  "w": 1200
+ }
+}

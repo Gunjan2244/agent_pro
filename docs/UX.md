@@ -10,7 +10,8 @@ Every screen follows the **calm-screen rules** in DESIGN_SYSTEM.md. In short:
 Splash ─ no session ──→ Welcome → Sign in ⇄ Create account → Check your email
        │                           └→ Forgot password → Reset sent
        └ reset link (agentpro://auth-callback) ──→ Set new password → Home
-       ├ session, no profile → Onboarding: 1 Profile → 2 Template → 3 Your link → Done
+       ├ session, no profile or no site → Onboarding: 1 Profile → 2 Template → 3 Your link → Done
+       │   ("no site" is confirmed with the server first; an agent who has one goes to Main)
        └ ready ─────────────→ Main
 Main bottom bar (4):  Home · Enquiries (badge: new) · Customers (badge: overdue) · Website
   Home ─→ Today lists · Insights · Setup checklist (sheet) · Settings (avatar)
@@ -122,14 +123,28 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
 
 ### Onboarding (3 steps)
 Each step has a progress bar at the top and one primary button at the bottom.
+
+**Only for an agent with no site** (DECISIONS #83). Steps 2 and 3 create the site, and an agent has exactly one, with a link customers may already have. So the app never offers to create a site without first checking that none exists:
+- **Before onboarding opens:** with a complete profile, an empty-looking cache isn't trusted. The gate reads the cache afresh (its live queries trail a sync by a moment) and then asks the server. A site there opens Main; no answer from the server shows the startup error with Retry, never onboarding.
+- **After step 1:** with an incomplete profile, onboarding opens on step 1 as usual. Continue saves the profile and then asks the server; if a site exists, Main opens with it, skipping steps 2 and 3. If the server can't be asked, step 1 stays with the error.
+- **While onboarding is open:** if the agent's site arrives (a late sync) once the profile is complete, onboarding closes and Main opens.
+- In each case the existing site, its link and its template are untouched, and there's no "trial started" message.
 1. **Profile:** name, mobile, designation and city. Photo, agency code and branch are under More details.
    - **Always the first step**, even when the name and mobile are already saved (they were given at sign-up), so the optional photo, designation and city aren't skipped. Everything already saved is prefilled.
    - When the name and mobile are both present and valid, they show as a **card** (name in bold, mobile formatted, `+91 98765 43210`) with an **Edit** text button, not as fields. Edit replaces the card with the two fields; the saved values go through Continue as usual.
    - The photo uses the same picker, centred square crop and WebP upload as the hero photo (Phase 8); Continue waits while it uploads.
-2. **Template:** a full-height pager rendering the agent's own content in each template. The template name sits below it, with **Use this template**.
+   - **Photo tips** (docs/IMAGES.md, "Asking agents for their photo") show as three short helper lines under the photo slot: face and shoulders looking at the camera in daylight by a window; a plain background and smart everyday clothes; no sunglasses, group photos, insurer uniform or logos. (English and Hindi; the slot sits under More details.)
+2. **Template:** first the **family** on two cards, "Meet me" and "Best offers" (names and descriptions from the catalog's `templateFamilies`), with one line above: "Choose a style first. You can change it later." Tapping a card opens a full-height pager of that family's templates (3 and 2), each rendering **the agent's own seeded starter content** (`StarterContent.from(profile, template, locale, userId)`, DECISIONS #78): the section order and hidden sections differ per family, so the agent sees a finished site before choosing. The template name sits below it, with **Use this template**. Back (arrow or system) returns from the pager to the cards. **Publish now / Later** creates the site with that same seeded draft and the app's current language as the site language.
 3. **Your link:** a slug suggested from the name, with live validation and an availability check, and a preview of the full URL. Then **Publish now** (primary) or **Later** (text button).
 
-Finishing shows a one-line snackbar: "Your 14-day free trial has started". No payment is asked for during onboarding.
+**Site is live** (after **Publish now**, DECISIONS #71): three screens run before Home, in one scaffold whose progress bar slides between them. Back goes one screen back, and on the first it skips ahead.
+1. **Add it to your phone:** a home-screen tile preview with the agent's initials and the link. **Add to home screen** opens the install sheet in the browser and moves on; **Not now** skips.
+2. **This is what customers see:** the live site in a small phone frame. **Next**, or **Open** (in the browser).
+3. **Share it with customers:** the QR code, then **Share** (other apps) and **Done**, which goes to Home.
+
+"Later" (a draft) skips these, since there's nothing live to add or share.
+
+Finishing shows a one-line snackbar: "Your 14-day free trial has started", after the last screen. No payment is asked for during onboarding.
 
 ### Home
 Home has at most 3 blocks, top to bottom:
@@ -142,7 +157,7 @@ Home has at most 3 blocks, top to bottom:
    With nothing due, a single line reads "Nothing due today".
 3. **This month:** two `KpiTile`s side by side, "Enquiries" (with the change) and "Premium due (30d)". Below them, one chart card, "Enquiries per week", and a **See insights** link.
 
-**While setup is incomplete,** a single compact row appears above Today: "Finish setup · 2 of 4". It opens a checklist sheet covering profile, publishing the site, sharing the link and adding a first customer.
+**While setup is incomplete,** a single compact row appears above Today: "Finish setup · 2 of 5". It opens a checklist sheet covering profile, publishing the site, **making your About section your own** (done when `about.bio` in the draft is not blank and is none of the seeded bio variants in any language, so unique text can rank), sharing the link and adding a first customer.
 
 **Plan row:** at most one, shown above Today only when it matters, and it opens Plan & billing.
 - In the last 5 days of the trial: "Trial ends in 3 days · Continue for ₹499/year".
@@ -274,7 +289,7 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
 
 **Appearance screen**
 - Template (opens the picker), an accent row of 8 swatches, and Site language (English / हिन्दी).
-- **Template picker:** a full-height pager of the agent's real content in each template, with **Use this template**.
+- **Template picker:** it opens straight on the pager of the **current template's family**, positioned on the current template: a full-height pager of the agent's real draft in each of that family's templates, with **Use this template**. Back (arrow or system) goes to the two family cards ("Meet me" / "Best offers"), where another style can be chosen; Back again leaves. (Onboarding step 2 starts on the cards.) Switching **to** a "Best offers" template from a "Meet me" one also un-hides `offers` and moves it right after `hero` in the draft, once (the draft is saved first, then the template); other sections stay as they are, and switching back (or between the two offers templates) changes nothing in the draft. The Content list still hides the `offers` section until its editor exists (8b-4), but its `sectionOrder` and `hidden` entries are kept by every save and by reordering.
 - **As built:** each choice is saved at once (no Save button). Template, accent and site language are columns the live site reads directly, so the screen says "Changes here show on your live website straight away." The picker renders the draft through `SitePreview` in each template (the `preview.webp` images aren't used in the app). Onboarding step 2 uses the same live render of the starter content.
 
 **Preview:** a full-screen WebView of the draft, with **Publish** in the top bar.

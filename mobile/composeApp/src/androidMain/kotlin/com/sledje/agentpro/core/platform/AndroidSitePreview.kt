@@ -2,6 +2,7 @@ package com.sledje.agentpro.core.platform
 
 import android.annotation.SuppressLint
 import android.content.res.AssetManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -74,6 +75,16 @@ internal class AssetSiteClient(private val assets: AssetManager) : WebViewClient
     }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+
+    /**
+     * The WebView's renderer process died (typically out of memory with two previews alive in the template
+     * pager). Without this override Android kills the whole app; returning true keeps it running and the
+     * preview simply stays blank.
+     */
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        loaded = false
+        return true
+    }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val url = request.url

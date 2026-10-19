@@ -25,6 +25,7 @@ import com.sledje.agentpro.feature.website.data.SiteLinks
 import com.sledje.agentpro.feature.website.data.SiteStatsAggregator
 import com.sledje.agentpro.feature.website.data.DayViews
 import com.sledje.agentpro.feature.website.data.StatsPeriod
+import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.feature.website.ui.AppearanceScreen
 import com.sledje.agentpro.feature.website.ui.AppearanceUiState
 import com.sledje.agentpro.feature.website.ui.ContentScreen
@@ -33,6 +34,7 @@ import com.sledje.agentpro.feature.website.ui.HubRow
 import com.sledje.agentpro.feature.website.ui.LinkScreen
 import com.sledje.agentpro.feature.website.ui.LinkUiState
 import com.sledje.agentpro.feature.website.ui.SectionEditorScreen
+import com.sledje.agentpro.feature.website.ui.TemplatePickerScreen
 import com.sledje.agentpro.feature.website.ui.SectionEditorUiState
 import com.sledje.agentpro.feature.website.ui.SectionRow
 import com.sledje.agentpro.feature.website.ui.StatsScreen
@@ -127,6 +129,14 @@ class WebsiteScreenshotTest {
         },
         "WebsiteAppearance" to {
             AppearanceScreen(AppearanceUiState(site = site), remember { SnackbarHostState() }, {}, {}, {}, {})
+        },
+        // Website → Appearance → Template: the family cards come first.
+        "WebsiteTemplateFamily" to {
+            TemplatePickerScreen(Templates.all, "classic", saving = false, onBack = {}, onUse = {}, preview = {}, startOnFamilyCards = true)
+        },
+        // It opens on the current template's family, positioned on the current template.
+        "WebsiteTemplatePicker" to {
+            TemplatePickerScreen(Templates.all, "spotlight", saving = false, onBack = {}, onUse = {}, preview = {})
         },
         "WebsiteLinkQr" to {
             LinkScreen(LinkUiState(site = site), { SiteLinks.url(it, base) }, { SiteLinks.display(it, base) }, remember { SnackbarHostState() }, {}, {}, {}, {})

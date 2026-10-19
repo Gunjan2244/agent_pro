@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,7 +37,10 @@ sealed interface AppGate {
 
     data object Ready : AppGate
 
-    /** The cache is empty and the first sync failed (e.g. offline on a fresh install): Retry. */
+    /**
+     * The cache has no profile or no site and the sync failed, or the server couldn't be asked whether
+     * a site exists (e.g. offline on a fresh install): Retry.
+     */
     data object Error : AppGate
 }
 
@@ -63,6 +67,9 @@ fun resolveGate(
             profile.isComplete && site != null -> AppGate.Ready
             // The site may simply not have synced yet: wait for the first refresh to finish.
             site == null && profile.isComplete && (sync == SyncStatus.Idle || sync == SyncStatus.Running) -> AppGate.Loading
+            // The refresh failed, so whether a site exists is unknown: Retry. Onboarding would try to
+            // create a second site for an agent who already has one.
+            site == null && profile.isComplete && sync == SyncStatus.Failed -> AppGate.Error
             else -> AppGate.Onboarding
         }
     }
@@ -80,11 +87,28 @@ class RootViewModel(private val deps: AppDependencies) : ViewModel() {
         deps.dataSync.status,
         deps.onboarding.active,
     ) { auth, profile, site, sync, onboarding ->
-        resolveGate(deps.isConfigured, auth, profile, site, sync, onboarding)
+        val gate = resolveGate(deps.isConfigured, auth, profile, site, sync, onboarding)
+        if (gate == AppGate.Onboarding && !onboarding) confirmOnboarding(auth, sync) else gate
     }
         .distinctUntilChanged()
         .onEach { if (it is AppGate.Onboarding) deps.onboarding.start() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, if (deps.isConfigured) AppGate.Loading else AppGate.NotConfigured)
+
+    /**
+     * Onboarding creates a site, so before starting it make sure the agent has none (docs/UX.md,
+     * Onboarding). First the cache, read afresh: its live queries re-emit a moment after the sync
+     * writes, while the sync marks itself Done at once. Then, if only the site is missing, the server:
+     * the cache may have been emptied (e.g. by an app update) while the sync cursors survived.
+     */
+    private suspend fun confirmOnboarding(auth: AuthState, sync: SyncStatus): AppGate {
+        val profile = deps.profiles.observeMine().first()
+        val cached = resolveGate(deps.isConfigured, auth, profile, deps.sites.observeMine().first(), sync, onboardingActive = false)
+        if (cached != AppGate.Onboarding || profile?.isComplete != true) return cached
+        return when (val server = deps.sites.fetchMine()) {
+            is Result.Ok -> if (server.value != null) AppGate.Ready else AppGate.Onboarding
+            is Result.Err -> AppGate.Error
+        }
+    }
 
     init {
         viewModelScope.launch {

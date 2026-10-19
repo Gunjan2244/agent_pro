@@ -7,6 +7,7 @@
    "hero",
    "about",
    "services",
+   "offers",
    "highlights",
    "achievements",
    "testimonials",
@@ -135,5 +136,81 @@
   "phone": "9876543210",
   "agency_code": "123456"
  },
- "canonical_host": null
+ "canonical_host": null,
+ "offers": {
+  "featured": {
+   "source": "company",
+   "id": "x\"><script>alert(9)</script>",
+   "title": "<script>alert(7)</script>",
+   "summary": "<img src=x onerror=alert(10)>",
+   "details": "<b onmouseover=alert(11)>d</b>",
+   "badge": "<i>new</i>",
+   "disclaimer": "</p><script>alert(12)</script>",
+   "image_url": "https://x.test/o.png\" onerror=\"alert(13)",
+   "image": "../../etc\"><script>",
+   "cta": {
+    "kind": "enquire",
+    "interest": "term\" onclick=\"alert(14)"
+   },
+   "ends_on": "2099-01-01\"><script>",
+   "from_agent": false
+  },
+  "items": [
+   {
+    "source": "company",
+    "id": "x\"><script>alert(9)</script>",
+    "title": "<script>alert(7)</script>",
+    "summary": "<img src=x onerror=alert(10)>",
+    "details": "<b onmouseover=alert(11)>d</b>",
+    "badge": "<i>new</i>",
+    "disclaimer": "</p><script>alert(12)</script>",
+    "image_url": "https://x.test/o.png\" onerror=\"alert(13)",
+    "image": "../../etc\"><script>",
+    "cta": {
+     "kind": "link",
+     "url": "javascript:alert(8)"
+    },
+    "ends_on": "2099-01-01\"><script>",
+    "from_agent": false
+   },
+   {
+    "source": "company",
+    "id": "2",
+    "title": "<script>alert(7)</script>",
+    "summary": "<img src=x onerror=alert(10)>",
+    "details": "<b onmouseover=alert(11)>d</b>",
+    "badge": "<i>new</i>",
+    "disclaimer": "</p><script>alert(12)</script>",
+    "image_url": "https://x.test/o.png\" onerror=\"alert(13)",
+    "image": "../../etc\"><script>",
+    "cta": {
+     "kind": "call"
+    },
+    "ends_on": "2099-01-01\"><script>",
+    "from_agent": false
+   },
+   {
+    "source": "company",
+    "id": "3",
+    "title": "<script>alert(7)</script>",
+    "summary": "<img src=x onerror=alert(10)>",
+    "details": "<b onmouseover=alert(11)>d</b>",
+    "badge": "<i>new</i>",
+    "disclaimer": "</p><script>alert(12)</script>",
+    "image_url": "https://x.test/o.png\" onerror=\"alert(13)",
+    "image": "../../etc\"><script>",
+    "cta": {
+     "kind": "link",
+     "url": "http://insecure.test/x"
+    },
+    "ends_on": "2099-01-01\"><script>",
+    "from_agent": false
+   }
+  ]
+ },
+ "company": {
+  "name": "Evil Co",
+  "logo_url": "https://x.test/logo.png",
+  "disclaimer": "<script>alert(15)</script>"
+ }
 }

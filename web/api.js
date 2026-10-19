@@ -16,13 +16,26 @@ async function rpc(name, args) {
   return body;
 }
 
-// RPC row -> { content, template_key, accent, locale, canonical_host, profile }
+// The payload's resolved offers ({featured, items}, OFFERS.md); anything else becomes "no offers".
+export function normalizeOffers(o) {
+  const ok = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : null);
+  o = ok(o) || {};
+  return { featured: ok(o.featured), items: Array.isArray(o.items) ? o.items.map(ok).filter(Boolean) : [] };
+}
+
+// RPC row -> { content, template_key, accent, locale, canonical_host, published_at, profile, offers, company }.
+// `company` keeps only the disclaimer: a company's name or logo never reaches a site (DECISIONS #77), even if a
+// payload carried one.
 export function normalizeSite(row) {
   if (Array.isArray(row)) row = row[0];
   if (!row || typeof row !== "object") return null;
   const content = row.published_content ?? row.content;
   if (!content || typeof content !== "object") return null;
-  return { content, template_key: row.template_key, accent: row.accent, locale: row.locale, canonical_host: row.canonical_host || null, profile: row.profile || {} };
+  const disclaimer = row.company && typeof row.company.disclaimer === "string" ? row.company.disclaimer : null;
+  return {
+    content, template_key: row.template_key, accent: row.accent, locale: row.locale, canonical_host: row.canonical_host || null,
+    published_at: row.published_at || null, profile: row.profile || {}, offers: normalizeOffers(row.offers), company: disclaimer ? { disclaimer } : null,
+  };
 }
 
 export const getPublicSite = async (slug) => normalizeSite(await rpc("get_public_site", { slug }));
@@ -68,4 +81,11 @@ export async function submitDataRequest(a) {
   if (r && r.error === "invalid") return { status: "invalid", field: r.field };
   if (r && r.error === "unavailable") return { status: "unavailable" };
   throw new Error("unexpected submit_data_request response");
+}
+
+// One view per session and site (debounced with sessionStorage); never throws.
+export function recordViewOnce(target, backend = { recordSiteView }, storage = globalThis.sessionStorage) {
+  const k = "apv:" + (target.slug || target.host);
+  try { if (storage.getItem(k)) return; storage.setItem(k, "1"); } catch { /* storage blocked: still count once per load */ }
+  backend.recordSiteView(target.slug, target.host).catch(() => {});
 }

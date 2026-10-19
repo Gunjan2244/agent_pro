@@ -193,10 +193,22 @@ Supabase Auth emails are built to the same tokens by `scripts/gen-email-template
 - **Never:** the LIC or any insurer's logo (CLAUDE.md, Branding).
 
 ## Motion
-- Subtle and quick, with Material 3 standard easing: 150ms for state changes, 250ms for navigation.
-- Shared-axis X for forward and back navigation, fade-through for tab switches, no bouncy effects.
+Subtle and quick: Material 3 standard easing, 150ms for state changes and 250ms for navigation, and no bouncy or decorative effects. Motion explains where something came from or went; it never delays the agent. All specs live in `Motion.kt`; screens never write their own.
+
+| When | Pattern | Where it's wired |
+|---|---|---|
+| Opening a screen and going back (list → detail, Home → Settings, every sign-in and onboarding step) | **Shared-axis X**: in from the end and out to the start (a tenth of the width) with a fade; reversed on back. The back transition also follows the predictive back gesture. | `MainShell`'s NavHost; `SharedAxisNavHost` (auth, password recovery, onboarding); the launch screens |
+| Switching bottom-bar tabs | **Fade-through**: the old tab fades out (100ms), then the new one fades in while growing from 92% (150ms) | `MainShell` (`isTabSwitch`: both screens are tab roots of different tabs) |
+| The app gate: Splash → Welcome, Onboarding → Main, signing out | **Fade-through** | `AppNavHost` |
+| A screen's state: skeleton → content, empty or error; Retry | **Crossfade** (150ms). Keyed on the state's *kind*, so a refresh or realtime update with new data doesn't flash. | `ScreenState`, `StateCrossfade` (detail screens) |
+| In-place swaps: the customer's Policies / Details / Activity, chart ⇄ table | **Crossfade**; the chart card eases to its new height (250ms) | `StateCrossfade`, `ChartCard` |
+| A list row arrives, leaves or moves (a new enquiry, a filter, a delete) | Fade in or out (150ms); the other rows slide into place (250ms). Rows need a stable `key`. | `itemMotion()` on customers, policies, enquiries and dues |
+| Showing and hiding a part of the screen (More details, the offline banner, field errors) | Expand or shrink with a fade (150ms) | `AnimatedVisibility` in the components |
+| Onboarding progress | The bar's fill animates (250ms) | `StepProgressBar` |
+
 - A haptic tick when an action succeeds.
-- Respects the system "remove animations" setting.
+- Respects the system "remove animations" setting: Compose scales every animation by the platform's `MotionDurationScale`, so they become instant; the skeleton shimmer stops (`rememberReduceMotion()`).
+- **Not used, on purpose:** container transform and shared-element transitions (a list row growing into its detail screen). They look good, but cost a shared-element scope through every feature, and the shared-axis already shows the direction. Animated count-ups on KPI numbers, because numbers should read at once. Animating the bottom bar in and out, because it would resize every screen mid-transition.
 
 ## Charts
 Charts follow the dataviz method: pick the form first, colour last, and validate the palette.
@@ -259,7 +271,7 @@ A debug-only **Component gallery** shows every component in light, dark, EN, HI 
 | `Type.kt` | `AppTextStyles` (`body`, `bodyMuted`, `label`, `strong`, `title`, `number`, `display`) and the M3 `Typography` (display → l; headline and title → m 600; body → s 400; label → s 500). `number` and `MoneyText` use `tnum`. `hi`: +2sp line heights |
 | `Shape.kt` | `AppShapes.sm/md/lg/sheet/full` and the M3 `Shapes` |
 | `Spacing.kt` | `Spacing.s/m/l` (= `Tokens.Space`) and `Dimens`: the fixed component dimensions (touch 48, button 48, rows 72/56, icon 24, pill icon 18, pill 32, avatar 40, hairline 1, swatch 40, image slot 96, chart 200, chart marks, the site QR code 200) |
-| `Motion.kt` | Standard easing, 150/250ms specs, shared-axis X, fade-through, `rememberReduceMotion()` (the platform's `MotionDurationScale` is 0), `rememberSuccessHaptic()` |
+| `Motion.kt` | Standard easing, 150/250ms specs, shared-axis X, fade-through (`fadeThroughEnter`/`Exit`), `crossfade()`, `rememberReduceMotion()` (the platform's `MotionDurationScale` is 0), `rememberSuccessHaptic()` |
 | `ChartStyle.kt` | `AppChart(ChartData)` over Vico: `ChartKind.Column/Line/Ordinal`, at most 2 series, compact ₹ when `money`, tooltip on tap, legend and a direct label of the latest values for 2 series |
 | `AppLocale.kt` | `LocalAppLocale` (expect/actual): overrides the language inside a composition (used by the gallery; the iOS `LocaleController` later) |
 | `components/` | Every component in the table above, plus `PrimaryButton`/`SecondaryButton`/`TertiaryButton`/`DestructiveButton`, `AppFab`, `AppCard`, `HairlineDivider`, `Avatar`, `AppTextField`, `FieldFrame`, `PickerField`, `SelectField`, `ChoiceChips`, `ToggleRow`, `SwatchPicker`, `ImagePickerSlot`, `NetworkImage` (Coil 3 remote image, centre-cropped in its slot; Phase 8), `AppSnackbar`, `DiscardChangesDialog` and `CardSkeleton` |
@@ -281,4 +293,10 @@ Component behaviour that the tables above leave to the implementation:
 ## Website theme
 - Agent sites follow the same principles: a white background, the same fonts, and the **same 4 type sizes and 3 spacing values** (exported to `tokens.css` as `--text-s|m|l|xl` and `--space-s|m|l`). Sections are separated by multiples of `--space-l`, and there's one call to action per section.
 - The accent comes from the 8 curated `accentSwatches` and is used only for buttons, links and small highlights, never for large colour blocks.
-- Templates differ in layout only.
+- `--tint` is the accent mixed 10% into white (`color-mix`, set on `.tpl`). It is a pale surface for small highlights only: chips, the initials monogram, the visitor's FAQ bubbles and, **in the "Best offers" family only**, the hero's featured-offer card (DECISIONS #76). Never a section background, never saturated. Muted text on the tint uses `onSurfaceVariant` (`muted` falls below 4.5:1 there).
+- **Two families (DECISIONS #76).** "Meet me" (`classic`, `modern`, `minimal`) differ in layout only: centred portrait; split grey band (`surfaceContainerLow`) with the portrait right; type-led single column with a small square portrait and text-link chips. "Best offers" (`spotlight`, `guide`) may add 16:9 images to offer and plan cards and the tinted featured card, plus a trust strip (hairline pills: years and clients in the accent, highlight titles with their icons) and a lazy hero scene below the hero text. Both stay close to white.
+- **Speech bubble (the conversational layer):** a 32 px round avatar (the agent's photo, or initials in the accent on the tint) and a bubble of `--text-s` text on `surfaceContainer` (white inside modern's grey band), `--space-s`/`--space-m` padding, `--shape-lg` corners with the corner nearest the avatar square. It sits above each section's `<h2>`, max 600 px wide. The hero greeting is the same bubble at `--text-m` weight 500 next to the portrait. The visitor's bubbles (FAQ questions) sit on the right, on the tint, with the opposite corner square.
+- **Quick-reply chips:** 40 px tall outlined pills (`outline` border, accent text, tint on hover); on the guide, 48 px full-width choice buttons in a 2-column (4 from 720 px) grid.
+- **Offer cards:** white, hairline `outlineVariant` border, `--shape-md`, `--space-m` padding; badge as a neutral grey pill; title `--text-m` 600; "Ends {date}" in `onSurface` 500; the CTA an accent text link with an arrow (the button only in the offers family's hero); disclaimers `muted`. Bundled illustrations are white-edged, so they sit on white cards with no frame; the tinted featured card never carries an image.
+- **Sticky Call / WhatsApp bar (phones, < 720 px):** fixed to the bottom, white with a hairline top border, two equal 48 px buttons (Call filled, WhatsApp outlined), `--space-s` padding plus the safe area; the page reserves its height so nothing moves when it appears.
+- **Motion on sites:** only `--motion-short` (chip hover) and `--motion-medium` (an opened FAQ answer rising 4 px into place), plus smooth anchor scrolling, all switched off under `prefers-reduced-motion: reduce`.

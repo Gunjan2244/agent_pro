@@ -11,7 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
+import com.sledje.agentpro.core.ui.SharedAxisNavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
@@ -57,7 +57,7 @@ object AuthRoutes {
 fun AuthNavHost(deps: AppDependencies) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
-    NavHost(nav, startDestination = AuthRoutes.Welcome) {
+    SharedAxisNavHost(nav, startDestination = AuthRoutes.Welcome) {
         composable<AuthRoutes.Welcome> {
             WelcomeScreen(
                 currentLocale = currentAppLocale(),
@@ -127,7 +127,7 @@ fun PasswordRecoveryNavHost(
 ) {
     val nav = rememberNavController()
     val start: Any = if (step == RecoveryStep.Expired) AuthRoutes.LinkExpired else AuthRoutes.SetNewPassword
-    NavHost(nav, startDestination = start) {
+    SharedAxisNavHost(nav, startDestination = start) {
         composable<AuthRoutes.SetNewPassword> {
             val vm = viewModel { SetNewPasswordViewModel(deps.auth) }
             val state by vm.state.collectAsState()

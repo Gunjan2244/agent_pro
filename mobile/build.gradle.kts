@@ -1,5 +1,3 @@
-// Puts every plugin on the root classpath once, so modules and the build-logic convention
-// plugins (which compile against them as compileOnly) share one copy.
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.kotlin.multiplatform.library) apply false

@@ -1,5 +1,6 @@
 package com.sledje.agentpro.app
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -14,6 +15,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.LocalAppLocale
+import com.sledje.agentpro.core.designsystem.Motion
 import com.sledje.agentpro.core.ui.LocalIsOnline
 import com.sledje.agentpro.feature.auth.AuthNavHost
 import com.sledje.agentpro.feature.auth.PasswordRecoveryNavHost
@@ -76,12 +78,15 @@ fun AppNavHost(deps: AppDependencies) {
         }
     }
 
-    when (gate) {
-        AppGate.Loading -> SplashScreen()
-        AppGate.NotConfigured -> NotConfiguredScreen()
-        AppGate.Error -> StartupErrorScreen(onRetry = root::refresh)
-        AppGate.SignedOut -> AuthNavHost(deps)
-        AppGate.Onboarding -> OnboardingNavHost(deps)
-        AppGate.Ready -> MainShell(deps)
+    // Fade-through between the gate's parts, e.g. Splash → Main or Onboarding → Main (docs/DESIGN_SYSTEM.md, Motion).
+    AnimatedContent(gate, Modifier.fillMaxSize(), transitionSpec = { Motion.fadeThrough() }, label = "gate") { shown ->
+        when (shown) {
+            AppGate.Loading -> SplashScreen()
+            AppGate.NotConfigured -> NotConfiguredScreen()
+            AppGate.Error -> StartupErrorScreen(onRetry = root::refresh)
+            AppGate.SignedOut -> AuthNavHost(deps)
+            AppGate.Onboarding -> OnboardingNavHost(deps)
+            AppGate.Ready -> MainShell(deps)
+        }
     }
 }

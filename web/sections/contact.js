@@ -1,4 +1,6 @@
 import { esc, url, has, tel, wa, mail, arr } from "./util.js";
+import { pic } from "./media.js";
+import { say } from "./say.js";
 function form(ctx) {
   const { t, catalog } = ctx;
   const opts = arr(catalog.interests).slice().sort((a, b) => a.order - b.order)
@@ -33,7 +35,8 @@ export function contact(d, ctx) {
   if (has(d.officeHours)) info.push(`<p><strong>${esc(t("site.office_hours"))}</strong><br>${esc(d.officeHours)}</p>`);
   // "Add to home screen": hidden until install.js knows this browser can install (DECISIONS #65).
   if (d.showInstallButton !== false) info.push(`<div class="install" id="install" hidden><button class="btn ghost" type="button" id="install-btn">${esc(t("site.install_button"))}</button><p class="hint" id="install-how" hidden></p></div>`);
-  return `<h2>${esc(t("section.contact"))}</h2>
-<div class="contact-grid"><div class="contact-info">${rows.length ? `<div class="actions">${rows.join("")}</div>` : ""}${info.join("")}</div>
+  const talk = pic(ctx, "contact-talk", { cls: "pic talk", sizes: "(min-width: 720px) 420px, 100vw" });
+  return `${say(ctx, "site.say_contact")}<h2>${esc(t("section.contact"))}</h2>
+<div class="contact-grid"><div class="contact-info">${rows.length ? `<div class="actions">${rows.join("")}</div>` : ""}${info.join("")}${talk}</div>
 ${d.showEnquiryForm !== false ? form(ctx) : ""}</div>`;
 }

@@ -7,13 +7,15 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.sledje.agentpro.core.format.Phone
+import kotlin.uuid.Uuid
 
 /**
  * The state of a form built by [FormRenderer]: field values, which errors are showing, and list items.
  *
  * Value types (also accepted in `initial`): String for text, multiline, number, phone, email, url,
  * image (URL), select and swatch; Boolean for toggle; List<String> for multiSelect; LocalDate for
- * date; a List of Maps for item lists. [values] returns numbers as Long/Double and blank text as null.
+ * date; a List of Maps for item lists; the raw JsonElement for offerRef / offerList (passed through unchanged).
+ * A `generated: "uuid"` field starts with a new UUID. [values] returns numbers as Long/Double and blank text as null.
  *
  * Errors show after a field loses focus ([onFocusLost]) or after [validateAll].
  */
@@ -116,11 +118,14 @@ class FormState(val fields: List<FieldSpec>, initial: Map<String, Any?> = emptyM
             is FieldDefault.Bool -> d.value
             is FieldDefault.Text -> d.value
             is FieldDefault.Number -> if (d.value % 1.0 == 0.0) d.value.toLong().toString() else d.value.toString()
-            null -> when (spec.type) {
-                FieldType.Toggle, FieldType.Consent -> false
-                FieldType.MultiSelect -> emptyList<String>()
-                FieldType.Date -> null
-                else -> ""
+            null -> when {
+                spec.generated == "uuid" -> Uuid.random().toString()
+                else -> when (spec.type) {
+                    FieldType.Toggle, FieldType.Consent -> false
+                    FieldType.MultiSelect -> emptyList<String>()
+                    FieldType.Date, FieldType.OfferRef, FieldType.OfferList -> null
+                    else -> ""
+                }
             }
         }
     }

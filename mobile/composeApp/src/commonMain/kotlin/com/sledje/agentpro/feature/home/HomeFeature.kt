@@ -33,6 +33,9 @@ import com.sledje.agentpro.core.designsystem.components.NavRow
 import com.sledje.agentpro.core.features.AppFeature
 import com.sledje.agentpro.core.features.BottomNavItem
 import com.sledje.agentpro.core.features.FeatureHost
+import com.sledje.agentpro.feature.website.data.Site
+import com.sledje.agentpro.feature.website.data.StarterContent
+import kotlinx.serialization.json.JsonObject
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.action_settings
 import com.sledje.agentpro.resources.home_greeting
@@ -42,6 +45,7 @@ import com.sledje.agentpro.resources.home_setup_row
 import com.sledje.agentpro.resources.ic_check_circle
 import com.sledje.agentpro.resources.ic_home
 import com.sledje.agentpro.resources.ic_radio_button_unchecked
+import com.sledje.agentpro.resources.setup_about
 import com.sledje.agentpro.resources.setup_customer
 import com.sledje.agentpro.resources.setup_done
 import com.sledje.agentpro.resources.setup_profile
@@ -75,10 +79,11 @@ object HomeFeature : AppFeature {
     }
 }
 
-/** One item of the setup checklist (docs/UX.md, Home: profile, publish, share the link, first customer). */
+/** One item of the setup checklist (docs/UX.md, Home: profile, publish, own About text, share the link, first customer). */
 enum class SetupItem(val label: StringResource) {
     Profile(Res.string.setup_profile),
     Publish(Res.string.setup_publish),
+    About(Res.string.setup_about),
     Share(Res.string.setup_share),
     FirstCustomer(Res.string.setup_customer),
 }
@@ -102,11 +107,17 @@ class HomeViewModel(deps: AppDependencies) : ViewModel() {
             done = buildSet {
                 if (profile?.isComplete == true) add(SetupItem.Profile)
                 if (site?.isPublished == true) add(SetupItem.Publish)
+                // The seeded bio is shared text; the agent's own words rank better (docs/UX.md, Home).
+                if (StarterContent.isOwnBio(site?.aboutBio())) add(SetupItem.About)
                 if (shared != null) add(SetupItem.Share)
             },
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 }
+
+/** The draft's `about.bio` text, null when unset. */
+internal fun Site.aboutBio(): String? =
+    ((draftContent[StarterContent.ABOUT] as? JsonObject)?.get(StarterContent.BIO) as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
 
 @Composable
 fun HomeScreen(state: HomeUiState, onOpenSettings: () -> Unit) {

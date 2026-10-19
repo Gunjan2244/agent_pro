@@ -1,0 +1,293 @@
+{
+ "template_key": "spotlight",
+ "accent": "maroon",
+ "locale": "en",
+ "published_content": {
+  "sectionOrder": [
+   "hero",
+   "offers",
+   "services",
+   "highlights",
+   "about",
+   "testimonials",
+   "achievements",
+   "faq",
+   "contact"
+  ],
+  "hidden": [
+   "achievements",
+   "testimonials"
+  ],
+  "hero": {
+   "headline": "Insurance made simple for your family",
+   "subheadline": "Honest advice on term, health and savings plans from a local advisor you can call anytime.",
+   "photo": "http://localhost:8080/dev-fixtures/avatar.svg",
+   "ctaLabel": ""
+  },
+  "about": {
+   "bio": "I have helped families in Pune plan for protection and savings for over a decade.\nEvery recommendation starts with your goals, not a product.",
+   "designation": "Insurance Advisor",
+   "yearsExperience": 12,
+   "clientsServed": 850,
+   "languagesSpoken": [
+    "english",
+    "hindi",
+    "marathi"
+   ],
+   "showAgencyCode": true
+  },
+  "services": {
+   "offered": [
+    "term",
+    "health",
+    "pension"
+   ],
+   "items": [
+    {
+     "interest": "term",
+     "description": "Pure protection at low cost."
+    },
+    {
+     "interest": "health",
+     "description": "Cover for hospital bills."
+    },
+    {
+     "interest": "child",
+     "description": ""
+    }
+   ]
+  },
+  "highlights": {
+   "items": [
+    {
+     "icon": "shield",
+     "title": "Protection first",
+     "text": "Plans matched to your needs."
+    },
+    {
+     "icon": "support_agent",
+     "title": "Always reachable",
+     "text": "Call or WhatsApp any time."
+    },
+    {
+     "icon": "handshake",
+     "title": "Claim help",
+     "text": ""
+    },
+    {
+     "icon": "schedule",
+     "title": "On-time reminders",
+     "text": ""
+    }
+   ]
+  },
+  "achievements": {
+   "items": [
+    {
+     "title": "Million Dollar Round Table qualifier",
+     "year": 2022
+    },
+    {
+     "title": "Best new agent",
+     "year": 2014
+    }
+   ]
+  },
+  "testimonials": {
+   "items": [
+    {
+     "name": "Rohit S.",
+     "city": "Pune",
+     "quote": "Clear advice and quick claim support."
+    },
+    {
+     "name": "Meera K.",
+     "city": "",
+     "quote": "Never pushed a plan I did not need."
+    }
+   ]
+  },
+  "faq": {
+   "items": [
+    {
+     "question": "How much cover do I need?",
+     "answer": "A common rule is 10 to 15 times your yearly income."
+    },
+    {
+     "question": "Can I buy online?",
+     "answer": "Yes, I can guide you step by step."
+    }
+   ]
+  },
+  "contact": {
+   "phone": "98765 43210",
+   "whatsapp": "9876543210",
+   "email": "asha@example.com",
+   "officeAddress": "12 MG Road, Pune 411001",
+   "mapLink": "https://maps.google.com/?q=Pune",
+   "officeHours": "Mon–Sat, 10am–6pm",
+   "showEnquiryForm": true
+  },
+  "offers": {
+   "title": ""
+  }
+ },
+ "profile": {
+  "full_name": "Asha Verma",
+  "designation": "Insurance Advisor",
+  "city": "Pune",
+  "photo_url": "http://localhost:8080/dev-fixtures/avatar.svg",
+  "phone": "9876543210",
+  "agency_code": "123456"
+ },
+ "canonical_host": null,
+ "offers": {
+  "featured": {
+   "source": "company",
+   "id": "00000000-0000-4000-8000-000000000002",
+   "title": "Family health cash plan",
+   "summary": "A fixed daily cash amount in hospital, plus lump sums for major surgery, for you and your children under one plan.",
+   "details": "For adults aged 18 to 65; children from 90 days can be added. The premium stays the same for the full 15 years. Cover grows when you make no claim. If the main insured person dies, future premiums for the family are waived, subject to conditions.",
+   "badge": "New",
+   "disclaimer": "Benefits are fixed amounts for the listed events, subject to the policy terms.",
+   "image_url": null,
+   "image": "offer-family-health-cash",
+   "cta": {
+    "kind": "enquire",
+    "interest": "health"
+   },
+   "ends_on": "2027-03-31",
+   "from_agent": false,
+   "interest": "health"
+  },
+  "items": [
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "Lifelong pension, rate locked today",
+    "summary": "Save now and get a guaranteed income for life after you retire. The annuity rate is fixed on the day you start.",
+    "details": "Start from age 18. Pay once or regularly, then choose when income begins (from age 30). Pick income for yourself alone or for you and your spouse. Extra savings during the waiting years can buy more pension.",
+    "badge": "New",
+    "disclaimer": "Annuity rates and options are subject to the policy terms.",
+    "image_url": null,
+    "image": "offer-pension-locked-rate",
+    "cta": {
+     "kind": "enquire",
+     "interest": "pension"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "pension"
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000003",
+    "title": "Cancer care cover",
+    "summary": "Money when you need it most: a payout on an early-stage cancer diagnosis, and the full cover with monthly income at a major stage.",
+    "details": "For ages 18 to 65. A quarter of the cover is paid on a listed early-stage diagnosis and the full cover on a listed major stage, with a monthly income for 10 years. Future premiums are waived after an eligible diagnosis. Choose a level or increasing cover.",
+    "badge": "New",
+    "disclaimer": "Payouts apply to the cancer stages listed in the policy, subject to its terms.",
+    "image_url": null,
+    "image": "offer-cancer-care",
+    "cta": {
+     "kind": "link",
+     "url": "https://example.com/cancer-care-brochure"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "health"
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000004",
+    "title": "Savings plan with a booster payout",
+    "summary": "Pay for a few years, earn guaranteed additions every year you pay, then get a regular income and a booster payout later.",
+    "details": "Pay for 7 to 18 years. Guaranteed additions build up each year you pay. After that you receive a yearly income, and a booster payout five years after the paying term ends. Life cover throughout. Entry from 30 days to 55 years, depending on the term.",
+    "badge": "Limited pay",
+    "disclaimer": "Additions, income and booster amounts depend on the policy terms.",
+    "image_url": null,
+    "image": "offer-savings-booster",
+    "cta": {
+     "kind": "enquire",
+     "interest": "endowment"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "endowment"
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000005",
+    "title": "Simple family protection plan",
+    "summary": "Pure life cover at a low cost, so your family gets a fixed, guaranteed amount if something happens to you.",
+    "details": "Cover from ₹5 lakh to ₹24 lakh, for ages 18 to 45. Pay once, regularly, or for a limited period. Special lower rates for women. There is no maturity payout: the plan is only about protecting your family.",
+    "badge": "Women save more",
+    "disclaimer": "Pure protection plan with no maturity benefit; subject to the policy terms.",
+    "image_url": null,
+    "image": "offer-simple-protection",
+    "cta": {
+     "kind": "enquire",
+     "interest": "term"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "term"
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000006",
+    "title": "Savings plan for couples",
+    "summary": "One plan that covers both of you. If one partner passes away, the remaining premiums are waived and the savings continue.",
+    "details": "Pay once, or for 5, 10 or 15 years. Guaranteed additions build up every year. Cover starts from ₹3 lakh. Loans and payouts in instalments are available.",
+    "badge": "For two",
+    "disclaimer": "Waiver and additions apply as per the policy terms.",
+    "image_url": null,
+    "image": "offer-couples-savings",
+    "cta": {
+     "kind": "enquire",
+     "interest": "endowment"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "endowment"
+   },
+   {
+    "source": "agent",
+    "id": "7c0f8a52-0000-4000-8000-000000000001",
+    "title": "Free policy review this month",
+    "summary": "Bring your existing policies and I'll check your cover, nominees and due dates with you.",
+    "details": null,
+    "badge": null,
+    "disclaimer": null,
+    "image_url": null,
+    "cta": {
+     "kind": "call"
+    },
+    "ends_on": "2026-12-31",
+    "from_agent": true,
+    "interest": null
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000099",
+    "title": "Last season's savings plan",
+    "summary": "",
+    "details": null,
+    "badge": null,
+    "disclaimer": null,
+    "image_url": null,
+    "cta": {
+     "kind": "enquire",
+     "interest": "endowment"
+    },
+    "ends_on": "2026-01-31",
+    "from_agent": false,
+    "interest": "endowment"
+   }
+  ]
+ },
+ "company": {
+  "disclaimer": "Insurance is the subject matter of solicitation. Benefits depend on the policy terms and conditions. Please read the sales brochure carefully before buying."
+ },
+ "published_at": "2026-10-01T10:00:00.000Z"
+}

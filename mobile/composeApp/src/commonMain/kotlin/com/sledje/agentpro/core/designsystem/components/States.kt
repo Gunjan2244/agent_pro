@@ -1,5 +1,6 @@
 package com.sledje.agentpro.core.designsystem.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -39,6 +40,7 @@ import com.sledje.agentpro.core.designsystem.Motion
 import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.core.designsystem.rememberReduceMotion
 import com.sledje.agentpro.core.ui.UiState
+import com.sledje.agentpro.core.ui.screenState
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.action_retry
 import com.sledje.agentpro.resources.error_generic
@@ -51,7 +53,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Switches between the four states of a data screen (docs/UX.md, Global UX rule 1): loading
  * (skeleton), empty (one sentence, one button), error (message and Retry) and content (with
- * pull-to-refresh when [onRefresh] is set).
+ * pull-to-refresh when [onRefresh] is set). Moving between them crossfades; new data in the same
+ * state (a refresh) doesn't.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,22 +67,34 @@ fun <T> ScreenState(
     skeleton: @Composable () -> Unit = { ListSkeleton() },
     content: @Composable (T) -> Unit,
 ) {
-    Box(modifier.fillMaxSize()) {
-        when (state) {
+    StateCrossfade(state, modifier.fillMaxSize(), key = { it.screenState }) { shown ->
+        when (shown) {
             UiState.Loading -> skeleton()
             UiState.Empty -> empty()
             is UiState.Error -> ErrorState(
-                message = state.message?.let { stringResource(it) } ?: stringResource(Res.string.error_generic),
+                message = shown.message?.let { stringResource(it) } ?: stringResource(Res.string.error_generic),
                 onRetry = onRetry,
             )
             is UiState.Content -> if (onRefresh != null) {
-                PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                    content(state.data)
+                PullToRefreshBox(isRefreshing = shown.refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+                    content(shown.data)
                 }
             } else {
-                content(state.data)
+                content(shown.data)
             }
         }
+    }
+}
+
+/**
+ * Crossfades between a screen's states (docs/DESIGN_SYSTEM.md, Motion), e.g. skeleton → content.
+ * Only a change of [key] animates; a new value with the same key just recomposes [content], so pass
+ * the state's kind, not its data.
+ */
+@Composable
+fun <S> StateCrossfade(state: S, modifier: Modifier = Modifier, key: (S) -> Any?, content: @Composable (S) -> Unit) {
+    AnimatedContent(state, modifier, transitionSpec = { Motion.crossfade() }, contentKey = key, label = "state") { shown ->
+        content(shown)
     }
 }
 

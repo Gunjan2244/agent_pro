@@ -167,6 +167,16 @@
     <string name="onboarding_use_template">Use this template</string>
     <string name="onboarding_publish_now">Publish now</string>
     <string name="onboarding_later">Later</string>
+    <string name="launch_title">Your website is live</string>
+    <string name="launch_install_title">Add it to your phone</string>
+    <string name="launch_install_text">Open your website like any app, straight from your home screen.</string>
+    <string name="launch_not_now">Not now</string>
+    <string name="launch_preview_title">This is what customers see</string>
+    <string name="launch_preview_text">Scroll to look around. You can change anything later.</string>
+    <string name="launch_next">Next</string>
+    <string name="launch_share_title">Share it with customers</string>
+    <string name="launch_share_text">Send the link on WhatsApp, SMS or any app, or let someone scan the code.</string>
+    <string name="launch_done">Done</string>
     <string name="onboarding_link_label">Link</string>
     <string name="onboarding_link_checking">Checking…</string>
     <string name="onboarding_link_available">Available</string>
@@ -174,6 +184,8 @@
     <string name="onboarding_link_preview">Your site: %1$s</string>
     <string name="onboarding_trial_started">Your %1$d-day free trial has started</string>
     <string name="onboarding_template_position">%1$d of %2$d</string>
+    <string name="template_family_prompt">Choose a style first. You can change it later.</string>
+    <string name="onboarding_photo_tips">Face and shoulders, looking at the camera, in daylight by a window.\nPlain background and smart everyday clothes.\nNo sunglasses, group photos, insurer uniform or logos.</string>
     <string name="profile_mobile">Mobile</string>
     <string name="profile_agency_code">Agency code</string>
     <string name="profile_branch">Branch</string>
@@ -186,6 +198,7 @@
     <string name="setup_title">Finish setup</string>
     <string name="setup_profile">Fill in your profile</string>
     <string name="setup_publish">Publish your website</string>
+    <string name="setup_about">Make your About section your own</string>
     <string name="setup_share">Share your link</string>
     <string name="setup_customer">Add your first customer</string>
     <string name="setup_done">Done</string>

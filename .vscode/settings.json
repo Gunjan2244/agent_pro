@@ -1,3 +1,4 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic"
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.import.gradle.java.home": "/usr/lib/jvm/java-21-openjdk-amd64"
 }

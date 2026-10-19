@@ -3,12 +3,14 @@
   "templates": [
     {
       "key": "classic",
+      "family": "personal",
       "nameKey": "template.classic.name",
       "descriptionKey": "template.classic.description",
       "sections": [
         "hero",
         "about",
         "services",
+        "offers",
         "highlights",
         "achievements",
         "testimonials",
@@ -21,12 +23,14 @@
     },
     {
       "key": "modern",
+      "family": "personal",
       "nameKey": "template.modern.name",
       "descriptionKey": "template.modern.description",
       "sections": [
         "hero",
         "about",
         "services",
+        "offers",
         "highlights",
         "achievements",
         "testimonials",
@@ -39,12 +43,14 @@
     },
     {
       "key": "minimal",
+      "family": "personal",
       "nameKey": "template.minimal.name",
       "descriptionKey": "template.minimal.description",
       "sections": [
         "hero",
         "about",
         "services",
+        "offers",
         "highlights",
         "achievements",
         "testimonials",
@@ -54,6 +60,46 @@
       "defaultAccent": "slate",
       "preview": "web/templates/minimal/preview.webp",
       "order": 3
+    },
+    {
+      "key": "spotlight",
+      "family": "offers",
+      "nameKey": "template.spotlight.name",
+      "descriptionKey": "template.spotlight.description",
+      "sections": [
+        "hero",
+        "offers",
+        "services",
+        "highlights",
+        "about",
+        "testimonials",
+        "achievements",
+        "faq",
+        "contact"
+      ],
+      "defaultAccent": "maroon",
+      "preview": "web/templates/spotlight/preview.webp",
+      "order": 4
+    },
+    {
+      "key": "guide",
+      "family": "offers",
+      "nameKey": "template.guide.name",
+      "descriptionKey": "template.guide.description",
+      "sections": [
+        "hero",
+        "offers",
+        "services",
+        "highlights",
+        "about",
+        "testimonials",
+        "achievements",
+        "faq",
+        "contact"
+      ],
+      "defaultAccent": "green",
+      "preview": "web/templates/guide/preview.webp",
+      "order": 5
     }
   ]
 }

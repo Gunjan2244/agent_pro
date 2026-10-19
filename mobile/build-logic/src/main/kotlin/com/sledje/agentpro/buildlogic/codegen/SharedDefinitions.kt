@@ -27,6 +27,12 @@ class SharedDefinitions(
     val i18nHi: Map<String, String>,
     /** Raw text of site-schema.json, embedded verbatim in the catalog_sync migration. */
     val siteSchemaText: String,
+    /** offer-schema.json (company offer fields, docs/OFFERS.md); null while the file doesn't exist. */
+    val offerSchema: JsonObject? = null,
+    /** Raw text of offer-schema.json, embedded verbatim in the catalog_sync migration (`offer_schema()`). */
+    val offerSchemaText: String? = null,
+    /** site-seed.json (starter content of a new site, DECISIONS #78); null while the file doesn't exist. Not part of [catalogHash]. */
+    val siteSeed: JsonObject? = null,
 ) {
     /** Catalog lists of entries (arrays of objects with a `key`), in file order. */
     val catalogLists: List<CatalogList> by lazy {
@@ -45,13 +51,14 @@ class SharedDefinitions(
     }
 
     /**
-     * sha256 over canonical (key-sorted, compact) catalog.json + site-schema.json + templates/index.json:
-     * every file whose contents end up in the catalog_sync migration. When the catalog has
+     * sha256 over canonical (key-sorted, compact) catalog.json + site-schema.json + templates/index.json
+     * (+ offer-schema.json when it exists): every file whose contents end up in the catalog_sync migration. When the catalog has
      * `privacyNotices`, the current notice hashes (which come from shared/i18n) are appended too, so a
      * notice text change produces a new catalog_sync. Without notices the hash is unchanged from before.
      */
     val catalogHash: String by lazy {
         var canonical = canonicalJson(catalog) + "\n" + canonicalJson(siteSchema) + "\n" + canonicalJson(templates)
+        offerSchema?.let { canonical += "\n" + canonicalJson(it) }
         val notices = PrivacyNotices(this)
         if (notices.present) {
             val hashes = JsonObject(notices.current.mapValues { (_, versions) ->
@@ -77,14 +84,19 @@ class SharedDefinitions(
         const val TEMPLATES = "templates/index.json"
         const val I18N_EN = "i18n/en.json"
         const val I18N_HI = "i18n/hi.json"
+        const val OFFER_SCHEMA = "offer-schema.json"
+        const val SITE_SEED = "site-seed.json"
         val FILES = listOf(CATALOG, SITE_SCHEMA, DESIGN_TOKENS, TEMPLATES, I18N_EN, I18N_HI)
+        /** Loaded when present; their features are generated only then (so older shared/ sets keep working). */
+        val OPTIONAL_FILES = listOf(OFFER_SCHEMA, SITE_SEED)
 
         private val json = Json { isLenient = false }
 
-        /** Loads all six files; throws [SharedDefinitionsException] naming every missing or invalid file. */
+        /** Loads all six files (and the optional ones that exist); throws [SharedDefinitionsException] naming every missing or invalid file. */
         fun load(sharedDir: File): SharedDefinitions {
             val problems = mutableListOf<String>()
-            val parsed = FILES.associateWith { rel ->
+            val present = FILES + OPTIONAL_FILES.filter { File(sharedDir, it).isFile }
+            val parsed = present.associateWith { rel ->
                 val f = File(sharedDir, rel)
                 if (!f.isFile) {
                     problems += "shared/$rel is missing"; null
@@ -114,6 +126,9 @@ class SharedDefinitions(
                 i18nEn = en,
                 i18nHi = hi,
                 siteSchemaText = File(sharedDir, SITE_SCHEMA).readText(),
+                offerSchema = parsed[OFFER_SCHEMA],
+                offerSchemaText = parsed[OFFER_SCHEMA]?.let { File(sharedDir, OFFER_SCHEMA).readText() },
+                siteSeed = parsed[SITE_SEED],
             )
         }
 

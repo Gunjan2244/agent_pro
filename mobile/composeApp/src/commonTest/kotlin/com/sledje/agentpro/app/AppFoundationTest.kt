@@ -13,7 +13,6 @@ import com.sledje.agentpro.feature.auth.data.AuthState
 import com.sledje.agentpro.feature.website.data.PublishError
 import com.sledje.agentpro.feature.website.data.PublishOutcome
 import com.sledje.agentpro.feature.website.data.SiteLinks
-import com.sledje.agentpro.feature.website.data.StarterContent
 import com.sledje.agentpro.feature.website.data.parsePublishResult
 import com.sledje.agentpro.testing.FakeNetworkMonitor
 import com.sledje.agentpro.testing.TEST_USER
@@ -47,6 +46,7 @@ class AppFoundationTest {
         assertEquals(AppGate.Onboarding, resolveGate(true, signedIn, testProfile(fullName = null), null, SyncStatus.Done, false))
         assertEquals(AppGate.Loading, resolveGate(true, signedIn, p, null, SyncStatus.Running, false), "the site may not have synced yet")
         assertEquals(AppGate.Onboarding, resolveGate(true, signedIn, p, null, SyncStatus.Done, false))
+        assertEquals(AppGate.Error, resolveGate(true, signedIn, p, null, SyncStatus.Failed, false), "site unknown: Retry, not a second site")
         assertEquals(AppGate.Onboarding, resolveGate(true, signedIn, p, s, SyncStatus.Done, true), "latched while onboarding runs")
     }
 
@@ -71,21 +71,6 @@ class AppFoundationTest {
         assertEquals(DeepLink.Website, links.pending.value)
         links.consume(DeepLink.Website)
         assertNull(links.pending.value)
-    }
-
-    @Test
-    fun starterContentUsesRealSchemaKeysAndLimits() {
-        val hero = SiteSchema.section(StarterContent.HERO)!!
-        val headline = hero.fields.single { it.key == StarterContent.HEADLINE }
-        assertTrue(headline.required)
-        assertTrue(SiteSchema.section(StarterContent.CONTACT)!!.fields.any { it.key == StarterContent.PHONE && it.required })
-        assertTrue(SiteSchema.section(StarterContent.ABOUT)!!.fields.any { it.key == StarterContent.DESIGNATION })
-
-        val long = "R".repeat(200)
-        val content = StarterContent.from(testProfile(fullName = long, designation = null))
-        assertEquals(headline.maxLength, content["hero"]!!.jsonObject["headline"]!!.jsonPrimitive.content.length)
-        assertNull(content["about"], "no designation → no about block")
-        assertEquals("+919876543210", content["contact"]!!.jsonObject["phone"]!!.jsonPrimitive.content)
     }
 
     @Test

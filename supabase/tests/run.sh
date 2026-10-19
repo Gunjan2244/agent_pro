@@ -3,11 +3,13 @@
 # postgres container: shim -> migrations (including the generated *_catalog_sync.sql) -> tests.
 # Prints PASS/FAIL per check; exits non-zero on any FAIL or unexpected SQL error.
 # The generated catalog_sync is required (run `./gradlew generateShared` in mobile/ if it's missing).
-# Tests can re-apply the latest catalog_sync with `\i :catalog_sync` (copied into the container).
+# Tests can re-apply the latest catalog_sync with `\i :catalog_sync` (copied into the container), and run the
+# demo seed with `\i :demo_offers` (supabase/demo/demo_offers.sql, copied too; inside a transaction they roll back).
 #
 #   supabase/tests/run.sh            # uses postgres:15 (cached image), removes the container afterwards
 #   KEEP=1 supabase/tests/run.sh     # keep the container for debugging
 #   PG_IMAGE=postgres:17 supabase/tests/run.sh
+#   CONTAINER_NAME=my-sqltest supabase/tests/run.sh   # own container name (parallel runs)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -38,11 +40,12 @@ done
 docker exec "$NAME" pg_isready -U postgres -q
 
 CATALOG_SYNC_IN_CONTAINER=/tmp/catalog_sync.sql
+DEMO_OFFERS_IN_CONTAINER=/tmp/demo_offers.sql
 
 psql_file() {  # psql_file <on_error_stop 0|1> <file...>  (files are streamed as one session)
   local stop="$1"; shift
   cat "$@" | docker exec -i "$NAME" psql -U postgres -d postgres -q -X -v ON_ERROR_STOP="$stop" \
-    -v catalog_sync="$CATALOG_SYNC_IN_CONTAINER" -f - 2>&1
+    -v catalog_sync="$CATALOG_SYNC_IN_CONTAINER" -v demo_offers="$DEMO_OFFERS_IN_CONTAINER" -f - 2>&1
 }
 
 # 1. shim + migrations (the generated catalog_sync files sort last among them)
@@ -68,6 +71,7 @@ done
 # 2. tests (one session so psql variables from the seed carry over). The latest catalog_sync is
 #    copied in so a test can re-apply it (`\i :catalog_sync`), e.g. to prove overrides survive it.
 docker cp "${SYNC[-1]}" "$NAME:$CATALOG_SYNC_IN_CONTAINER" >/dev/null
+docker cp "$ROOT/supabase/demo/demo_offers.sql" "$NAME:$DEMO_OFFERS_IN_CONTAINER" >/dev/null
 psql_file 0 "$TESTS"/[1-9]*.sql > "$LOG" || true
 
 grep -E 'PASS \||FAIL \|' "$LOG" | sed -E 's/^.*NOTICE:  //'

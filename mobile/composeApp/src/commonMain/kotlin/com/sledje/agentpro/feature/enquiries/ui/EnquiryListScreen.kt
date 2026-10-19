@@ -28,6 +28,7 @@ import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.EmptyState
 import com.sledje.agentpro.core.designsystem.components.FilterChipRow
 import com.sledje.agentpro.core.designsystem.components.HairlineDivider
+import com.sledje.agentpro.core.designsystem.components.itemMotion
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.ScreenState
 import com.sledje.agentpro.core.designsystem.components.SearchField
@@ -169,8 +170,10 @@ fun EnquiryListContent(
                 } else {
                     LazyColumn(Modifier.fillMaxSize()) {
                         itemsIndexed(data.rows, key = { _, e -> e.id }) { index, e ->
-                            if (index > 0) HairlineDivider()
-                            EnquiryRow(e, now, onOpen)
+                            Column(itemMotion()) {
+                                if (index > 0) HairlineDivider()
+                                EnquiryRow(e, now, onOpen)
+                            }
                         }
                     }
                 }

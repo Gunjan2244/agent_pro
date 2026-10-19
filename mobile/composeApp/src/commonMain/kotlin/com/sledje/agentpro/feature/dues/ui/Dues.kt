@@ -1,5 +1,6 @@
 package com.sledje.agentpro.feature.dues.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +29,7 @@ import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.core.designsystem.components.EmptyState
 import com.sledje.agentpro.core.designsystem.components.FilterChipRow
 import com.sledje.agentpro.core.designsystem.components.HairlineDivider
+import com.sledje.agentpro.core.designsystem.components.itemMotion
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.ScreenState
 import com.sledje.agentpro.core.designsystem.components.UrgencyChip
@@ -177,10 +179,12 @@ fun DuesContent(
                     item { EmptyState(FeatureId.Dues.icon, stringResource(Res.string.dues_empty)) }
                 }
                 data.groups.forEach { group ->
-                    item(key = "date_${group.date}") { DueDateHeader(group.date, today) }
+                    item(key = "date_${group.date}") { Box(itemMotion()) { DueDateHeader(group.date, today) } }
                     itemsIndexed(group.rows, key = { _, r -> r.policy.id }) { index, row ->
-                        if (index > 0) HairlineDivider()
-                        DueListRow(row, onOpenPolicy, onCall)
+                        Column(itemMotion()) {
+                            if (index > 0) HairlineDivider()
+                            DueListRow(row, onOpenPolicy, onCall)
+                        }
                     }
                 }
             }

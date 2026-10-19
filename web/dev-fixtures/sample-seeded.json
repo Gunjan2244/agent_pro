@@ -1,0 +1,132 @@
+{
+ "template_key": "classic",
+ "accent": "indigo",
+ "locale": "en",
+ "published_content": {
+  "hero": {
+   "headline": "Hello, I'm Priya Nair",
+   "subheadline": "I help families in Kochi choose the right life and health cover, explained simply and with no pressure."
+  },
+  "about": {
+   "bio": "I'm Priya Nair, an insurance advisor. I help families protect what matters most: their income, their children's future and their retirement. I take the time to understand your needs, explain every option in plain words and suggest only what fits your budget. And I stay with you after the policy is issued, from premium reminders to claims. Call or WhatsApp me any time.",
+   "languagesSpoken": [
+    "english"
+   ]
+  },
+  "services": {
+   "offered": [
+    "term",
+    "endowment",
+    "child",
+    "pension",
+    "health"
+   ],
+   "items": [
+    {
+     "interest": "term",
+     "description": "High cover at a low premium, so your family stays financially secure if something happens to you."
+    },
+    {
+     "interest": "endowment",
+     "description": "Protection and regular saving in one plan, with a benefit at maturity as per the policy terms."
+    },
+    {
+     "interest": "child",
+     "description": "Plan ahead for your child's education and milestones, with cover that keeps the plan going even if you're not there."
+    },
+    {
+     "interest": "pension",
+     "description": "Build a regular income for retirement, so you stay independent and comfortable in your later years."
+    },
+    {
+     "interest": "health",
+     "description": "Cover for hospital bills and medical emergencies for you and your family, so your savings stay safe."
+    }
+   ]
+  },
+  "highlights": {
+   "items": [
+    {
+     "icon": "support_agent",
+     "title": "Personal guidance",
+     "text": "I explain every option in plain words and help you choose what truly fits."
+    },
+    {
+     "icon": "schedule",
+     "title": "Timely reminders",
+     "text": "I remind you before every premium due date, so your cover stays active."
+    },
+    {
+     "icon": "handshake",
+     "title": "Honest advice",
+     "text": "No pressure and no jargon, just clear answers you can trust."
+    },
+    {
+     "icon": "verified_user",
+     "title": "Help with claims",
+     "text": "If you ever need to claim, I'll guide your family through every step."
+    }
+   ]
+  },
+  "faq": {
+   "items": [
+    {
+     "question": "How much life cover do I need?",
+     "answer": "There's no single number. I look at what your family would need to keep going, such as daily expenses, loans and children's studies, and at what you already have. Then we choose cover that fits your budget."
+    },
+    {
+     "question": "What is the difference between term insurance and a savings plan?",
+     "answer": "Think of term insurance as pure protection: the highest cover for the lowest premium, with no payout if you outlive the term. Savings plans add a maturity benefit, which means a higher premium. Many families combine the two. Let's see what suits you."
+    },
+    {
+     "question": "Which documents do I need to buy a policy?",
+     "answer": "The basics are simple: identity proof, address proof, a photo and bank details. Depending on the plan and the cover amount, income proof or a health check-up may also be asked for. I'll tell you exactly what's needed before we start."
+    },
+    {
+     "question": "How can I pay my premium?",
+     "answer": "Yearly, half-yearly, quarterly or monthly: pick what fits your budget. You can pay online, set up auto-debit or pay at a branch. I keep track of your due dates and remind you in time. Any tax benefit applies as per prevailing tax laws."
+    },
+    {
+     "question": "Will you help with claims?",
+     "answer": "Absolutely. Helping with claims is part of my service. Just call me, and together we'll prepare the paperwork and keep track of it until the claim is decided."
+    }
+   ]
+  },
+  "contact": {
+   "phone": "9847012345",
+   "whatsapp": "9847012345",
+   "email": "priya.nair@example.com"
+  },
+  "sectionOrder": [
+   "hero",
+   "about",
+   "services",
+   "offers",
+   "highlights",
+   "achievements",
+   "testimonials",
+   "faq",
+   "contact"
+  ],
+  "hidden": [
+   "achievements",
+   "testimonials",
+   "offers"
+  ]
+ },
+ "profile": {
+  "full_name": "Priya Nair",
+  "designation": null,
+  "city": "Kochi",
+  "photo_url": "",
+  "phone": "9847012345",
+  "agency_code": null
+ },
+ "canonical_host": null,
+ "published_at": "2026-10-18T09:00:00.000Z",
+ "offers": {
+  "featured": null,
+  "items": []
+ },
+ "company": null
+}

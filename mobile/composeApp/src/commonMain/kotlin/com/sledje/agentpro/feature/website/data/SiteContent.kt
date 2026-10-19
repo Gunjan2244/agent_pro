@@ -37,7 +37,13 @@ object SiteContent {
 
     // ---- Order and visibility -----------------------------------------------------------------
 
-    private val schema: List<SectionSpec> get() = SiteSchema.sections
+    /** Sections whose editor isn't built yet; the web ignores them too until it renders them (OFFERS.md, 8b-3/8b-4). */
+    val pendingSections: Set<String> = setOf("offers")
+
+    /** The sections the agent edits: the schema's, minus [pendingSections]. */
+    val sections: List<SectionSpec> get() = SiteSchema.sections.filterNot { it.key in pendingSections }
+
+    private val schema: List<SectionSpec> get() = sections
 
     private fun leadingPinned(sections: List<SectionSpec>): List<SectionSpec> = sections.takeWhile { it.pinned }
 
@@ -74,8 +80,30 @@ object SiteContent {
         movable.add(to, movable.removeAt(from))
         val head = leadingPinned(sections)
         val tail = sections.filter { it.pinned && it !in head }
-        val order = (head + movable + tail).map { JsonPrimitive(it.key) }
-        return content.with(SECTION_ORDER, JsonArray(order))
+        val keys = (head + movable + tail).map { it.key }.toMutableList()
+        // Sections the editor doesn't offer yet (offers) keep their stored place, after the section they followed.
+        val stored = stringList(content[SECTION_ORDER])
+        stored.forEachIndexed { i, key ->
+            if (key in pendingSections && key !in keys) {
+                val after = stored.getOrNull(i - 1)?.let { keys.indexOf(it) } ?: -1
+                keys.add(if (after >= 0) after + 1 else minOf(i, keys.size), key)
+            }
+        }
+        return content.with(SECTION_ORDER, JsonArray(keys.map(::JsonPrimitive)))
+    }
+
+    /**
+     * Switching to an `offers`-family template (docs/UX.md, Appearance): un-hides `offers` and puts it right
+     * after `hero` in the order; every other section stays where it is. [defaultOrder] (the old template's
+     * sections) is used when the draft has no stored order.
+     */
+    fun withOffersAfterHero(content: JsonObject, defaultOrder: List<String>): JsonObject {
+        val offers = "offers"
+        val hidden = stringList(content[HIDDEN]).filter { it != offers }
+        val order = stringList(content[SECTION_ORDER]).ifEmpty { defaultOrder }.filter { it != offers }.toMutableList()
+        val hero = order.indexOf("hero")
+        order.add(if (hero >= 0) hero + 1 else 0, offers)
+        return content.with(HIDDEN, JsonArray(hidden.map(::JsonPrimitive))).with(SECTION_ORDER, JsonArray(order.map(::JsonPrimitive)))
     }
 
     // ---- Section values <-> FormState -----------------------------------------------------------
@@ -94,6 +122,7 @@ object SiteContent {
                 FieldType.ItemList -> (element as? JsonArray).orEmpty().mapNotNull { item ->
                     (item as? JsonObject)?.let { fieldValues(it, spec.itemFields) }
                 }
+                FieldType.OfferRef, FieldType.OfferList -> element
                 FieldType.Number -> (element as? JsonPrimitive)?.let { p ->
                     p.longOrNull?.toString() ?: p.doubleOrNull?.let { d -> if (d % 1.0 == 0.0) d.toLong().toString() else d.toString() } ?: p.contentOrNull
                 }
@@ -130,6 +159,8 @@ object SiteContent {
             is String -> value.trim().takeIf { it.isNotEmpty() }?.let { s -> s.toLongOrNull()?.let(::JsonPrimitive) ?: s.toDoubleOrNull()?.let(::JsonPrimitive) }
             else -> null
         }
+        FieldType.OfferRef -> value as? JsonObject
+        FieldType.OfferList -> (value as? JsonArray)?.takeIf { it.isNotEmpty() }
         FieldType.MultiSelect -> (value as? List<*>)?.filterIsInstance<String>()?.takeIf { it.isNotEmpty() }?.let { keys -> JsonArray(keys.map(::JsonPrimitive)) }
         FieldType.ItemList -> (value as? List<*>)?.mapNotNull { item ->
             @Suppress("UNCHECKED_CAST")

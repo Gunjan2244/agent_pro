@@ -18,11 +18,12 @@ object Naming {
     val RESOURCE_NAME = Regex("^[A-Za-z_][A-Za-z0-9_]*$")
     val ICON_NAME = Regex("^[a-z0-9_]+$")
 
-    /** Catalog list name -> Kotlin type name, e.g. enquiryStatuses -> EnquiryStatus, features -> FeatureId, locales -> AppLocale. */
+    /** Catalog list name -> Kotlin type name, e.g. enquiryStatuses -> EnquiryStatus, templateFamilies -> TemplateFamily, features -> FeatureId, locales -> AppLocale. */
     fun catalogTypeName(listName: String): String {
         overrides[listName]?.let { return it }
         val singular = when {
             listName.endsWith("uses") -> listName.dropLast(2)          // statuses -> status
+            listName.endsWith("ies") -> listName.dropLast(3) + "y"     // templateFamilies -> templateFamily
             listName.endsWith("ches") || listName.endsWith("shes") || listName.endsWith("xes") -> listName.dropLast(2)
             listName.endsWith("s") -> listName.dropLast(1)             // sources -> source
             else -> listName

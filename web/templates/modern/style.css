@@ -1,13 +1,19 @@
-/* Fresh: split hero banner, hairline cards */
+/* Fresh ("Meet me"): split hero band (text left, portrait and greeting right), hairline cards in two columns */
 .tpl-modern .band{max-width:none;background:var(--c-surfaceContainerLow);border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-modern .band .bubble{background:var(--c-surface)}
 .tpl-modern .hero-in{display:grid;gap:var(--space-l);max-width:880px;margin:0 auto;align-items:center}
-.tpl-modern .hero-photo{border-radius:var(--shape-lg);width:160px;height:160px}
+.tpl-modern .hero-photo{width:96px;height:96px;border-radius:var(--shape-lg)}
+.tpl-modern .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
 .tpl-modern .sec+.sec{border-top:0}
-.tpl-modern .card{border-width:1px;box-shadow:none}
 .tpl-modern .cards{grid-template-columns:1fr}
 @media(min-width:720px){
-  .tpl-modern .hero-in{grid-template-columns:1fr 160px}
-  .tpl-modern .hero-photo{grid-column:2;grid-row:1}
+  .tpl-modern .hero-in{grid-template-columns:1fr 280px;column-gap:calc(var(--space-l)*2)}
+  .tpl-modern .hero-id{grid-column:2;grid-row:1;flex-direction:column;align-items:flex-start}
+  .tpl-modern .hero-photo{width:160px;height:160px}
+  .tpl-modern .hero-photo.mono{font-size:var(--text-l);line-height:var(--line-l)}
+  .tpl-modern .hero-text,.tpl-modern .hero-offer{grid-column:1}
+  .tpl-modern .hero-text{grid-row:1}
+  .tpl-modern .hero-offer{margin-top:0}
   .tpl-modern .cards{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:1024px){.tpl-modern .sec-highlights .cards{grid-template-columns:repeat(4,1fr)}}

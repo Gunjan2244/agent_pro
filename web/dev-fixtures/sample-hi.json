@@ -7,6 +7,7 @@
    "hero",
    "about",
    "services",
+   "offers",
    "highlights",
    "achievements",
    "testimonials",
@@ -123,6 +124,9 @@
    "mapLink": "https://maps.google.com/?q=Pune",
    "officeHours": "सोम–शनि, सुबह 10 – शाम 6",
    "showEnquiryForm": true
+  },
+  "offers": {
+   "title": ""
   }
  },
  "profile": {
@@ -133,5 +137,118 @@
   "phone": "9876543210",
   "agency_code": "123456"
  },
- "canonical_host": "asha-verma.example"
+ "canonical_host": "asha-verma.example",
+ "offers": {
+  "featured": {
+   "source": "company",
+   "id": "00000000-0000-4000-8000-000000000001",
+   "title": "आजीवन पेंशन, दर आज ही तय",
+   "summary": "अभी बचत करें और रिटायरमेंट के बाद जीवन भर गारंटीड आय पाएँ। एन्युटी दर शुरुआत के दिन ही तय हो जाती है।",
+   "details": "18 वर्ष की उम्र से शुरू करें। एक बार या नियमित भुगतान करें, फिर चुनें कि आय कब शुरू हो (30 वर्ष से)। आय सिर्फ अपने लिए या पति/पत्नी के साथ संयुक्त रूप से चुनें। इंतज़ार के वर्षों में अतिरिक्त बचत से पेंशन बढ़ाई जा सकती है।",
+   "badge": "नया",
+   "disclaimer": "एन्युटी दरें और विकल्प पॉलिसी की शर्तों के अधीन हैं।",
+   "image_url": null,
+   "image": "offer-pension-locked-rate",
+   "cta": {
+    "kind": "enquire",
+    "interest": "pension"
+   },
+   "ends_on": "2027-03-31",
+   "from_agent": false,
+   "interest": "pension"
+  },
+  "items": [
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000002",
+    "title": "पारिवारिक हेल्थ कैश प्लान",
+    "summary": "अस्पताल में हर दिन तय नकद राशि, और बड़ी सर्जरी पर एकमुश्त राशि — आपके और बच्चों के लिए एक ही प्लान में।",
+    "details": "18 से 65 वर्ष के वयस्कों के लिए; 90 दिन से बड़े बच्चे जोड़े जा सकते हैं। पूरे 15 वर्ष प्रीमियम एक जैसा रहता है। क्लेम न करने पर कवर बढ़ता है। मुख्य बीमित व्यक्ति के न रहने पर परिवार के आगे के प्रीमियम माफ़, शर्तों के अधीन।",
+    "badge": "नया",
+    "disclaimer": "लाभ सूचीबद्ध घटनाओं के लिए तय राशियाँ हैं, पॉलिसी की शर्तों के अधीन।",
+    "image_url": null,
+    "image": "offer-family-health-cash",
+    "cta": {
+     "kind": "enquire",
+     "interest": "health"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "health"
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000004",
+    "title": "बूस्टर भुगतान वाला बचत प्लान",
+    "summary": "कुछ ही वर्ष भुगतान करें, हर भुगतान वर्ष में गारंटीड एडिशन पाएँ, फिर नियमित आय और बाद में बूस्टर भुगतान।",
+    "details": "7 से 18 वर्ष तक भुगतान करें। हर भुगतान वर्ष में गारंटीड एडिशन जुड़ते हैं। उसके बाद सालाना आय, और भुगतान अवधि खत्म होने के पाँच वर्ष बाद बूस्टर भुगतान। पूरे समय जीवन सुरक्षा। अवधि के अनुसार 30 दिन से 55 वर्ष तक प्रवेश।",
+    "badge": "सीमित भुगतान",
+    "disclaimer": "एडिशन, आय और बूस्टर राशि पॉलिसी की शर्तों पर निर्भर हैं।",
+    "image_url": null,
+    "image": "offer-savings-booster",
+    "cta": {
+     "kind": "enquire",
+     "interest": "endowment"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "endowment"
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000006",
+    "title": "दंपति के लिए बचत प्लान",
+    "summary": "एक ही प्लान में दोनों की सुरक्षा। एक साथी के न रहने पर बाकी प्रीमियम माफ़ और बचत जारी।",
+    "details": "एक बार, या 5, 10 या 15 वर्ष तक भुगतान करें। हर वर्ष गारंटीड एडिशन जुड़ते हैं। कवर ₹3 लाख से शुरू। लोन और किस्तों में भुगतान की सुविधा।",
+    "badge": "दो के लिए",
+    "disclaimer": "प्रीमियम माफ़ी और एडिशन पॉलिसी की शर्तों के अनुसार।",
+    "image_url": null,
+    "image": "offer-couples-savings",
+    "cta": {
+     "kind": "enquire",
+     "interest": "endowment"
+    },
+    "ends_on": "2027-03-31",
+    "from_agent": false,
+    "interest": "endowment"
+   },
+   {
+    "source": "agent",
+    "id": "7c0f8a52-0000-4000-8000-000000000001",
+    "title": "इस महीने मुफ़्त पॉलिसी समीक्षा",
+    "summary": "अपनी मौजूदा पॉलिसियाँ लाएँ और मेरे साथ कवर, नॉमिनी और देय तिथियाँ जाँचें।",
+    "details": null,
+    "badge": null,
+    "disclaimer": null,
+    "image_url": null,
+    "cta": {
+     "kind": "call"
+    },
+    "ends_on": "2026-12-31",
+    "from_agent": true,
+    "interest": null
+   },
+   {
+    "source": "company",
+    "id": "00000000-0000-4000-8000-000000000099",
+    "title": "पिछले सीज़न का बचत प्लान",
+    "summary": "",
+    "details": null,
+    "badge": null,
+    "disclaimer": null,
+    "image_url": null,
+    "cta": {
+     "kind": "enquire",
+     "interest": "endowment"
+    },
+    "ends_on": "2026-01-31",
+    "from_agent": false,
+    "interest": "endowment"
+   }
+  ]
+ },
+ "company": {
+  "disclaimer": "बीमा आग्रह की विषय-वस्तु है। लाभ पॉलिसी के नियमों और शर्तों पर निर्भर करते हैं। खरीदने से पहले बिक्री विवरणिका ध्यान से पढ़ें।"
+ },
+ "published_at": "2026-10-01T10:00:00.000Z"
 }

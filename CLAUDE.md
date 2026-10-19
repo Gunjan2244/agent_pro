@@ -39,6 +39,7 @@ Every change is documented **in the same change** — not later, not "at the end
 | Custom domains | `docs/DOMAINS.md` |
 | Companies, offers, offer slots, admin panel | `docs/OFFERS.md` |
 | Personal data: notices, consent, retention, data-principal rights, breach handling | `docs/PRIVACY.md` |
+| Site images: slots, rules, generation prompts | `docs/IMAGES.md` |
 | Tests, verification steps | `docs/TESTING.md` |
 | Progress, next steps, blockers, environment | `docs/STATUS.md` (always) |
 

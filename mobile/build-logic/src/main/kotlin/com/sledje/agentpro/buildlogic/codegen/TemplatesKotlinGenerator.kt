@@ -8,12 +8,15 @@ import kotlinx.serialization.json.JsonPrimitive
  * Generates `Templates.kt` (package com.sledje.agentpro.core.catalog) from `shared/templates/index.json`:
  * a `TemplateSpec` per template (key, translated name and description, supported section keys, the
  * default accent as an `AccentSwatch`, preview path, order) and `Templates.all` in display order.
+ * When the catalog has `templateFamilies` (DECISIONS #76), each template also carries its `family: TemplateFamily`
+ * and `Templates.inFamily(family)` lists a family's templates; the generated API is unchanged otherwise.
  * The onboarding and Website template pickers read it, so template data is never hard-coded in Kotlin.
  */
 class TemplatesKotlinGenerator(private val defs: SharedDefinitions) {
 
     fun generate(): String {
         val swatches = defs.catalogList("accentSwatches")
+        val families = defs.catalogList(FAMILIES)
         val templates = (defs.templates["templates"] as? JsonArray).orEmpty()
             .map { it as? JsonObject ?: error("templates/index.json: every template must be an object") }
             .sortedBy { it.long("order") ?: Long.MAX_VALUE }
@@ -38,6 +41,10 @@ class TemplatesKotlinGenerator(private val defs: SharedDefinitions) {
             line("/** Preview image path, relative to the repo root (web/templates/<key>/preview.webp). */")
             line("val preview: String,")
             line("val order: Int,")
+            if (families != null) {
+                line("/** The design family (catalog.templateFamilies). */")
+                line("val family: ${families.kotlinName},")
+            }
         }
         w.line(")")
         w.line()
@@ -47,16 +54,21 @@ class TemplatesKotlinGenerator(private val defs: SharedDefinitions) {
             line("const val VERSION: Int = ${defs.templates.long("version") ?: 0}")
             line()
             line("val all: List<TemplateSpec> = listOf(")
-            indent { templates.forEach { writeTemplate(this, it, swatches) } }
+            indent { templates.forEach { writeTemplate(this, it, swatches, families) } }
             line(")")
             line()
             line("fun fromKey(key: String): TemplateSpec? = all.firstOrNull { it.key == key }")
+            if (families != null) {
+                line()
+                line("/** The templates of [family], in display order. */")
+                line("fun inFamily(family: ${families.kotlinName}): List<TemplateSpec> = all.filter { it.family == family }")
+            }
         }
         w.line("}")
         return w.toString()
     }
 
-    private fun writeTemplate(w: CodeWriter, t: JsonObject, swatches: CatalogList?) {
+    private fun writeTemplate(w: CodeWriter, t: JsonObject, swatches: CatalogList?, families: CatalogList?) {
         val key = t.string("key") ?: error("templates/index.json: template without key")
         val accent = t.string("defaultAccent") ?: error("template $key has no defaultAccent")
         require(swatches != null && accent in swatches.keys) { "template $key: defaultAccent \"$accent\" is not an accentSwatches key" }
@@ -70,7 +82,17 @@ class TemplatesKotlinGenerator(private val defs: SharedDefinitions) {
             line("defaultAccent = ${swatches.kotlinName}.${Naming.enumConstant(accent)},")
             line("preview = ${Naming.kotlinString(t.string("preview").orEmpty())},")
             line("order = ${t.long("order") ?: 0},")
+            if (families != null) {
+                val family = t.string("family")
+                require(family != null && family in families.keys) { "template $key: family \"$family\" is not a templateFamilies key" }
+                line("family = ${families.kotlinName}.${Naming.enumConstant(family)},")
+            }
         }
         w.line("),")
+    }
+
+    companion object {
+        /** Catalog list labelling the template families (DECISIONS #76). */
+        const val FAMILIES = "templateFamilies"
     }
 }

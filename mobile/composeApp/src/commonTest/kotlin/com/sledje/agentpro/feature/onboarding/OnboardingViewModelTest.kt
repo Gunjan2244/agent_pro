@@ -10,7 +10,9 @@ import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.ValidationError
+import com.sledje.agentpro.feature.onboarding.ui.LaunchStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingStep
+import com.sledje.agentpro.feature.onboarding.ui.SiteLaunch
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.MOBILE
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.NAME
@@ -18,9 +20,12 @@ import com.sledje.agentpro.feature.onboarding.ui.SlugStatus
 import com.sledje.agentpro.feature.onboarding.ui.SlugSuggestion
 import com.sledje.agentpro.feature.website.data.PublishError
 import com.sledje.agentpro.feature.website.data.PublishOutcome
+import com.sledje.agentpro.feature.website.data.StarterContent
 import com.sledje.agentpro.testing.FakeProfileRepository
+import com.sledje.agentpro.testing.TEST_USER
 import com.sledje.agentpro.testing.FakeSiteRepository
 import com.sledje.agentpro.testing.testProfile
+import com.sledje.agentpro.testing.testSite
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -29,6 +34,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.AfterTest
@@ -131,6 +137,40 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun theSiteIsCreatedWithSeededContentForTheChosenTemplateInTheAppLanguage() = runTest {
+        profiles.profile.value = testProfile()
+        val vm = vm()
+        runCurrent()
+        vm.setLocale("hi")
+        vm.setLocale("zz")
+        vm.selectTemplate("spotlight")
+        vm.onSlugChange("ramesh-k")
+        advanceTimeBy(OnboardingViewModel.SLUG_DEBOUNCE_MILLIS + 1)
+        vm.later()
+        runCurrent()
+        val created = sites.created.single()
+        assertEquals("hi", created.locale)
+        assertEquals(vm.starterContent(Templates.fromKey("spotlight")!!), created.draftContent, "the preview is what gets created")
+        assertEquals(TEST_USER, testProfile().id)
+        val spotlight = Templates.fromKey("spotlight")!!
+        assertEquals(StarterContent.from(testProfile(), spotlight, "hi", TEST_USER), created.draftContent)
+        assertTrue(created.draftContent["about"]!!.jsonObject["bio"]!!.jsonPrimitive.content.isNotBlank())
+        assertEquals("offers", created.draftContent["sectionOrder"]!!.jsonArray[1].jsonPrimitive.content)
+        assertFalse("offers" in created.draftContent["hidden"]!!.jsonArray.map { it.jsonPrimitive.content })
+    }
+
+    @Test
+    fun theStarterPreviewDiffersPerFamily() = runTest {
+        profiles.profile.value = testProfile()
+        val vm = vm()
+        runCurrent()
+        val personal = vm.starterContent(Templates.fromKey("classic")!!)!!
+        val offers = vm.starterContent(Templates.fromKey("guide")!!)!!
+        assertTrue(personal["hidden"] != offers["hidden"])
+        assertTrue(personal["sectionOrder"] != offers["sectionOrder"])
+    }
+
+    @Test
     fun slugIsValidatedLocallyThenCheckedAfterThePause() = runTest {
         val vm = vm()
         vm.onSlugChange("Ab")
@@ -154,7 +194,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun publishNowCreatesTheSitePublishesAndFinishes() = runTest {
+    fun publishNowCreatesTheSitePublishesAndStartsTheLaunchScreens() = runTest {
         profiles.profile.value = testProfile()
         val vm = vm()
         runCurrent()
@@ -167,12 +207,51 @@ class OnboardingViewModelTest {
         assertEquals("ramesh-k", created.slug)
         assertEquals("modern", created.templateKey)
         assertEquals(Templates.fromKey("modern")!!.defaultAccent.key, created.accent)
-        assertEquals("Ramesh Kumar", created.draftContent["hero"]!!.jsonObject["headline"]!!.jsonPrimitive.content)
+        assertTrue("Ramesh Kumar" in created.draftContent["hero"]!!.jsonObject["headline"]!!.jsonPrimitive.content, "a greeting with the name")
+        assertEquals("en", created.locale)
         assertEquals("+919876543210", created.draftContent["contact"]!!.jsonObject["phone"]!!.jsonPrimitive.content)
         assertEquals(1, sites.publishCalls)
+        assertEquals(SiteLaunch("ramesh-k", LaunchStep.AddToPhone), vm.state.value.launch)
+        assertFalse(vm.state.value.finished, "Add to phone, Preview and Share come before Home")
+        assertTrue(session.active.value)
+        assertEquals(null, events.message.value)
+    }
+
+    @Test
+    fun theLaunchScreensGoAddToPhonePreviewShareThenHome() = runTest {
+        profiles.profile.value = testProfile()
+        val vm = vm()
+        vm.onSlugChange("ramesh-k")
+        advanceTimeBy(OnboardingViewModel.SLUG_DEBOUNCE_MILLIS + 1)
+        vm.publishNow()
+        runCurrent()
+        vm.launchBack()
+        assertEquals(LaunchStep.AddToPhone, vm.state.value.launch?.step, "no screen before the first")
+        vm.launchNext()
+        assertEquals(LaunchStep.Preview, vm.state.value.launch?.step)
+        vm.launchNext()
+        assertEquals(LaunchStep.Share, vm.state.value.launch?.step)
+        vm.launchBack()
+        assertEquals(LaunchStep.Preview, vm.state.value.launch?.step)
+        vm.launchNext()
+        assertTrue(session.active.value)
+        vm.finishLaunch()
         assertTrue(vm.state.value.finished)
         assertFalse(session.active.value, "the gate may now open Main")
         assertEquals(AppMessage.TrialStarted(Pricing.Service.trialDays), events.message.value)
+    }
+
+    @Test
+    fun skippingThroughTheLastScreenAlsoGoesHome() = runTest {
+        profiles.profile.value = testProfile()
+        val vm = vm()
+        vm.onSlugChange("ramesh-k")
+        advanceTimeBy(OnboardingViewModel.SLUG_DEBOUNCE_MILLIS + 1)
+        vm.publishNow()
+        runCurrent()
+        repeat(LaunchStep.entries.size) { vm.launchNext() }
+        assertTrue(vm.state.value.finished)
+        assertFalse(session.active.value)
     }
 
     @Test
@@ -186,7 +265,9 @@ class OnboardingViewModelTest {
         runCurrent()
         assertEquals(1, sites.created.size)
         assertEquals(0, sites.publishCalls)
-        assertTrue(vm.state.value.finished)
+        assertTrue(vm.state.value.finished, "a draft isn't live: nothing to add or share, straight to Home")
+        assertEquals(null, vm.state.value.launch)
+        assertFalse(session.active.value)
     }
 
     @Test
@@ -221,7 +302,7 @@ class OnboardingViewModelTest {
         runCurrent()
         assertEquals(1, sites.created.size, "the site isn't created twice")
         assertEquals(2, sites.publishCalls)
-        assertTrue(vm.state.value.finished)
+        assertEquals(LaunchStep.AddToPhone, vm.state.value.launch?.step)
     }
 
     @Test
@@ -244,5 +325,51 @@ class OnboardingViewModelTest {
         assertEquals(30, SlugSuggestion.fromName("a".repeat(40)).length)
         assertEquals("abcdefghij-abcdefghij-abcdefgh", SlugSuggestion.fromName("abcdefghij abcdefghij abcdefgh-ij"))
         assertEquals(null, SlugSuggestion.fromName(null).ifEmpty { null })
+    }
+
+    @Test
+    fun anExistingSiteClosesOnboardingWithoutANewLink() = runTest {
+        profiles.profile.value = testProfile()
+        val vm = vm()
+        runCurrent()
+        assertFalse(vm.state.value.finished)
+        // The agent's site syncs in while onboarding is open (e.g. after an app update emptied the cache).
+        sites.site.value = testSite("gunjan23")
+        runCurrent()
+        assertTrue(vm.state.value.finished)
+        assertFalse(session.active.value, "the gate opens Main")
+        assertTrue(sites.created.isEmpty(), "no new site, so the link stays as it is")
+        assertEquals(null, events.message.value, "no trial message for an agent who already set up")
+    }
+
+    @Test
+    fun profileStepChecksTheServerForASiteBeforeTheSiteSteps() = runTest {
+        // The profile was incomplete, so onboarding opened; the agent already has a site on the server.
+        sites.serverSite = testSite("gunjan23")
+        val vm = vm()
+        runCurrent()
+        vm.profileForm.set(NAME, "Gunjan")
+        vm.profileForm.set(MOBILE, "98765 43210")
+        vm.saveProfile()
+        runCurrent()
+        assertEquals(1, sites.fetches)
+        assertTrue(vm.state.value.finished, "straight to Main with the existing site")
+        assertEquals(null, vm.state.value.navigateTo, "no Pick a design, no Your link")
+        assertFalse(session.active.value)
+        assertTrue(sites.created.isEmpty())
+    }
+
+    @Test
+    fun profileStepStaysPutWhenTheServerCantBeAsked() = runTest {
+        sites.fetchError = AppError.Offline
+        val vm = vm()
+        runCurrent()
+        vm.profileForm.set(NAME, "Gunjan")
+        vm.profileForm.set(MOBILE, "98765 43210")
+        vm.saveProfile()
+        runCurrent()
+        assertEquals(AppError.Offline, vm.state.value.error)
+        assertEquals(null, vm.state.value.navigateTo, "never on to the site steps without knowing")
+        assertFalse(vm.state.value.saving)
     }
 }

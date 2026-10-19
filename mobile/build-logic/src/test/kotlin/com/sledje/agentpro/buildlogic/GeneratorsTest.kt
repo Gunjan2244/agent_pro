@@ -176,7 +176,7 @@ class GeneratorsTest {
 
     @Test fun `every documented field type is mapped`() {
         val documented = listOf("text", "multiline", "number", "phone", "email", "url", "image", "select",
-            "multiSelect", "toggle", "swatch", "date", "list")
+            "multiSelect", "toggle", "swatch", "date", "list", "offerRef", "offerList")
         assertEquals(documented.toSet(), SiteSchemaKotlinGenerator.FIELD_TYPES.keys)
     }
 

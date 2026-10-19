@@ -46,7 +46,7 @@ class SharedDefinitionsPlugin : Plugin<Project> {
 
         val generateCode = tasks.register("generateSharedCode", GenerateSharedCodeTask::class.java) {
             sharedDir.set(paths.shared)
-            sharedFiles.from(SharedDefinitions.FILES.map { paths.shared.file(it) })
+            sharedFiles.from((SharedDefinitions.FILES + SharedDefinitions.OPTIONAL_FILES).map { paths.shared.file(it) })
             localProperties.from(paths.mobile.file("local.properties"))
             handWrittenResourcesDir.set(srcResources)
             handWrittenResources.from(srcResources)
@@ -81,7 +81,7 @@ class SharedDefinitionsPlugin : Plugin<Project> {
             lockFile.set(paths.keysLock)
             displayRoot.set(paths.repo)
             kotlinSourceRoots.from(sourceRoots)
-            inputFiles.from(SharedDefinitions.FILES.map { paths.shared.file(it) })
+            inputFiles.from((SharedDefinitions.FILES + SharedDefinitions.OPTIONAL_FILES).map { paths.shared.file(it) })
             inputFiles.from(sourceRoots, paths.migrations, paths.keysLock, paths.shared.file(PrivacyNotices.WEB_JSON))
             reportFile.set(genRoot.map { it.file("verifyShared/report.txt") })
             mustRunAfter(writeCatalogSync, updateLock, writePrivacyNotices)

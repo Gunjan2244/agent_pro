@@ -1,5 +1,6 @@
 package com.sledje.agentpro.app
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,7 +17,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -24,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.filterNotNull
+import com.sledje.agentpro.core.designsystem.Motion
 import com.sledje.agentpro.core.designsystem.components.AppNavigationBar
 import com.sledje.agentpro.core.designsystem.components.AppSnackbarHost
 import com.sledje.agentpro.core.designsystem.components.NavBarItem
@@ -67,7 +71,7 @@ fun MainShell(deps: AppDependencies) {
     }
 
     val entry by nav.currentBackStackEntryAsState()
-    val selected = tabs.firstOrNull { tab -> entry?.destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
+    val selected = entry?.destination?.tab(tabs)
 
     Scaffold(
         bottomBar = {
@@ -83,10 +87,16 @@ fun MainShell(deps: AppDependencies) {
         snackbarHost = { AppSnackbarHost(snackbar) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
+        // Fade-through between tabs, shared-axis X into and out of a tab (docs/DESIGN_SYSTEM.md, Motion).
+        // The pop transitions also drive the predictive back gesture.
         NavHost(
             navController = nav,
             startDestination = tabs.first().route,
             modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            enterTransition = { if (isTabSwitch(tabs)) Motion.fadeThroughEnter() else Motion.sharedAxisXEnter(forward = true) },
+            exitTransition = { if (isTabSwitch(tabs)) Motion.fadeThroughExit() else Motion.sharedAxisXExit(forward = true) },
+            popEnterTransition = { if (isTabSwitch(tabs)) Motion.fadeThroughEnter() else Motion.sharedAxisXEnter(forward = false) },
+            popExitTransition = { if (isTabSwitch(tabs)) Motion.fadeThroughExit() else Motion.sharedAxisXExit(forward = false) },
         ) {
             features.forEach { feature -> with(feature) { routes(host) } }
         }
@@ -102,6 +112,16 @@ private class ShellHost(
         features.flatMap { it.segments }.filter { it.tabKey == tabKey }.sortedBy { it.order }
 
     override fun openSettings() = nav.navigate(SettingsRoute)
+}
+
+private fun NavDestination.tab(tabs: List<BottomNavItem>): BottomNavItem? =
+    tabs.firstOrNull { tab -> hierarchy.any { it.hasRoute(tab.route::class) } }
+
+/** True when moving between two different tabs' screens (the bottom bar), not into or out of a tab. */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(tabs: List<BottomNavItem>): Boolean {
+    val from = initialState.destination.tab(tabs) ?: return false
+    val to = targetState.destination.tab(tabs) ?: return false
+    return from != to
 }
 
 private fun NavController.openTab(tab: BottomNavItem) = navigate(tab.route) {

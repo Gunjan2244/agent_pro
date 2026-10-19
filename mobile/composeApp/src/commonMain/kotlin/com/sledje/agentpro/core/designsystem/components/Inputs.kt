@@ -519,8 +519,9 @@ fun ImagePickerSlot(
     error: String? = null,
     enabled: Boolean = true,
     preview: (@Composable () -> Unit)? = null,
+    helper: String? = null,
 ) {
-    FieldFrame(label, modifier, error) {
+    FieldFrame(label, modifier, error, helper) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier

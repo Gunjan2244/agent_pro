@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "localized": [
+    {
+      "key": "title",
+      "type": "text",
+      "required": true,
+      "maxLength": 60,
+      "labelKey": "offer_field.title"
+    },
+    {
+      "key": "summary",
+      "type": "multiline",
+      "required": true,
+      "maxLength": 160,
+      "labelKey": "offer_field.summary"
+    },
+    {
+      "key": "details",
+      "type": "multiline",
+      "maxLength": 600,
+      "labelKey": "offer_field.details"
+    },
+    {
+      "key": "badge",
+      "type": "text",
+      "maxLength": 20,
+      "labelKey": "offer_field.badge"
+    },
+    {
+      "key": "disclaimer",
+      "type": "multiline",
+      "maxLength": 300,
+      "labelKey": "offer_field.disclaimer"
+    }
+  ],
+  "fields": [
+    {
+      "key": "internalName",
+      "type": "text",
+      "maxLength": 120,
+      "adminOnly": true,
+      "labelKey": "offer_field.internal_name"
+    },
+    {
+      "key": "image",
+      "type": "image",
+      "aspect": "16:9",
+      "labelKey": "offer_field.image"
+    },
+    {
+      "key": "ctaKind",
+      "type": "select",
+      "required": true,
+      "optionsFrom": "catalog.offerCtaKinds",
+      "labelKey": "offer_field.cta_kind"
+    },
+    {
+      "key": "ctaUrl",
+      "type": "url",
+      "requiredIf": {
+        "ctaKind": "link"
+      },
+      "labelKey": "offer_field.cta_url"
+    },
+    {
+      "key": "interest",
+      "type": "select",
+      "optionsFrom": "catalog.interests",
+      "labelKey": "offer_field.interest"
+    },
+    {
+      "key": "startsAt",
+      "type": "date",
+      "required": true,
+      "labelKey": "offer_field.starts_at"
+    },
+    {
+      "key": "endsAt",
+      "type": "date",
+      "required": true,
+      "labelKey": "offer_field.ends_at"
+    }
+  ]
+}

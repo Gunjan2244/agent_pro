@@ -36,6 +36,8 @@ data class NewSite(
     val templateKey: String,
     val accent: String?,
     val draftContent: JsonObject,
+    /** The site's language (the app's language at creation); null leaves the column unset (the default language). */
+    val locale: String? = null,
 )
 
 /** One `publish_site()` validation error: `{section, field, item, rule}` (docs/BACKEND.md, Publish validation). */

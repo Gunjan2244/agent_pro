@@ -14,7 +14,7 @@ export function resolveTarget(loc, query, primaryHost) {
 // Links between a site and its privacy page; /a/<slug>[/privacy] on the primary host, ?s=<slug>&page=privacy as the local fallback, /privacy on a custom domain.
 export function siteLinks(target, loc = globalThis.location) {
   if (target.host) return { home: "/", privacy: "/privacy" };
-  if (loc.pathname.startsWith("/a/")) { const b = "/a/" + encodeURIComponent(target.slug); return { home: b, privacy: b + "/privacy" }; }
+  if (loc.pathname.startsWith("/a/")) { const b = "/a/" + encodeURIComponent(target.slug); return { home: b + "/", privacy: b + "/privacy" }; }
   const u = new URLSearchParams(loc.search); u.set("s", target.slug); u.delete("page");
   const home = "?" + u; u.set("page", "privacy");
   return { home, privacy: "?" + u };

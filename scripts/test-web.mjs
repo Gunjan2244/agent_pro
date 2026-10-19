@@ -1,5 +1,5 @@
 // Node checks for the pure renderer (no browser, no backend). Run: node scripts/test-web.mjs
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync, existsSync } from "node:fs";
 import assert from "node:assert/strict";
 import { makeT } from "../web/i18n.js";
 import { visibleKeys } from "../web/sections/index.js";
@@ -11,20 +11,23 @@ import { esc } from "../web/sections/util.js";
 const R = (p) => JSON.parse(readFileSync(new URL("../" + p, import.meta.url)));
 const schema = R("shared/site-schema.json"), catalog = R("shared/catalog.json");
 const LOCALE_KEYS = catalog.locales.map((l) => l.key);
-const TEMPLATE_KEYS = R("shared/templates/index.json").templates.map((x) => x.key);
+const REGISTRY = R("shared/templates/index.json");
+const TEMPLATE_KEYS = REGISTRY.templates.map((x) => x.key);
+const FAMILY = Object.fromEntries(REGISTRY.templates.map((x) => [x.key, x.family]));
 const dicts = Object.fromEntries(LOCALE_KEYS.map((k) => [k, R(`shared/i18n/${k}.json`)]));
 const fx = (n) => normalizeSite(R(`web/dev-fixtures/${n}.json`));
 const KEYS = schema.sections.map((s) => s.key);
 let n = 0;
 const ok = (name, fn) => { fn(); n++; console.log("PASS", name); };
-const tokensFor = (s) => ({ accent: catalog.accentSwatches.find((x) => x.key === s.accent).hex, schema, catalog });
+// tpl: the template being rendered (its family comes from the registry, as in ssr.js / client.js)
+const tokensFor = (s, tpl = s.template_key) => ({ accent: catalog.accentSwatches.find((x) => x.key === s.accent).hex, schema, catalog, family: FAMILY[tpl] || "personal" });
 
 for (const tpl of TEMPLATE_KEYS) {
   const { render } = await import(`../web/templates/${tpl}/render.js`);
   for (const loc of LOCALE_KEYS) {
-    ok(`${tpl}/${loc}: all 8 sections + footer`, () => {
+    ok(`${tpl}/${loc}: all ${KEYS.length} sections + footer`, () => {
       const site = fx("sample-" + loc);
-      const html = render(site, makeT(dicts[loc]), tokensFor(site));
+      const html = render(site, makeT(dicts[loc]), tokensFor(site, tpl));
       for (const k of KEYS) assert.ok(html.includes(`id="${k}"`), "missing section " + k);
       assert.ok(html.includes("Made with Agent PRO") || loc === "hi");
       assert.ok(html.includes(dicts[loc]["site.footer_made_with"]));
@@ -37,14 +40,14 @@ for (const tpl of TEMPLATE_KEYS) {
   }
   ok(`${tpl}: hidden + sectionOrder respected`, () => {
     const site = fx("sample-empty");
-    const html = render(site, makeT(dicts.en), tokensFor(site));
+    const html = render(site, makeT(dicts.en), tokensFor(site, tpl));
     const ids = [...html.matchAll(/<(?:section|header)[^>]*id="([a-z]+)"/g)].map((m) => m[1]);
     assert.deepEqual(ids, ["contact", "hero"]); // sectionOrder honoured, about/services/faq hidden
     assert.ok(!ids.includes("about") && !ids.includes("faq") && !ids.includes("services"));
   });
   ok(`${tpl}: XSS payloads escaped`, () => {
     const site = fx("sample-xss");
-    const html = render(site, makeT(dicts.en), tokensFor(site));
+    const html = render(site, makeT(dicts.en), tokensFor(site, tpl));
     assert.ok(!/<script/i.test(html), "raw <script>");
     assert.ok(!/<img[^>]*onerror/i.test(html) && !/<b onmouseover/.test(html));
     assert.ok(!html.includes("javascript:"), "javascript: URL");
@@ -78,8 +81,8 @@ ok("head: title/OG/JSON-LD, canonical, script-safe", () => {
   const h = headData(fx("sample-en"), { origin: "https://x.test", path: "/a/demo" });
   assert.equal(h.title, "Asha Verma — Insurance Advisor, Pune");
   assert.equal(h.canonical, "https://x.test/a/demo");
-  assert.equal(JSON.parse(h.jsonld)["@type"], "InsuranceAgency");
-  assert.equal(JSON.parse(h.jsonld).telephone, "+919876543210");
+  const agency = JSON.parse(h.jsonld)["@graph"].find((x) => x["@type"] === "InsuranceAgency");
+  assert.ok(agency); assert.equal(agency.telephone, "+919876543210");
   assert.equal(headData(fx("sample-en"), { origin: "https://x.test", canonicalHost: "asha.in" }).canonical, "https://asha.in/");
   assert.ok(!headData(fx("sample-xss"), { origin: "https://x.test" }).jsonld.includes("<"));
 });
@@ -137,37 +140,53 @@ import { readdirSync } from "node:fs";
 const dist = new URL("../web/dist/", import.meta.url).pathname;
 try {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(d + e.name + "/") : [d + e.name]));
-  const shared = ["app.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
+  const shared = ["app.js", "client.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
+  // Server-rendered page (DECISIONS #75): first paint needs only CSS; this is the deferred JS that wires behaviour.
+  {
+    const css = ["tokens.css", "styles/base.css", "styles/fonts.css", `templates/${TEMPLATE_KEYS[0]}/style.css`];
+    const hydrateJs = ["app.js", "hydrate.js", "api.js", "i18n.js", "form.js", "sections/util.js"];
+    const size = (fs) => fs.reduce((a, f) => a + readFileSync(dist + f).length, 0), gz = (fs) => fs.reduce((a, f) => a + gzipSync(readFileSync(dist + f)).length, 0);
+    console.log(`SIZE SSR first paint (CSS only, no JS): ${(size(css) / 1024).toFixed(1)} KB raw, ${(gz(css) / 1024).toFixed(1)} KB gzip`);
+    for (const tpl of TEMPLATE_KEYS) {
+      const c = [...css.slice(0, 3), `templates/${tpl}/style.css`];
+      console.log(`SIZE SSR first paint ${tpl}: ${(size(c) / 1024).toFixed(1)} KB raw, ${(gz(c) / 1024).toFixed(1)} KB gzip (template style.css ${(size([c[3]]) / 1024).toFixed(1)} KB)`);
+      assert.ok(size(c) < 20 * 1024, tpl + ": SSR first-paint CSS over 20KB");
+    }
+    console.log(`SIZE SSR hydration JS (deferred): ${(size(hydrateJs) / 1024).toFixed(1)} KB raw, ${(gz(hydrateJs) / 1024).toFixed(1)} KB gzip; + install.js ${(size([...hydrateJs, "install.js"]) / 1024).toFixed(1)} KB raw; + privacy.js on the privacy page ${(size([...hydrateJs, "privacy.js"]) / 1024).toFixed(1)} KB raw`);
+    assert.ok(size(css) < 20 * 1024, "SSR first-paint CSS over 20KB");
+    assert.ok(size([...hydrateJs, "install.js"]) < 30 * 1024, "SSR hydration JS over 30KB");
+  }
   for (const tpl of TEMPLATE_KEYS) {
     const files = [...shared, `templates/${tpl}/render.js`, `templates/${tpl}/style.css`];
     const buf = files.map((f) => readFileSync(dist + f));
     const raw = buf.reduce((a, b) => a + b.length, 0), gz = buf.reduce((a, b) => a + gzipSync(b).length, 0);
     console.log(`SIZE ${tpl}: ${(raw / 1024).toFixed(1)} KB raw, ${(gz / 1024).toFixed(1)} KB gzip`);
-    assert.ok(raw < 50 * 1024, tpl + " over 50KB");
+    // the client render is the preview/fallback path (SSR is the normal one). WP3b (offers, conversational layer, images,
+    // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip), so the cap is 85KB; the SSR path keeps its own caps above.
+    assert.ok(raw < 85 * 1024, tpl + " over 85KB");
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
     const later = [...shared, `templates/${tpl}/render.js`, `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 60 * 1024, tpl + " + install modules over 60KB");
+    assert.ok(later < 92 * 1024, tpl + " + install modules over 92KB");
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
-      assert.ok(sz < 50 * 1024, extra + " page over 50KB");
+      assert.ok(sz < 85 * 1024, extra + " page over 85KB");
     }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);
   }
 } catch (e) { if (e.code === "ENOENT") console.log("SIZE skipped (run build first)"); else throw e; }
 // hosting config (Cloudflare Workers static assets, DECISIONS #59)
-import { existsSync } from "node:fs";
-ok("wrangler.jsonc: SPA static assets; the Worker runs only for the manifest (DECISIONS #65)", () => {
+ok("wrangler.jsonc: SPA static assets; the Worker runs first only for pages, manifest, robots.txt, sitemap.xml (DECISIONS #65, #75)", () => {
   const raw = readFileSync(new URL("../web/wrangler.jsonc", import.meta.url), "utf8");
   const strip = raw.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
   const w = JSON.parse(strip);
   assert.equal(w.name, "agentpro-sites"); assert.equal(w.assets.directory, "./dist");
   assert.equal(w.assets.not_found_handling, "single-page-application");
   assert.equal(w.main, "./worker.js"); assert.equal(w.assets.binding, "ASSETS");
-  assert.deepEqual(w.assets.run_worker_first, ["/manifest.webmanifest"]);
+  assert.deepEqual(w.assets.run_worker_first, ["/", "/a/*", "/privacy", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
   assert.ok(!w.routes && !w.vars, "no routes yet; no keys in the config");
 });
 if (existsSync(dist + "index.html")) ok("dist: _headers present, no vercel.json, no secrets in _headers", () => {
@@ -370,13 +389,14 @@ import { spawnSync } from "node:child_process";
     const L = (host, pathname, search = "") => ({ host, hostname: host.split(":")[0], pathname, search });
     const P = "x.dev", g = (l) => resolveTarget(l, new URLSearchParams(l.search), P);
     assert.deepEqual(g(L(P, "/a/demo")), { slug: "demo", page: undefined });
+    assert.deepEqual(g(L(P, "/a/demo/")), { slug: "demo", page: undefined });
     assert.deepEqual(g(L(P, "/a/demo/privacy")), { slug: "demo", page: "privacy" });
     assert.deepEqual(g(L(P, "/", "?s=demo&page=privacy")), { slug: "demo", page: "privacy" });
     assert.deepEqual(g(L(P, "/privacy")), { platform: "privacy" }); assert.deepEqual(g(L(P, "/terms/")), { platform: "terms" });
     assert.equal(g(L(P, "/")), null);
     assert.deepEqual(g(L("asha.in", "/privacy")), { host: "asha.in", page: "privacy" });
     assert.deepEqual(g(L("asha.in", "/")), { host: "asha.in", page: undefined });
-    assert.deepEqual(siteLinks({ slug: "demo" }, L(P, "/a/demo")), { home: "/a/demo", privacy: "/a/demo/privacy" });
+    assert.deepEqual(siteLinks({ slug: "demo" }, L(P, "/a/demo")), { home: "/a/demo/", privacy: "/a/demo/privacy" });
     assert.deepEqual(siteLinks({ host: "asha.in" }, L("asha.in", "/")), { home: "/", privacy: "/privacy" });
     const loc = siteLinks({ slug: "demo" }, L(P, "/", "?mock=1&s=demo"));
     assert.equal(loc.privacy, "?mock=1&s=demo&page=privacy"); assert.equal(loc.home, "?mock=1&s=demo");
@@ -393,5 +413,7 @@ import { spawnSync } from "node:child_process";
     ok("release gate: preview build only warns and succeeds", () => { const r = sh({}); assert.equal(r.status, 0, r.stderr); assert.ok(r.stderr.includes("preview build; release blockers remain")); });
   } else ok("release gate: no blockers left, RELEASE=1 builds", () => assert.equal(sh({ RELEASE: "1" }).status, 0));
 }
+await import("./test-web-offers.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-install.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-ssr.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 console.log(`\n${n} checks passed`);

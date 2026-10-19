@@ -40,8 +40,9 @@ export async function run({ ok, R, dicts, catalog, fx, makeT, TEMPLATE_KEYS, LOC
   });
   ok("parseConfig reads what build-web.sh writes (quotes and backslashes escaped)", () => {
     const text = 'window.AGENTPRO_CONFIG = {\n  SUPABASE_URL: "https://p.supabase.co",\n  SUPABASE_ANON_KEY: "a\\"b\\\\c",\n  SITE_BASE_URL: "https://x.dev"\n};\n';
-    assert.deepEqual(parseConfig(text), { SUPABASE_URL: "https://p.supabase.co", SUPABASE_ANON_KEY: 'a"b\\c', SITE_BASE_URL: "https://x.dev" });
+    assert.deepEqual(parseConfig(text), { SUPABASE_URL: "https://p.supabase.co", SUPABASE_ANON_KEY: 'a"b\\c', SITE_BASE_URL: "https://x.dev", BUILD_TIME: "" });
     assert.equal(parseConfig("").SUPABASE_URL, "");
+    assert.equal(parseConfig(text.replace("\n};", ',\n  BUILD_TIME: "2026-10-18T10:00:00Z"\n};')).BUILD_TIME, "2026-10-18T10:00:00Z");
   });
 
   // --- Worker ---
@@ -194,15 +195,22 @@ export async function run({ ok, R, dicts, catalog, fx, makeT, TEMPLATE_KEYS, LOC
       for (const l of LOCALE_KEYS) assert.ok(!/\{[a-z]+\}/.test(sheetHtml(makeT(dicts[l]), "X")), l);
     });
   }
-  ok("app.js: ?install=1 skips the view count; manifest link + icons set; /a/<slug> moved into the app scope", () => {
-    const a = readFileSync(new URL("../web/app.js", import.meta.url), "utf8");
-    assert.ok(/if \(q\.get\("install"\) !== "1"\) recordView\(target\)/.test(a));
-    assert.ok(a.includes('link("manifest", manifestHref(target))') && a.includes('link("apple-touch-icon"'));
-    assert.ok(a.includes("history.replaceState"));
+  ok("hydrate.js / client.js: ?install=1 skips the view count; fallback adds manifest link + icons; no history.replaceState (the Worker 301s /a/<slug>)", () => {
+    const h = readFileSync(new URL("../web/hydrate.js", import.meta.url), "utf8"), c = readFileSync(new URL("../web/client.js", import.meta.url), "utf8");
+    assert.ok(/if \(q\.get\("install"\) !== "1"\) api\.recordViewOnce\(target, backend\)/.test(h));
+    assert.ok(/if \(q\.get\("install"\) !== "1"\) recordView\(target\)/.test(c));
+    assert.ok(c.includes('link("manifest", manifestHref(target))') && c.includes('link("apple-touch-icon"'));
+    assert.ok(!h.includes('link("manifest"'), "hydrate must not re-add the head links the Worker already rendered");
+    for (const f of ["app.js", "client.js", "hydrate.js"]) assert.ok(!readFileSync(new URL("../web/" + f, import.meta.url), "utf8").includes("history.replaceState"), f);
   });
   const dist = new URL("../web/dist/", import.meta.url).pathname;
   if (existsSync(dist + "index.html")) ok("dist: icons for every swatch, manifest.js + install.js copied, worker.js not shipped as an asset", () => {
     for (const s of catalog.accentSwatches) for (const n of [192, 512]) assert.ok(existsSync(`${dist}icons/${s.key}-${n}.png`));
-    assert.ok(existsSync(dist + "manifest.js") && existsSync(dist + "install.js")); assert.ok(!existsSync(dist + "worker.js"));
+    assert.ok(existsSync(dist + "manifest.js") && existsSync(dist + "install.js") && existsSync(dist + "hydrate.js") && existsSync(dist + "client.js")); assert.ok(!existsSync(dist + "worker.js") && !existsSync(dist + "ssr.js") && !existsSync(dist + "headers.js"));
+  });
+  if (existsSync(dist + "index.html")) ok("dist: config.js carries an ISO BUILD_TIME (Last-Modified after a deploy); web/images and its manifest are copied", () => {
+    const cfg = parseConfig(readFileSync(dist + "config.js", "utf8"));
+    assert.match(cfg.BUILD_TIME, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/); assert.ok(Math.abs(Date.parse(cfg.BUILD_TIME) - Date.now()) < 86400000 * 365);
+    assert.deepEqual(JSON.parse(readFileSync(dist + "images/manifest.json", "utf8")), R("web/images/manifest.json"));
   });
 }

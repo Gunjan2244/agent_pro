@@ -1,4 +1,5 @@
 # Cloudflare Workers static assets headers (docs/WEB_RENDERER.md). Max 100 rules.
+# The Worker's HTML responses can't use this file: web/headers.js holds the same security headers (test-web-ssr.mjs asserts they match).
 # CSP: fonts are self-hosted (web/fonts/), no third-party font origins. Supabase origin is wildcarded so no project URL is committed.
 /*
   X-Content-Type-Options: nosniff
@@ -18,7 +19,7 @@
   ! Cache-Control
   Cache-Control: no-cache
 
-# The page shell (served for / and every /a/<slug> via the single-page-application fallback)
+# The page shell (served for / and every /a/<slug> via the single-page-application fallback when the Worker can't render)
 /
   ! Cache-Control
   Cache-Control: no-cache

@@ -1,0 +1,24 @@
+/* Spotlight ("Best offers"): greeting + portrait, the featured offer on the pale tint above the fold, then the
+   offer grid. Phones: id, text, featured card, chips, scene (`.hero-side` is display:contents, so `order` applies).
+   Wide screens: a two-column hero, the featured card with the scene under it on the right (same width). */
+.tpl-spotlight .hero-photo{width:72px;height:72px}
+.tpl-spotlight .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-spotlight .hero-in{display:grid}
+.tpl-spotlight .hero-id{order:1}
+.tpl-spotlight .hero-text{order:2;margin-top:var(--space-l)}
+.tpl-spotlight .hero-offer{order:3}
+.tpl-spotlight .hero-more{order:4}
+.tpl-spotlight .scene{order:5}
+.tpl-spotlight h1{font-size:var(--text-l);line-height:var(--line-l)}
+.tpl-spotlight .lead{margin-top:var(--space-s)}
+.tpl-spotlight .hero-more .qr-h{margin-top:var(--space-l)}
+.tpl-spotlight .sec-highlights{padding-top:calc(var(--space-l)*2)}
+@media(min-width:1024px){
+  .tpl-spotlight .hero-in{grid-template-columns:1fr 400px;grid-template-rows:auto auto 1fr;column-gap:calc(var(--space-l)*2);grid-template-areas:"id side" "text side" "more side";align-items:start}
+  .tpl-spotlight .hero-id{grid-area:id}
+  .tpl-spotlight .hero-text{grid-area:text}
+  .tpl-spotlight .hero-more{grid-area:more}
+  .tpl-spotlight .hero-side{grid-area:side;display:grid;gap:var(--space-l)}
+  .tpl-spotlight .hero-offer{margin-top:0}
+  .tpl-spotlight .scene{max-width:none;margin:0}
+}
