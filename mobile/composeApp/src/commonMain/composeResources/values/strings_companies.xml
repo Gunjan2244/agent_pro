@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Your companies: onboarding step 1 and Settings → Profile (DECISIONS #89, docs/UX.md). Every key also exists in values-hi/. -->
+<resources>
+    <string name="company_block_title">Your companies</string>
+    <string name="company_block_hint">Add each insurance company you are an agent for, with the types of insurance you deal in there.</string>
+    <string name="company_required_hint">Add at least one company to continue</string>
+    <string name="company_empty">No company added yet</string>
+    <string name="company_add">Add company</string>
+    <string name="company_edit_types">Edit types</string>
+    <string name="company_cancel_request">Cancel request</string>
+    <string name="company_try_again">Try again</string>
+    <string name="company_request_again">Request again</string>
+    <string name="company_agency_code_line">Agency code %1$s</string>
+    <string name="company_line_pending">Requested %1$s</string>
+    <string name="company_line_rejected">Reason: %1$s</string>
+    <string name="company_picker_title">Choose your company</string>
+    <string name="company_picker_search">Search companies</string>
+    <string name="company_picker_empty">No company matches your search</string>
+    <string name="company_not_listed">My company isn't listed</string>
+    <string name="company_not_listed_hint">Type its name. We will check it and add it.</string>
+    <string name="company_already_added">Already added</string>
+    <string name="company_form_new">Add company</string>
+    <string name="company_form_types">Insurance types</string>
+    <string name="company_name_label">Company name</string>
+    <string name="company_agency_code">Agency code</string>
+    <string name="company_types_label">Insurance types you deal in</string>
+    <string name="company_save">Save</string>
+    <string name="company_remove_title">Remove %1$s?</string>
+    <string name="company_remove_message">Its offers will leave your website. You can add it again later.</string>
+    <string name="company_cancel_title">Cancel your request for %1$s?</string>
+    <string name="company_cancel_message">You can ask again later.</string>
+    <string name="company_error_duplicate">You have already added this company</string>
+    <string name="company_error_types">Choose at least one type of insurance</string>
+    <string name="profile_title">Profile</string>
+    <string name="settings_profile_supporting">Your companies</string>
+</resources>

@@ -154,6 +154,11 @@ class RootViewModel(private val deps: AppDependencies) : ViewModel() {
         }
     }
 
+    /** A reset code was accepted and its session started: Set new password opens above the gate. */
+    fun onRecoveryCodeVerified() {
+        _recovery.value = RecoveryStep.SetPassword
+    }
+
     /** Leaves the reset flow (Back, or Back to sign in). */
     fun closeRecovery() {
         _recovery.value = null

@@ -10,7 +10,7 @@ import java.util.Locale
 
 /**
  * One field's value form in `shared/site-seed.json` (docs/SHARED_DEFINITIONS.md, site-seed.json). Exactly one of
- * `variants`, `fromProfile`, `value`, `byLocale` or `items` per field.
+ * `variants`, `fromProfile`, `value`, `byLocale`, `items`, `byMix` or `fromInsuranceTypes` per field.
  */
 sealed interface SeedForm {
     /** Text: i18n keys, one picked per site; [Variant.fallback] replaces a text whose optional placeholder is blank. */
@@ -21,6 +21,10 @@ sealed interface SeedForm {
     data class ByLocale(val values: Map<String, JsonElement>) : SeedForm
     /** A list field: one map of item field -> form per item. */
     data class Items(val items: List<Map<String, SeedForm>>) : SeedForm
+    /** One form per copy mix (`insuranceTypes.mixes`, DECISIONS #93); a mix's form is any form but `byMix`. */
+    data class ByMix(val values: Map<String, SeedForm>) : SeedForm
+    /** Derived from the agent's insurance types: [SiteSeedJson.INTEREST_KEYS] or [SiteSeedJson.SERVICE_ITEMS]. */
+    data class FromInsuranceTypes(val kind: String) : SeedForm
     data class Invalid(val reason: String) : SeedForm
 
     data class Variant(val key: String, val fallback: String?)
@@ -28,12 +32,21 @@ sealed interface SeedForm {
 
 /** Reading `shared/site-seed.json`. Shared by [SiteSeedKotlinGenerator] and the verifier. */
 object SiteSeedJson {
-    val FORMS = listOf("variants", "fromProfile", "value", "byLocale", "items")
+    val FORMS = listOf("variants", "fromProfile", "value", "byLocale", "items", "byMix", "fromInsuranceTypes")
+
+    /** `fromInsuranceTypes` kinds: a multiSelect of interest keys, or the services list (`{interest, description}` items). */
+    const val INTEREST_KEYS = "interestKeys"
+    const val SERVICE_ITEMS = "serviceItems"
+    val FROM_TYPES_KINDS = listOf(INTEREST_KEYS, SERVICE_ITEMS)
+
+    /** The item fields a [SERVICE_ITEMS] list fills. */
+    const val ITEM_INTEREST = "interest"
+    const val ITEM_DESCRIPTION = "description"
 
     /** Profile values a seed may read (`fromProfile`, `placeholders`): the app's Profile, plus the derived first name. */
     val PROFILE_FIELDS = listOf("fullName", "firstName", "phone", "email", "designation", "city")
 
-    fun form(element: JsonElement, allowItems: Boolean = true): SeedForm {
+    fun form(element: JsonElement, allowItems: Boolean = true, allowMix: Boolean = true): SeedForm {
         val obj = element as? JsonObject ?: return SeedForm.Invalid("must be an object with one of ${FORMS.joinToString()}")
         val present = FORMS.filter { obj.containsKey(it) }
         val extra = obj.keys - FORMS.toSet()
@@ -59,12 +72,20 @@ object SiteSeedJson {
             "value" -> obj["value"]!!.let { if (it is JsonNull) SeedForm.Invalid("\"value\" can't be null") else SeedForm.Literal(it) }
             "byLocale" -> (obj["byLocale"] as? JsonObject)?.takeIf { it.isNotEmpty() }?.let { SeedForm.ByLocale(it) }
                 ?: SeedForm.Invalid("\"byLocale\" must be a non-empty object of locale -> value")
+            "byMix" -> {
+                if (!allowMix) return SeedForm.Invalid("\"byMix\" can't be nested")
+                val mixes = (obj["byMix"] as? JsonObject)?.takeIf { it.isNotEmpty() }
+                    ?: return SeedForm.Invalid("\"byMix\" must be a non-empty object of mix -> form")
+                SeedForm.ByMix(mixes.mapValues { (_, f) -> form(f, allowItems, allowMix = false) })
+            }
+            "fromInsuranceTypes" -> obj.string("fromInsuranceTypes")?.takeIf { it in FROM_TYPES_KINDS }?.let { SeedForm.FromInsuranceTypes(it) }
+                ?: SeedForm.Invalid("\"fromInsuranceTypes\" must be one of ${FROM_TYPES_KINDS.joinToString()}")
             else -> {
                 if (!allowItems) return SeedForm.Invalid("\"items\" can't be nested inside a list item")
                 val items = obj["items"] as? JsonArray ?: return SeedForm.Invalid("\"items\" must be an array of objects")
                 SeedForm.Items(items.map { item ->
                     val o = item as? JsonObject ?: return SeedForm.Invalid("\"items\" must be an array of objects")
-                    o.mapValues { (_, v) -> form(v, allowItems = false) }
+                    o.mapValues { (_, v) -> form(v, allowItems = false, allowMix = false) }
                 })
             }
         }
@@ -93,12 +114,37 @@ object SiteSeedJson {
             when (f) {
                 is SeedForm.Variants -> f.variants.forEach { keys += it.key; it.fallback?.let { fb -> keys += fb } }
                 is SeedForm.Items -> f.items.forEach { item -> item.values.forEach(::walk) }
+                is SeedForm.ByMix -> f.values.values.forEach(::walk)
                 else -> {}
             }
         }
         sections(seed).values.forEach { fields -> fields.values.forEach { walk(form(it)) } }
+        serviceDescriptions(seed).values.forEach(::walk)
         return keys.toList()
     }
+
+    // ---- `insuranceTypes` (DECISIONS #93) ----------------------------------------------------------------------
+
+    fun insuranceTypes(seed: JsonObject): JsonObject? = seed.obj("insuranceTypes")
+
+    /** Insurance type key -> the interests a new site offers for it, in order. */
+    fun seedInterests(seed: JsonObject): Map<String, List<String>> =
+        insuranceTypes(seed)?.obj("seedInterests").orEmpty().mapValues { (_, v) -> (v as? JsonArray).orEmpty().mapNotNull { it.primitiveString() } }
+
+    /** Interest key -> its service description form (variants). */
+    fun serviceDescriptions(seed: JsonObject): Map<String, SeedForm> =
+        insuranceTypes(seed)?.obj("serviceDescriptions").orEmpty().mapValues { (_, v) -> form(v, allowItems = false, allowMix = false) }
+
+    /** The types assumed for an agent who has declared none. */
+    fun whenNone(seed: JsonObject): List<String> = insuranceTypes(seed)?.array("whenNone").orEmpty().mapNotNull { it.primitiveString() }
+
+    /** Copy mixes in order: key and `onlyTypes` (null = matches any set of types). */
+    fun mixes(seed: JsonObject): List<Pair<String, List<String>?>> =
+        insuranceTypes(seed)?.array("mixes").orEmpty().mapNotNull { m ->
+            val o = m as? JsonObject ?: return@mapNotNull null
+            val key = o.string("key") ?: return@mapNotNull null
+            key to o.array("onlyTypes")?.mapNotNull { it.primitiveString() }
+        }
 
     val PLACEHOLDER = Regex("\\{([A-Za-z0-9_]+)\\}")
 
@@ -222,16 +268,22 @@ class SiteSeedKotlinGenerator(private val defs: SharedDefinitions) {
             }
             line(")")
             line()
+            writeInsuranceTypes(this, seed)
+            line()
             raw(HELPERS.lines().joinToString("\n", postfix = "\n") { if (it.isBlank()) "" else "    $it" })
         }
         w.line("}")
         return w.toString()
     }
 
-    private fun writeEntry(w: CodeWriter, field: String, form: SeedForm, where: String) {
+    private fun writeEntry(w: CodeWriter, field: String, form: SeedForm, where: String) =
+        writeValue(w, "${Naming.kotlinString(field)} to ", form, where)
+
+    /** One value as `<prefix><expression>,`, over several lines for list items and mixes. */
+    private fun writeValue(w: CodeWriter, prefix: String, form: SeedForm, where: String) {
         when (form) {
             is SeedForm.Items -> {
-                w.line("${Naming.kotlinString(field)} to SeedValue.Items(listOf(")
+                w.line("${prefix}SeedValue.Items(listOf(")
                 w.indent {
                     form.items.forEachIndexed { i, item ->
                         line("mapOf(")
@@ -241,8 +293,42 @@ class SiteSeedKotlinGenerator(private val defs: SharedDefinitions) {
                 }
                 w.line(")),")
             }
-            else -> w.line("${Naming.kotlinString(field)} to ${valueExpr(form, where)},")
+            is SeedForm.ByMix -> {
+                w.line("${prefix}SeedValue.ByMix(mapOf(")
+                w.indent { form.values.forEach { (mix, f) -> writeValue(this, "${Naming.kotlinString(mix)} to ", f, "$where.$mix") } }
+                w.line(")),")
+            }
+            else -> w.line("$prefix${valueExpr(form, where)},")
         }
+    }
+
+    /** `insuranceTypes` (DECISIONS #93): the type order, the default, the interests per type, descriptions and mixes. */
+    private fun writeInsuranceTypes(w: CodeWriter, seed: JsonObject) {
+        val types = defs.catalogList("insuranceTypes")?.entries.orEmpty().filterNot { it.bool("deprecated") == true }
+            .sortedBy { it.long("order") ?: 0 }.mapNotNull { it.string("key") }
+        fun list(values: List<String>) = "listOf(${values.joinToString { Naming.kotlinString(it) }})"
+        w.line("/** Active `catalog.insuranceTypes` keys in display order. */")
+        w.line("val INSURANCE_TYPES: List<String> = ${list(types)}")
+        w.line("/** The types assumed for an agent who has declared none (`insuranceTypes.whenNone`). */")
+        w.line("val WHEN_NONE: List<String> = ${list(SiteSeedJson.whenNone(seed))}")
+        w.line("/** Insurance type -> the interests a new site offers for it, in order (`insuranceTypes.seedInterests`). */")
+        w.line("val seedInterests: Map<String, List<String>> = mapOf(")
+        w.indent { SiteSeedJson.seedInterests(seed).forEach { (t, l) -> line("${Naming.kotlinString(t)} to ${list(l)},") } }
+        w.line(")")
+        w.line("/** Interest -> the description a seeded service item gets (`insuranceTypes.serviceDescriptions`). */")
+        w.line("val serviceDescriptions: Map<String, SeedValue.Variants> = mapOf(")
+        w.indent {
+            SiteSeedJson.serviceDescriptions(seed).forEach { (k, f) ->
+                line("${Naming.kotlinString(k)} to ${valueExpr(f, "insuranceTypes.serviceDescriptions.$k")},")
+            }
+        }
+        w.line(")")
+        w.line("/** The copy mixes, in order; the first whose [SeedMix.onlyTypes] holds every type of the agent applies. */")
+        w.line("val mixes: List<SeedMix> = listOf(")
+        w.indent {
+            SiteSeedJson.mixes(seed).forEach { (k, only) -> line("SeedMix(${Naming.kotlinString(k)}, ${only?.let { list(it) } ?: "null"}),") }
+        }
+        w.line(")")
     }
 
     private fun valueExpr(form: SeedForm, where: String): String = when (form) {
@@ -254,7 +340,8 @@ class SiteSeedKotlinGenerator(private val defs: SharedDefinitions) {
         is SeedForm.Literal -> "SeedValue.Literal(${json(form.value)})"
         is SeedForm.ByLocale -> "SeedValue.ByLocale(mapOf(" +
             form.values.entries.joinToString { (l, v) -> "${Naming.kotlinString(l)} to ${json(v)}" } + "))"
-        is SeedForm.Items -> error("site-seed $where: nested items")
+        is SeedForm.FromInsuranceTypes -> "SeedValue.FromInsuranceTypes(${Naming.kotlinString(form.kind)})"
+        is SeedForm.Items, is SeedForm.ByMix -> error("site-seed $where: written by writeValue")
         is SeedForm.Invalid -> error("site-seed $where: ${form.reason}")
     }
 
@@ -302,7 +389,26 @@ class SiteSeedKotlinGenerator(private val defs: SharedDefinitions) {
             |    }
             |    /** A list field: one map of item field -> value per item, in order. */
             |    data class Items(val items: List<Map<String, SeedValue>>) : SeedValue
+            |    /** One value per copy mix ([SiteSeed.mixFor]); a mix without a value leaves the field out. */
+            |    data class ByMix(val values: Map<String, SeedValue>) : SeedValue {
+            |        fun value(mix: String): SeedValue? = values[mix]
+            |    }
+            |    /**
+            |     * Derived from the agent's insurance types ([SiteSeed.servicesFor]): [kind] `interestKeys` is the offered
+            |     * interest keys (a multiSelect), `serviceItems` the services list (`{interest, description}` items).
+            |     */
+            |    data class FromInsuranceTypes(val kind: String) : SeedValue
             |}
+            |
+            |/** A copy mix (DECISIONS #93): it applies when every type of the agent is in [onlyTypes]; null matches any types. */
+            |data class SeedMix(val key: String, val onlyTypes: List<String>?)
+            |
+            |/**
+            | * The services seeded for a set of insurance types ([SiteSeed.servicesFor]): [offered] in round-robin order across
+            | * the types (so the first few, e.g. the hero's quick links, cover every type), [items] the same interests grouped
+            | * by type in catalog order.
+            | */
+            |data class SeedServices(val offered: List<String>, val items: List<String>)
             |
             |/** The seeded fields of one site-schema section. */
             |data class SeedSection(val key: String, val fields: Map<String, SeedValue>)
@@ -363,6 +469,36 @@ class SiteSeedKotlinGenerator(private val defs: SharedDefinitions) {
             |/** Picks a variant of [value] with [pick] and fills it with [fill]. */
             |fun resolve(value: SeedValue.Variants, seed: String, salt: String, locale: String, values: Map<String, String>): String? =
             |    fill(value.variants[pick(seed, salt, value.variants.size)], locale, values)
+            |
+            |/** [types] reduced to active insurance types in catalog order; [WHEN_NONE] when none is left. */
+            |fun typesOrDefault(types: Collection<String>): List<String> = INSURANCE_TYPES.filter { it in types }.ifEmpty { WHEN_NONE }
+            |
+            |/** The copy mix for [types] (after [typesOrDefault]): the first of [mixes] whose `onlyTypes` holds them all. */
+            |fun mixFor(types: Collection<String>): String {
+            |    val t = typesOrDefault(types)
+            |    return (mixes.firstOrNull { m -> m.onlyTypes == null || m.onlyTypes.containsAll(t) } ?: mixes.lastOrNull())?.key.orEmpty()
+            |}
+            |
+            |/**
+            | * The interests a site for [types] offers: round-robin over the types (in catalog order, after [typesOrDefault]),
+            | * taking each type's next [seedInterests] entry in turn and skipping repeats, until [max] are picked or the lists
+            | * run out.
+            | */
+            |fun servicesFor(types: Collection<String>, max: Int): SeedServices {
+            |    val t = typesOrDefault(types)
+            |    val lists = t.map { seedInterests[it].orEmpty() }
+            |    val picked = mutableListOf<String>()
+            |    var round = 0
+            |    while (picked.size < max && lists.any { round < it.size }) {
+            |        for (l in lists) {
+            |            if (picked.size >= max) break
+            |            l.getOrNull(round)?.let { if (it !in picked) picked += it }
+            |        }
+            |        round++
+            |    }
+            |    val grouped = lists.flatten().distinct().filter { it in picked }
+            |    return SeedServices(offered = picked, items = grouped)
+            |}
             |""".trimMargin()
     }
 }

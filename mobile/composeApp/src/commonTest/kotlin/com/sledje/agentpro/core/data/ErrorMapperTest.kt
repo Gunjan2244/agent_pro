@@ -34,6 +34,15 @@ class ErrorMapperTest {
     }
 
     @Test
+    fun companyLinkReasons() {
+        assertEquals(AppError.Validation("insurance_types"), map(400, "22023", "invalid_types"))
+        assertEquals(AppError.Conflict, map(404, "P0002", "not_found"))
+        assertEquals(AppError.Conflict, map(400, "P0001", "invalid_transition"))
+        assertEquals(AppError.Validation("company", "duplicate"), map(409, "P0001", "duplicate_membership"))
+        assertEquals(AppError.ReadOnly, map(403, "42501", "plan_read_only"))
+    }
+
+    @Test
     fun rowLevelSecurityRefusalMeansReadOnly() {
         assertEquals(AppError.ReadOnly, map(403, "42501", "new row violates row-level security policy for table \"sites\""))
     }
@@ -42,6 +51,7 @@ class ErrorMapperTest {
     fun authCodes() {
         assertEquals(AppError.Validation("credentials"), map(400, "invalid_credentials", "Invalid login credentials"))
         assertEquals(AppError.Validation("email", "not_confirmed"), map(400, "email_not_confirmed"))
+        assertEquals(AppError.Validation("code"), map(403, "otp_expired"))
         assertEquals(AppError.Validation("password", "weak"), map(422, "weak_password"))
         assertEquals(AppError.Validation("email"), map(400, "email_address_invalid"))
         assertEquals(AppError.Conflict, map(422, "user_already_exists"))

@@ -29,6 +29,7 @@
     <string name="website_section_hidden">Hidden</string>
     <string name="website_section_empty">Not filled in yet</string>
     <string name="website_section_items">%1$d added</string>
+    <string name="website_section_companies_note">Shows the companies an admin has approved. Manage them in Settings → Profile.</string>
     <string name="website_section_always_on">Always shown</string>
     <string name="website_section_show">Show %1$s</string>
     <string name="website_section_needs_fix">Needs a fix before publishing</string>
@@ -61,4 +62,13 @@
     <string name="website_stats_no_value">—</string>
     <string name="website_stats_chart_title">Views per day</string>
     <string name="website_stats_takeaway">%1$d views in the last %2$d days</string>
+    <!-- Services follow the agent's insurance types (DECISIONS #93; docs/UX.md, Settings → Profile, Website → Content) -->
+    <string name="website_match_title">Update your website to match?</string>
+    <string name="website_match_add">Add these services: %1$s</string>
+    <string name="website_match_remove_label">Remove services you no longer deal in</string>
+    <string name="website_match_keep_text">Your own text stays as it is. Publish to show the changes on your live website.</string>
+    <string name="website_match_apply">Update website</string>
+    <string name="website_match_hint">Your website's services don't match the insurance you deal in.</string>
+    <string name="website_match_hint_action">Update services</string>
+    <string name="website_match_done">Services updated. Publish to make them live.</string>
 </resources>

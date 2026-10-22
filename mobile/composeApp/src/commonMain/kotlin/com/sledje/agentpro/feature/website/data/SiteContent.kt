@@ -1,6 +1,8 @@
 package com.sledje.agentpro.feature.website.data
 
 import com.sledje.agentpro.core.catalog.SiteSchema
+import com.sledje.agentpro.core.catalog.TemplateFamily
+import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.core.data.RowJson
 import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
@@ -51,7 +53,15 @@ object SiteContent {
     fun orderedSections(content: JsonObject, sections: List<SectionSpec> = schema): List<SectionSpec> {
         val byKey = sections.associateBy { it.key }
         val stored = stringList(content[SECTION_ORDER]).distinct().mapNotNull { byKey[it] }
-        val all = stored + sections.filterNot { it in stored }
+        // A section the stored order doesn't name (one added to the schema later, e.g. `companies`) goes right after
+        // the schema section before it, not at the end.
+        val all = stored.toMutableList()
+        sections.forEachIndexed { i, s ->
+            if (s !in all) {
+                val prev = sections.take(i).lastOrNull { it in all }
+                all.add(if (prev == null) 0 else all.indexOf(prev) + 1, s)
+            }
+        }
         val head = leadingPinned(sections)
         val tail = sections.filter { it.pinned && it !in head }
         return head + all.filterNot { it.pinned } + tail
@@ -105,6 +115,18 @@ object SiteContent {
         order.add(if (hero >= 0) hero + 1 else 0, offers)
         return content.with(HIDDEN, JsonArray(hidden.map(::JsonPrimitive))).with(SECTION_ORDER, JsonArray(order.map(::JsonPrimitive)))
     }
+
+    /**
+     * The draft as it is after switching from [from] to [to] (docs/UX.md, Appearance): to an `offers`-family
+     * template from another family, `offers` is un-hidden and moved after `hero`; otherwise unchanged. Used by
+     * the switch itself and by the Appearance preview, so both show the same page (DECISIONS #86).
+     */
+    fun afterSwitch(content: JsonObject, from: TemplateSpec?, to: TemplateSpec): JsonObject =
+        if (to.family == TemplateFamily.Offers && from?.family != TemplateFamily.Offers) {
+            withOffersAfterHero(content, (from ?: to).sections)
+        } else {
+            content
+        }
 
     // ---- Section values <-> FormState -----------------------------------------------------------
 

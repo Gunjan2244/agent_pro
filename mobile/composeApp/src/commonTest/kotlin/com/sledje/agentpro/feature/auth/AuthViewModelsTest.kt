@@ -13,6 +13,7 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormMode
 import com.sledje.agentpro.feature.auth.ui.AuthFormUiState
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.auth.ui.ResendEmailViewModel
+import com.sledje.agentpro.feature.auth.ui.VerifyCodeViewModel
 import com.sledje.agentpro.feature.auth.ui.toAuthFormError
 import com.sledje.agentpro.testing.FakeAuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -268,5 +269,55 @@ class AuthViewModelsTest {
         vm.resend()
         runCurrent()
         assertEquals(listOf("reset:ramesh@example.com"), auth.calls)
+    }
+
+    @Test
+    fun rightSignUpCodeStartsTheSession() = runTest {
+        auth.validCode = "012345"
+        val vm = VerifyCodeViewModel("new@example.com", auth::verifySignUpCode)
+        vm.form.set(VerifyCodeViewModel.CODE, "012345")
+        vm.submit()
+        runCurrent()
+        assertTrue(vm.state.value.verified)
+        assertEquals(listOf("verifySignUp:new@example.com:012345"), auth.calls)
+        assertIs<AuthState.SignedIn>(auth.state.value)
+    }
+
+    @Test
+    fun wrongCodeShowsItsMessageAndCanBeRetried() = runTest {
+        val vm = VerifyCodeViewModel("new@example.com", auth::verifySignUpCode)
+        vm.form.set(VerifyCodeViewModel.CODE, "999999")
+        vm.submit()
+        runCurrent()
+        assertEquals(AuthFormError.WrongCode, vm.state.value.error)
+        assertFalse(vm.state.value.verified)
+        vm.form.set(VerifyCodeViewModel.CODE, "123456")
+        vm.submit()
+        runCurrent()
+        assertTrue(vm.state.value.verified)
+    }
+
+    @Test
+    fun aShortCodeIsNotSubmitted() = runTest {
+        val vm = VerifyCodeViewModel("new@example.com", auth::verifySignUpCode)
+        vm.form.set(VerifyCodeViewModel.CODE, "123")
+        vm.submit()
+        runCurrent()
+        assertEquals(emptyList(), auth.calls)
+    }
+
+    @Test
+    fun resetCodeChecksTheRecoveryCode() = runTest {
+        val vm = VerifyCodeViewModel("ramesh@example.com", auth::verifyRecoveryCode)
+        vm.form.set(VerifyCodeViewModel.CODE, "123456")
+        vm.submit()
+        runCurrent()
+        assertTrue(vm.state.value.verified)
+        assertEquals(listOf("verifyRecovery:ramesh@example.com:123456"), auth.calls)
+    }
+
+    @Test
+    fun codeErrorMapping() {
+        assertEquals(AuthFormError.WrongCode, AppError.Validation("code").toAuthFormError())
     }
 }

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- आपकी कंपनियाँ: ऑनबोर्डिंग चरण 1 और सेटिंग्स → प्रोफ़ाइल (DECISIONS #89, docs/UX.md). -->
+<resources>
+    <string name="company_block_title">आपकी कंपनियाँ</string>
+    <string name="company_block_hint">जिन बीमा कंपनियों के आप एजेंट हैं, उन्हें जोड़ें, और हर कंपनी में आप जिस तरह का बीमा करते हैं वह भी बताएँ।</string>
+    <string name="company_required_hint">आगे बढ़ने के लिए कम से कम एक कंपनी जोड़ें</string>
+    <string name="company_empty">अभी कोई कंपनी नहीं जोड़ी गई</string>
+    <string name="company_add">कंपनी जोड़ें</string>
+    <string name="company_edit_types">प्रकार बदलें</string>
+    <string name="company_cancel_request">अनुरोध रद्द करें</string>
+    <string name="company_try_again">फिर कोशिश करें</string>
+    <string name="company_request_again">फिर से अनुरोध करें</string>
+    <string name="company_agency_code_line">एजेंसी कोड %1$s</string>
+    <string name="company_line_pending">अनुरोध %1$s को किया</string>
+    <string name="company_line_rejected">कारण: %1$s</string>
+    <string name="company_picker_title">अपनी कंपनी चुनें</string>
+    <string name="company_picker_search">कंपनी खोजें</string>
+    <string name="company_picker_empty">खोज से कोई कंपनी नहीं मिली</string>
+    <string name="company_not_listed">मेरी कंपनी सूची में नहीं है</string>
+    <string name="company_not_listed_hint">उसका नाम लिखें। हम उसे जाँचकर जोड़ देंगे।</string>
+    <string name="company_already_added">पहले से जोड़ी गई</string>
+    <string name="company_form_new">कंपनी जोड़ें</string>
+    <string name="company_form_types">बीमा के प्रकार</string>
+    <string name="company_name_label">कंपनी का नाम</string>
+    <string name="company_agency_code">एजेंसी कोड</string>
+    <string name="company_types_label">आप जिस तरह का बीमा करते हैं</string>
+    <string name="company_save">सहेजें</string>
+    <string name="company_remove_title">%1$s हटाएँ?</string>
+    <string name="company_remove_message">इसके ऑफ़र आपकी वेबसाइट से हट जाएँगे। आप इसे बाद में फिर जोड़ सकते हैं।</string>
+    <string name="company_cancel_title">%1$s का अनुरोध रद्द करें?</string>
+    <string name="company_cancel_message">आप बाद में फिर अनुरोध कर सकते हैं।</string>
+    <string name="company_error_duplicate">आप यह कंपनी पहले ही जोड़ चुके हैं</string>
+    <string name="company_error_types">कम से कम एक तरह का बीमा चुनें</string>
+    <string name="profile_title">प्रोफ़ाइल</string>
+    <string name="settings_profile_supporting">आपकी कंपनियाँ</string>
+</resources>

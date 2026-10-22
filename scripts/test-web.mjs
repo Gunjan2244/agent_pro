@@ -2,7 +2,7 @@
 import { readFileSync, statSync, existsSync } from "node:fs";
 import assert from "node:assert/strict";
 import { makeT } from "../web/i18n.js";
-import { visibleKeys } from "../web/sections/index.js";
+import { visibleKeys, placeCompanies } from "../web/sections/index.js";
 import { normalizeSite } from "../web/api.js";
 import { validate } from "../web/form.js";
 import { headData } from "../web/head.js";
@@ -57,8 +57,19 @@ for (const tpl of TEMPLATE_KEYS) {
   });
 }
 ok("order: sectionOrder only; pinned always shown; unknown dropped", () => {
-  assert.deepEqual(visibleKeys({ sectionOrder: ["about", "bogus", "hero"], hidden: ["hero", "about"] }, schema), ["hero", "contact"]);
-  assert.deepEqual(visibleKeys({ sectionOrder: ["faq", "about"], hidden: [] }, schema), ["hero", "faq", "about", "contact"]);
+  // "companies" (DECISIONS #90) isn't in any saved order yet: it is placed after the anchor (about by default) and
+  // never above the hero; it renders nothing without companies.
+  assert.deepEqual(visibleKeys({ sectionOrder: ["about", "bogus", "hero"], hidden: ["hero", "about"] }, schema), ["hero", "companies", "contact"]);
+  assert.deepEqual(visibleKeys({ sectionOrder: ["faq", "about"], hidden: [] }, schema), ["hero", "faq", "about", "companies", "contact"]);
+  assert.deepEqual(visibleKeys({ sectionOrder: ["faq", "about"], hidden: ["companies"] }, schema), ["hero", "faq", "about", "contact"]);
+});
+ok("companies placement: after the anchor; else before services, the FAQ or contact; an order that names it is kept", () => {
+  assert.deepEqual(placeCompanies(["hero", "about", "services"]), ["hero", "about", "companies", "services"]);
+  assert.deepEqual(placeCompanies(["hero", "offers", "services", "highlights", "about"], "highlights"), ["hero", "offers", "services", "highlights", "companies", "about"]);
+  assert.deepEqual(placeCompanies(["hero", "offers", "services", "faq"]), ["hero", "offers", "companies", "services", "faq"]);
+  assert.deepEqual(placeCompanies(["hero", "contact"]), ["hero", "companies", "contact"]);
+  assert.deepEqual(placeCompanies(["about", "hero"]), ["about", "hero", "companies"]);
+  assert.deepEqual(placeCompanies(["hero", "companies", "about"]), ["hero", "companies", "about"]);
 });
 ok("unavailable: normalizeSite(null/garbage) -> null", () => {
   assert.equal(normalizeSite(null), null); assert.equal(normalizeSite([]), null); assert.equal(normalizeSite({ template_key: "classic" }), null);
@@ -150,29 +161,36 @@ try {
     for (const tpl of TEMPLATE_KEYS) {
       const c = [...css.slice(0, 3), `templates/${tpl}/style.css`];
       console.log(`SIZE SSR first paint ${tpl}: ${(size(c) / 1024).toFixed(1)} KB raw, ${(gz(c) / 1024).toFixed(1)} KB gzip (template style.css ${(size([c[3]]) / 1024).toFixed(1)} KB)`);
-      assert.ok(size(c) < 20 * 1024, tpl + ": SSR first-paint CSS over 20KB");
+      // 2026-10-22 redesign: one layout system (grid, rhythm, accordion, companies, the family's hero) took base.css
+      // from 11 KB to 15 KB raw; first paint is 21-24 KB raw but under 7 KB gzip, which is what the network carries.
+      assert.ok(size(c) < 26 * 1024, tpl + ": SSR first-paint CSS over 26KB raw");
+      assert.ok(gz(c) < 7 * 1024, tpl + ": SSR first-paint CSS over 7KB gzip");
     }
     console.log(`SIZE SSR hydration JS (deferred): ${(size(hydrateJs) / 1024).toFixed(1)} KB raw, ${(gz(hydrateJs) / 1024).toFixed(1)} KB gzip; + install.js ${(size([...hydrateJs, "install.js"]) / 1024).toFixed(1)} KB raw; + privacy.js on the privacy page ${(size([...hydrateJs, "privacy.js"]) / 1024).toFixed(1)} KB raw`);
-    assert.ok(size(css) < 20 * 1024, "SSR first-paint CSS over 20KB");
+    assert.ok(size(css) < 26 * 1024, "SSR first-paint CSS over 26KB");
     assert.ok(size([...hydrateJs, "install.js"]) < 30 * 1024, "SSR hydration JS over 30KB");
   }
+  // a template's own modules: render.js plus any template partials (parts.js, DECISIONS #85)
+  const own = (tpl) => readdirSync(dist + `templates/${tpl}/`).filter((f) => f.endsWith(".js")).map((f) => `templates/${tpl}/${f}`);
   for (const tpl of TEMPLATE_KEYS) {
-    const files = [...shared, `templates/${tpl}/render.js`, `templates/${tpl}/style.css`];
+    const files = [...shared, ...own(tpl), `templates/${tpl}/style.css`];
     const buf = files.map((f) => readFileSync(dist + f));
     const raw = buf.reduce((a, b) => a + b.length, 0), gz = buf.reduce((a, b) => a + gzipSync(b).length, 0);
     console.log(`SIZE ${tpl}: ${(raw / 1024).toFixed(1)} KB raw, ${(gz / 1024).toFixed(1)} KB gzip`);
     // the client render is the preview/fallback path (SSR is the normal one). WP3b (offers, conversational layer, images,
-    // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip), so the cap is 85KB; the SSR path keeps its own caps above.
-    assert.ok(raw < 85 * 1024, tpl + " over 85KB");
+    // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip); WP5c's template partials (modern/minimal parts.js and
+    // their layouts, DECISIONS #85) add up to ~6KB; the 2026-10-22 redesign (one layout system in base.css, the companies
+    // partials) another ~7KB, so the cap is 100KB (unminified, commented source); the SSR path keeps its own caps above.
+    assert.ok(raw < 100 * 1024, tpl + " over 100KB");
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
-    const later = [...shared, `templates/${tpl}/render.js`, `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
+    const later = [...shared, ...own(tpl), `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 92 * 1024, tpl + " + install modules over 92KB");
+    assert.ok(later < 106 * 1024, tpl + " + install modules over 106KB");
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
-      assert.ok(sz < 85 * 1024, extra + " page over 85KB");
+      assert.ok(sz < 94 * 1024, extra + " page over 94KB"); // counts every sections/ file (and all of base.css), which these pages never fully load
     }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);
@@ -415,5 +433,8 @@ import { spawnSync } from "node:child_process";
 }
 await import("./test-web-offers.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-install.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-templates.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-companies.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-types.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-ssr.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 console.log(`\n${n} checks passed`);

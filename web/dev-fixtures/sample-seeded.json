@@ -18,8 +18,7 @@
     "term",
     "endowment",
     "child",
-    "pension",
-    "health"
+    "pension"
    ],
    "items": [
     {
@@ -37,10 +36,6 @@
     {
      "interest": "pension",
      "description": "Build a regular income for retirement, so you stay independent and comfortable in your later years."
-    },
-    {
-     "interest": "health",
-     "description": "Cover for hospital bills and medical emergencies for you and your family, so your savings stay safe."
     }
    ]
   },
@@ -100,6 +95,7 @@
   "sectionOrder": [
    "hero",
    "about",
+   "companies",
    "services",
    "offers",
    "highlights",

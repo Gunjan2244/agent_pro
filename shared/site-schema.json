@@ -137,6 +137,13 @@
       ]
     },
     {
+      "key": "companies",
+      "labelKey": "section.companies",
+      "icon": "handshake",
+      "defaultVisible": true,
+      "fields": []
+    },
+    {
       "key": "services",
       "labelKey": "section.services",
       "icon": "work",

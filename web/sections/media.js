@@ -23,9 +23,16 @@ export function pic(ctx, name, { alt = "", sizes = "(min-width: 720px) 400px, 10
   const src = (w) => `/images/${name}-${w}.webp`;
   return `<img class="${cls}" src="${src(ws[ws.length - 1])}" srcset="${ws.map((w) => `${src(w)} ${w}w`).join(", ")}" sizes="${sizes}" width="${m.w}" height="${m.h}" alt="${esc(alt)}" loading="lazy" decoding="async"${low ? ' fetchpriority="low"' : ""}>`;
 }
-// The catalog's image name for an interest, and its translated alt text ("{interest} illustration").
+// The catalog's image name for an interest, and its translated alt text ("{interest} illustration"). An interest
+// whose own illustration isn't shipped yet (not in the manifest; e.g. motor, home, travel, business, accident until
+// they are generated, docs/IMAGES.md) gets the generic one, the image of the interest with no insurance type (other),
+// with alt="" since it doesn't show that interest.
 export function interestPic(ctx, key, opts = {}) {
-  const i = (ctx.catalog.interests || []).find((x) => x.key === key);
+  const list = ctx.catalog.interests || [];
+  const i = list.find((x) => x.key === key);
   if (!i || !i.image) return "";
-  return pic(ctx, i.image, { alt: ctx.t("site.image_alt_interest", { interest: ctx.t(i.labelKey) }), ...opts });
+  const own = pic(ctx, i.image, { alt: ctx.t("site.image_alt_interest", { interest: ctx.t(i.labelKey) }), ...opts });
+  if (own) return own;
+  const generic = list.find((x) => x.insuranceType === null && x.image && x.image !== i.image);
+  return generic ? pic(ctx, generic.image, { ...opts, alt: "" }) : "";
 }

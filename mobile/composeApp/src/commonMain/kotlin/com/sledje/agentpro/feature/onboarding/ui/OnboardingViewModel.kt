@@ -15,6 +15,8 @@ import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.forms.ValidationError
 import com.sledje.agentpro.core.forms.Validators
+import com.sledje.agentpro.feature.offers.data.CompanyRepository
+import com.sledje.agentpro.feature.offers.ui.CompanyRules
 import com.sledje.agentpro.feature.settings.data.Profile
 import com.sledje.agentpro.feature.settings.data.ProfileInput
 import com.sledje.agentpro.feature.settings.data.ProfileRepository
@@ -25,6 +27,7 @@ import com.sledje.agentpro.feature.website.data.MediaPaths
 import com.sledje.agentpro.feature.website.data.NewSite
 import com.sledje.agentpro.feature.website.data.PublishOutcome
 import com.sledje.agentpro.feature.website.data.SiteRepository
+import com.sledje.agentpro.feature.website.data.SiteServices
 import com.sledje.agentpro.feature.website.data.StarterContent
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.cat_field_city
@@ -94,7 +97,8 @@ data class OnboardingUiState(
 /**
  * Drives all three onboarding steps (one instance, scoped to the onboarding nav graph):
  * 1. saves the profile (name and mobile required, usually already given at sign-up and shown as a
- *    summary with Edit; photo, agency code and branch under More details);
+ *    summary with Edit; photo, agency code and branch under More details) and needs at least one company
+ *    link, which the companies block saves one RPC at a time as they are added;
  * 2. picks a template from the generated `Templates` (shared/templates/index.json);
  * 3. suggests a slug from the name, validates it live (format, `ReservedSlugs`) and checks
  *    `is_slug_available` after a 300ms pause; then creates the site and either publishes it
@@ -106,6 +110,8 @@ class OnboardingViewModel(
     private val sites: SiteRepository,
     private val session: OnboardingSession,
     private val events: AppEvents,
+    /** Step 1 needs at least one company link (DECISIONS #89); the block itself is driven by `CompaniesViewModel`. */
+    private val companies: CompanyRepository,
     private val slugDebounceMillis: Long = SLUG_DEBOUNCE_MILLIS,
     /** Step 1's photo pipeline (ImageProcessor 1:1 WebP → Storage); null in tests that never pick one. */
     private val photoUploader: ImageUploader? = null,
@@ -181,6 +187,10 @@ class OnboardingViewModel(
 
     fun saveProfile() {
         if (_state.value.saving || _state.value.uploadingPhoto || !profileForm.validateAll()) return
+        if (!CompanyRules.hasEnough(companies.memberships.value)) {
+            _state.update { it.copy(error = AppError.Validation("companies", "required")) }
+            return
+        }
         val v = profileForm.values()
         val input = ProfileInput(
             fullName = v[NAME] as String,
@@ -219,9 +229,15 @@ class OnboardingViewModel(
         if (locale in SiteSeed.LOCALES) _state.update { it.copy(locale = locale) }
     }
 
-    /** [template] with the agent's seeded starter content, as created in step 3 (the step-2 preview uses it). */
+    /**
+     * [template] with the agent's seeded starter content, as created in step 3 (the step-2 preview uses it): the
+     * services and copy follow the insurance types of step 1's companies (DECISIONS #93).
+     */
     fun starterContent(template: TemplateSpec): JsonObject? =
-        profile?.let { StarterContent.from(it, template, _state.value.locale, it.id) }
+        profile?.let { StarterContent.from(it, template, _state.value.locale, it.id, insuranceTypes()) }
+
+    /** The agent's insurance types: the union over the pending and approved company links saved in step 1. */
+    fun insuranceTypes(): List<String> = SiteServices.agentTypes(companies.memberships.value)
 
     fun selectTemplate(key: String) {
         if (Templates.fromKey(key) == null) return
@@ -270,7 +286,7 @@ class OnboardingViewModel(
                         slug = current.slug,
                         templateKey = current.template.key,
                         accent = current.template.defaultAccent.key,
-                        draftContent = if (p != null) StarterContent.from(p, current.template, current.locale, p.id) else JsonObject(emptyMap()),
+                        draftContent = if (p != null) StarterContent.from(p, current.template, current.locale, p.id, insuranceTypes()) else JsonObject(emptyMap()),
                         locale = current.locale,
                     ),
                 )

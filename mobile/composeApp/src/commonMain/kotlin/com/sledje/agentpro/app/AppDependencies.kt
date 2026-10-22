@@ -11,6 +11,7 @@ import com.sledje.agentpro.feature.auth.data.AuthRepository
 import com.sledje.agentpro.feature.customers.data.CustomerRepository
 import com.sledje.agentpro.feature.enquiries.data.EnquiryLive
 import com.sledje.agentpro.feature.enquiries.data.EnquiryRepository
+import com.sledje.agentpro.feature.offers.data.CompanyRepository
 import com.sledje.agentpro.feature.policies.data.PolicyRepository
 import com.sledje.agentpro.feature.privacy.data.ConsentRepository
 import com.sledje.agentpro.feature.settings.data.ProfileRepository
@@ -30,6 +31,9 @@ interface AppDependencies {
     val auth: AuthRepository
     val profiles: ProfileRepository
     val sites: SiteRepository
+
+    /** The agent's insurance companies and their insurance types (DECISIONS #89; onboarding step 1, Settings → Profile). */
+    val companies: CompanyRepository
 
     /** Phases 6–7: enquiries, customers, policies and payments (Room-backed, written to Supabase first). */
     val enquiries: EnquiryRepository

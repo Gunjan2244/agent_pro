@@ -1,20 +1,22 @@
 import { esc, has, arr, interestLabel } from "./util.js";
 import { interestPic } from "./media.js";
-import { say } from "./say.js";
-export function services(d, ctx) {
+// The services to show: items with a known interest, plus offered interests that have no item (each key once).
+export function serviceList(d, ctx) {
   const items = arr(d.items).filter((i) => i && interestLabel(ctx, i.interest));
   const offered = arr(d.offered).filter((k) => interestLabel(ctx, k));
-  if (!items.length && !offered.length) return "";
-  const head = `${say(ctx, "site.say_services")}<h2>${esc(ctx.t("site.services_heading"))}</h2>`;
-  // The offers section already showed plan cards with these descriptions: list the interests compactly.
-  if (ctx.plansShown) {
-    const keys = [...new Set([...items.map((i) => i.interest), ...offered])];
-    return `${head}<ul class="chips">${keys.map((k) => `<li>${esc(interestLabel(ctx, k))}</li>`).join("")}</ul>`;
-  }
-  // A small 16:9 thumbnail beside the text (docs/IMAGES.md slot 3), so the section stays short on phones.
-  const cards = items.map((i) => { const img = interestPic(ctx, i.interest, { sizes: "128px" }); return `<li class="card svc${img ? " has-pic" : ""}">${img}<h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</li>`; }).join("");
   const shown = new Set(items.map((i) => i.interest));
-  const chips = offered.filter((k) => !shown.has(k)).map((k) => `<li>${esc(interestLabel(ctx, k))}</li>`).join("");
+  return { items, extra: [...new Set(offered.filter((k) => !shown.has(k)))] };
+}
+// Shared (classic, spotlight, guide): one card per service, each with its plan-type thumbnail; an offered interest
+// without a description is a card too, so the grid has no orphan chips.
+export function services(d, ctx) {
+  const { items, extra } = serviceList(d, ctx);
+  const rows = [...items, ...extra.map((k) => ({ interest: k }))];
+  if (!rows.length) return "";
+  const head = `<h2>${esc(ctx.t("site.services_heading"))}</h2>`;
+  // The offers section already showed plan cards with these descriptions: list the interests compactly.
+  if (ctx.plansShown) return `${head}<ul class="tags">${rows.map((i) => `<li>${esc(interestLabel(ctx, i.interest))}</li>`).join("")}</ul>`;
+  // A small thumbnail beside the text (docs/IMAGES.md slot 3), so the section stays short on phones.
   return `${head}
-${cards ? `<ul class="cards">${cards}</ul>` : ""}${chips ? `<ul class="chips">${chips}</ul>` : ""}`;
+<ul class="svcs">${rows.map((i) => { const img = interestPic(ctx, i.interest, { sizes: "96px" }); return `<li class="card svc${img ? " has-pic" : ""}">${img}<div class="svc-b"><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</div></li>`; }).join("")}</ul>`;
 }

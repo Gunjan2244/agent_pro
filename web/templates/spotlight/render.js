@@ -3,5 +3,5 @@ import { compose } from "../../sections/index.js";
 // offer grid with images and "ends on" dates (or plan cards when there are no offers), a trust strip, services,
 // FAQ and contact. site = { content, template_key, accent, locale, profile, offers, company }; tokens see makeCtx.
 export function render(site, t, tokens) {
-  return compose(site, t, tokens, "spotlight", { layout: "grid" });
+  return compose(site, t, tokens, "spotlight", { layout: "grid", companiesAfter: "highlights" });
 }

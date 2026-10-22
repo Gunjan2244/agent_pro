@@ -261,7 +261,7 @@ select tests.ok(exists (select 1 from public.audit_log where action = 'company.c
 rollback;
 
 -- ---------------------------------------------------------------------------
--- Memberships
+-- Memberships (DECISIONS #53, #89: several companies per agent, each with its insurance types)
 -- ---------------------------------------------------------------------------
 begin;
 select tests.as_agent(:E);
@@ -270,19 +270,31 @@ select tests.ok(jsonb_array_length(public.list_companies()) = 2
                 and public.list_companies() -> 0 ->> 'logo_url' is not null
                 and public.list_companies() -> 1 ->> 'logo_url' is null,
   '#M list_companies: active companies in order, logos only with permission');
-select tests.throws($$select public.request_company(null, null, null)$$, '#M a request needs a company or a name', '%invalid%');
-select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', 'Also this', 'E-1')$$,
-  '#M not both a company and a name', '%invalid%');
-select tests.throws($$select public.request_company('c3c3c3c3-0000-4000-8000-0000000000c3', null, 'E-1')$$,
+select tests.throws($$select public.request_company(null, null, null, '{life}')$$, '#M a request needs a company or a name', 'invalid');
+select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', 'Also this', 'E-1', '{life}')$$,
+  '#M not both a company and a name', 'invalid');
+select tests.throws($$select public.request_company('c3c3c3c3-0000-4000-8000-0000000000c3', null, 'E-1', '{life}')$$,
   '#M an inactive company can''t be requested', '%not_found%');
-select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', null, ' ')$$,
-  '#M a company request needs the agency code', '%invalid%');
-select public.request_company(:C1, null, 'E-123') ->> 'id' as m1 \gset
-select tests.ok((select status = 'pending' and agency_code = 'E-123' from public.company_memberships where id = :'m1'),
-  '#M request_company creates a pending request');
-select tests.ok(public.my_company_offers() #>> '{membership,status}' = 'pending'
+select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', null, ' ', '{life}')$$,
+  '#M a company request needs the agency code', 'invalid');
+select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', null, 'E-1', null)$$,
+  '#M insurance types are required (null)', 'invalid_types');
+select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', null, 'E-1', '{}')$$,
+  '#M insurance types are required (empty)', 'invalid_types');
+select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', null, 'E-1', '{life,cars}')$$,
+  '#M every insurance type must be a catalog key', 'invalid_types');
+select tests.throws($$select public.request_company('c1c1c1c1-0000-4000-8000-0000000000c1', null, 'E-1', array['life', null])$$,
+  '#M a null insurance type is refused', 'invalid_types');
+select tests.throws($$select public.request_company(null, 'Tiny Life', null, '{}')$$,
+  '#M a "not listed" request needs insurance types too', 'invalid_types');
+select public.request_company(:C1, null, 'E-123', array[' health', 'life', 'life']) ->> 'id' as m1 \gset
+select tests.ok((select status = 'pending' and agency_code = 'E-123' and insurance_types = array['life', 'health']
+                   from public.company_memberships where id = :'m1'),
+  '#M request_company creates a pending request; types trimmed, unique, in catalog order');
+select tests.ok(public.my_company_offers() -> 'memberships' -> 0 @> '{"status":"pending","insurance_types":["life","health"]}'
+                and jsonb_array_length(public.my_company_offers() -> 'memberships') = 1
                 and public.my_company_offers() -> 'offers' = '[]'::jsonb,
-  '#M no company offers while pending');
+  '#M my_company_offers lists the pending request; no company offers while pending');
 select tests.throws(format($$select public.admin_review_membership(%L, 'approve', null, null)$$, :'m1'),
   '#M an agent can''t approve themselves', '%forbidden%');
 reset role;
@@ -301,35 +313,65 @@ select tests.as_admin(:O);
 select tests.ok(jsonb_array_length(public.admin_membership_queue(null, null)) = 1
                 and public.admin_membership_queue(null, null) -> 0 #>> '{agent,full_name}' = 'Esha Patel'
                 and public.admin_membership_queue(null, null) -> 0 ->> 'agency_code' = 'E-123'
+                and public.admin_membership_queue(null, null) -> 0 -> 'insurance_types' = '["life","health"]'::jsonb
                 and (select array_agg(k order by k) from jsonb_object_keys(public.admin_membership_queue(null, null) -> 0 -> 'agent') k)
                     = array['city', 'designation', 'email', 'full_name'],
-  '#M the queue shows only the fields needed to verify');
+  '#M the queue shows only the fields needed to verify, with the insurance types');
 select tests.ok(public.admin_review_membership(:'m1', 'approve', null, null) ->> 'status' = 'approved', '#M the owner approves');
 select tests.throws(format($$select public.admin_review_membership(%L, 'approve', null, null)$$, :'m1'),
   '#M an approved request can''t be approved again', '%invalid_transition%');
 reset role;
+select reviewed_at as m1_reviewed from public.company_memberships where id = :'m1' \gset
 
 select tests.as_agent(:E);
 select tests.ok((select array_agg(o ->> 'id' order by o ->> 'id') from jsonb_array_elements(public.my_company_offers() -> 'offers') o)
                  = array[:O1, :O2]::text[],
   '#M approved: the company''s live offers that haven''t ended (running and upcoming; not ended, archived or draft)');
 select tests.ok((select array_agg(o ->> 'phase' order by o ->> 'id') from jsonb_array_elements(public.my_company_offers() -> 'offers') o)
-                 = array['running', 'upcoming'],
-  '#M offers carry their phase');
-select tests.ok(public.my_company_offers() #>> '{membership,company,logo_url}' is not null
-                and public.my_company_offers() #> '{membership,company,allow_custom_offers}' = 'true'::jsonb,
+                 = array['running', 'upcoming']
+                and (select bool_and(o ->> 'company_id' = trim(both '''' from :'C1')) from jsonb_array_elements(public.my_company_offers() -> 'offers') o),
+  '#M offers carry their phase and their company_id');
+select tests.ok(public.my_company_offers() #>> '{memberships,0,company,logo_url}' is not null
+                and public.my_company_offers() #> '{memberships,0,company,allow_custom_offers}' = 'true'::jsonb,
   '#M the membership shows the company, its permitted logo and the custom-offer switch');
-select tests.ok(public.request_company(:C1, null, 'E-123') ->> 'id' = :'m1', '#M asking again for the approved company is a no-op');
-select public.request_company(:C2, null, 'E-456') ->> 'id' as m2 \gset
-select tests.ok(tests.count($$select * from public.company_memberships where status in ('pending', 'approved')$$) = 1,
-  '#M one current membership per agent');
-select tests.ok((select status = 'withdrawn' from public.company_memberships where id = :'m1'),
-  '#M a new request withdraws the old link');
-select tests.ok(public.my_company_offers() -> 'offers' = '[]'::jsonb, '#M after changing company: no offers until approved');
+select public.request_company(:C1, null, 'E-123', '{life}')::text as m1again \gset
+select tests.ok((:'m1again')::jsonb @> format('{"id":"%s","status":"approved","insurance_types":["life"]}', :'m1')::jsonb
+                and (select insurance_types = array['life'] from public.company_memberships where id = :'m1')
+                and (select reviewed_at = :'m1_reviewed'::timestamptz from public.company_memberships where id = :'m1'),
+  '#M asking again for the approved company with the same code only updates the types (no new review)');
+select public.request_company(:C2, null, 'E-456', '{motor}') ->> 'id' as m2 \gset
+select tests.ok((select status = 'approved' from public.company_memberships where id = :'m1')
+                and tests.count($$select * from public.company_memberships where status in ('pending', 'approved')$$) = 2,
+  '#M a second company is added alongside the first (nothing withdrawn)');
+select public.request_company(:C2, null, 'E-456', '{home,motor}') ->> 'id' as m2again \gset
+select tests.ok(:'m2again' = :'m2'
+                and (select insurance_types = array['motor', 'home'] and status = 'pending' from public.company_memberships where id = :'m2'),
+  '#M re-requesting a pending company is a no-op that updates the types');
+select tests.ok(jsonb_array_length(public.my_company_offers() -> 'memberships') = 2
+                and (select bool_and(o ->> 'company_id' = trim(both '''' from :'C1')) from jsonb_array_elements(public.my_company_offers() -> 'offers') o),
+  '#M both memberships listed; offers only from the approved company');
 reset role;
+select tests.throws(format($$insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types)
+                             values (%L, %L, 'X', '{life}')$$, trim(both '''' from :'E'), trim(both '''' from :'C2')),
+  '#M one pending or approved row per agent and company (unique index)', '%company_memberships_one_current_per_company_idx%');
+select tests.throws(format($$insert into public.company_memberships (agent_id, company_id, agency_code) values (%L, %L, 'X')$$,
+                           trim(both '''' from :'F'), trim(both '''' from :'C2')),
+  '#M a pending row needs at least one type (CHECK)', '%company_memberships_insurance_types_required%');
+select tests.throws(format($$insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (%L, %L, 'X', '{cars}')$$,
+                           trim(both '''' from :'F'), trim(both '''' from :'C2')),
+  '#M the guard refuses an unknown type', 'invalid_types');
+select tests.throws(format($$insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (%L, %L, 'X', '{life,life}')$$,
+                           trim(both '''' from :'F'), trim(both '''' from :'C2')),
+  '#M the guard refuses a repeated type', 'invalid_types');
 
 select tests.as_admin(:S);
-select tests.ok(jsonb_array_length(public.admin_membership_queue(null, null)) = 1, '#M the scoped editor sees their company''s request');
+select tests.ok(jsonb_array_length(public.admin_membership_queue(null, null)) = 1
+                and public.admin_membership_queue(null, null) -> 0 ->> 'id' = :'m2'
+                and public.admin_membership_queue(null, null) -> 0 -> 'insurance_types' = '["motor","home"]'::jsonb
+                and public.admin_membership_queue(null, null) -> 0 -> 'previous' = 'null'::jsonb
+                and public.admin_membership_queue(:C1, 'approved') = '[]'::jsonb,
+  '#M the scoped editor sees only their company''s request (not the agent''s other company)');
+select tests.ok(tests.count('select * from public.company_memberships') = 1, '#M a scoped editor reads only their company''s membership rows');
 select tests.throws(format($$select public.admin_review_membership(%L, 'reject', null, null)$$, :'m2'),
   '#M a rejection needs a reason', '%invalid_reason%');
 select tests.throws(format($$select public.admin_review_membership(%L, 'reject', 'bogus', null)$$, :'m2'),
@@ -339,46 +381,92 @@ select tests.ok(public.admin_review_membership(:'m2', 'reject', 'details_mismatc
 reset role;
 
 select tests.as_agent(:E);
-select tests.ok(public.my_company_offers() -> 'membership' @> '{"status":"rejected","reject_reason":"details_mismatch","review_note":"Check your agency code"}',
-  '#M the agent sees the rejection, its reason and the note');
-select public.request_company(null, 'Tiny Life', null) ->> 'id' as m3 \gset
+select tests.ok(public.my_company_offers() -> 'memberships' @> '[{"status":"approved"},{"status":"rejected","reject_reason":"details_mismatch","review_note":"Check your agency code"}]',
+  '#M the agent sees the approval and the rejection, its reason and the note');
+select tests.throws(format($$select public.set_membership_types(%L, '{life}')$$, :'m2'),
+  '#M a rejected membership''s types can''t change', '%invalid_transition%');
+select tests.throws(format($$select public.withdraw_company_request(%L)$$, :'m2'),
+  '#M a rejected membership can''t be withdrawn', '%invalid_transition%');
+select public.request_company(null, 'Tiny Life', null, '{travel}') ->> 'id' as m3 \gset
+select tests.ok(public.request_company(null, 'tiny life', null, '{travel,home}') ->> 'id' = :'m3',
+  '#M the same "not listed" request again only updates the types');
+select public.request_company(null, 'Other Life', null, '{travel}') ->> 'id' as m3x \gset
+select tests.ok((select status = 'withdrawn' from public.company_memberships where id = :'m3')
+                and tests.count($$select * from public.company_memberships where company_id is null and status = 'pending'$$) = 1,
+  '#M at most one pending "not listed" request: a new one replaces it');
 reset role;
 
 select tests.as_admin(:S);
 select tests.ok(public.admin_membership_queue(null, null) = '[]'::jsonb, '#M a scoped editor doesn''t see unlisted requests');
-select tests.throws(format($$select public.admin_link_membership(%L, 'c2c2c2c2-0000-4000-8000-0000000000c2')$$, :'m3'),
+select tests.throws(format($$select public.admin_link_membership(%L, 'c2c2c2c2-0000-4000-8000-0000000000c2')$$, :'m3x'),
   '#M only unscoped admins link an unlisted request', '%forbidden%');
 reset role;
 select tests.as_admin(:O);
-select tests.ok(public.admin_membership_queue(null, null) -> 0 ->> 'suggested_name' = 'Tiny Life'
-                and public.admin_membership_queue(null, null) -> 0 #>> '{previous,status}' = 'rejected',
-  '#M the owner sees the unlisted request and the agent''s previous decision');
-select tests.ok(public.admin_link_membership(:'m3', :C2) @> format('{"status":"pending","company":{"id":"%s"}}', trim(both '''' from :'C2'))::jsonb,
+select tests.ok(public.admin_membership_queue(null, null) -> 0 ->> 'suggested_name' = 'Other Life'
+                and public.admin_membership_queue(null, null) -> 0 -> 'previous' = 'null'::jsonb,
+  '#M the owner sees the unlisted request; previous is per company (none for "not listed")');
+select tests.throws(format($$select public.admin_link_membership(%L, 'c1c1c1c1-0000-4000-8000-0000000000c1')$$, :'m3x'),
+  '#M linking to a company the agent already has is refused', 'duplicate_membership');
+select tests.ok(public.admin_link_membership(:'m3x', :C2) @> format('{"status":"pending","company":{"id":"%s"}}', trim(both '''' from :'C2'))::jsonb,
   '#M linking sets the company and leaves the request pending');
 reset role;
 select tests.as_admin(:S);
-select tests.ok(public.admin_review_membership(:'m3', 'approve', null, null) ->> 'status' = 'approved',
+select tests.ok(public.admin_membership_queue(null, null) -> 0 #>> '{previous,status}' = 'rejected',
+  '#M after linking, the queue shows the agent''s previous decision for this company');
+select tests.ok(public.admin_review_membership(:'m3x', 'approve', null, null) ->> 'status' = 'approved',
   '#M after linking, the company''s editor approves');
-select tests.throws(format($$select public.admin_review_membership(%L, 'revoke', null, null)$$, :'m3'),
+select tests.throws(format($$select public.admin_review_membership(%L, 'revoke', null, null)$$, :'m3x'),
   '#M a revocation needs a note', '%invalid_note%');
-select tests.ok(public.admin_review_membership(:'m3', 'revoke', null, 'Left the company') ->> 'status' = 'revoked',
+select tests.ok(public.admin_review_membership(:'m3x', 'revoke', null, 'Left the company') ->> 'status' = 'revoked',
   '#M the editor revokes an approved link');
 reset role;
 
 select tests.as_agent(:E);
-select tests.ok(public.my_company_offers() #>> '{membership,status}' = 'revoked' and public.my_company_offers() -> 'offers' = '[]'::jsonb,
-  '#M revoked: the agent sees it and gets no company offers');
-select public.request_company(:C1, null, 'E-123') ->> 'id' as m4 \gset
-select public.withdraw_company_request();
-select tests.ok((select status = 'withdrawn' from public.company_memberships where id = :'m4')
-                and public.my_company_offers() -> 'membership' = 'null'::jsonb,
-  '#M withdraw_company_request withdraws the pending request');
+select tests.ok(public.my_company_offers() -> 'memberships' @> format('[{"id":"%s","status":"approved"},{"id":"%s","status":"revoked"}]', :'m1', :'m3x')::jsonb
+                and jsonb_array_length(public.my_company_offers() -> 'memberships') = 2
+                and (select bool_and(o ->> 'company_id' = trim(both '''' from :'C1')) from jsonb_array_elements(public.my_company_offers() -> 'offers') o),
+  '#M revoked: the agent sees it and gets no offers from that company; the other company stays');
+select public.request_company(:C2, null, 'E-456', '{motor}') ->> 'id' as m4 \gset
+select public.withdraw_company_request(:'m4') ->> 'status' as m4w \gset
+select tests.ok(:'m4w' = 'withdrawn'
+                and public.withdraw_company_request(:'m4') ->> 'status' = 'withdrawn'
+                and not public.my_company_offers() -> 'memberships' @> format('[{"id":"%s"}]', :'m4')::jsonb
+                and (select status = 'approved' from public.company_memberships where id = :'m1'),
+  '#M withdraw_company_request withdraws that request only (again: a no-op); withdrawn rows aren''t listed');
+select tests.throws($$select public.withdraw_company_request('00000000-0000-4000-8000-000000000000')$$,
+  '#M withdrawing an unknown membership: not_found', '%not_found%');
+select public.set_membership_types(:'m1', '{accident,health}')::text as m1t \gset
+select tests.ok((:'m1t')::jsonb @> '{"status":"approved","insurance_types":["health","accident"]}'
+                and (select insurance_types = array['health', 'accident'] from public.company_memberships where id = :'m1')
+                and (select reviewed_at = :'m1_reviewed'::timestamptz and status = 'approved' from public.company_memberships where id = :'m1'),
+  '#M set_membership_types changes an approved link''s types without a new review');
+select tests.throws(format($$select public.set_membership_types(%L, '{}')$$, :'m1'), '#M set_membership_types needs a type', 'invalid_types');
+select tests.throws(format($$select public.set_membership_types(%L, '{boats}')$$, :'m1'), '#M set_membership_types refuses an unknown type', 'invalid_types');
+reset role;
+select tests.as_agent(:F);
+select tests.throws(format($$select public.set_membership_types(%L, '{life}')$$, :'m1'),
+  '#M another agent can''t change the types (not_found)', '%not_found%');
+select tests.throws(format($$select public.withdraw_company_request(%L)$$, :'m1'),
+  '#M another agent can''t withdraw it (not_found)', '%not_found%');
+reset role;
+select tests.throws(format($$update public.company_memberships set insurance_types = '{life}' where id = %L$$, :'m4'),
+  '#M the guard refuses a type change on a withdrawn row', '%invalid_transition%');
+
+select tests.as_agent(:E);
+select public.request_company(:C1, null, 'E-999', '{life}') ->> 'id' as m5 \gset
+select tests.ok((select status = 'withdrawn' from public.company_memberships where id = :'m1')
+                and (select status = 'pending' and agency_code = 'E-999' from public.company_memberships where id = :'m5'),
+  '#M a new agency code for an approved company needs a new review (the link is withdrawn, a new request made)');
 reset role;
 
 select tests.ok((select array_agg(distinct action order by action) from public.audit_log where entity = 'company_memberships'
-                   and entity_id in (:'m1', :'m2', :'m3', :'m4'))
-                 = array['membership.approve', 'membership.link', 'membership.reject', 'membership.request', 'membership.revoke', 'membership.withdraw'],
-  '#M audit: request, approve, reject, link, revoke and withdraw');
+                   and entity_id in (:'m1', :'m2', :'m3', :'m3x', :'m4'))
+                 = array['membership.approve', 'membership.link', 'membership.reject', 'membership.request', 'membership.revoke',
+                         'membership.update', 'membership.withdraw'],
+  '#M audit: request, approve, reject, link, revoke, withdraw and update');
+select tests.ok(exists (select 1 from public.audit_log where action = 'membership.update' and entity_id = :'m1' and actor_id = :E
+                         and changes -> 'insurance_types' = '["health","accident"]'::jsonb),
+  '#M audit: a type change is membership.update with the new types');
 select tests.ok(exists (select 1 from public.audit_log where action = 'membership.request' and actor_id = :E and actor_kind = 'agent')
                 and exists (select 1 from public.audit_log where action = 'membership.approve' and actor_id = :O and actor_kind = 'admin'),
   '#M audit: the agent''s request and the admin''s decision, each with its actor');
@@ -388,6 +476,132 @@ select tests.ok(not exists (select 1 from public.audit_log where entity = 'compa
 select tests.ok(not exists (select 1 from public.profiles where id in (:O, :S, :X))
                 and not exists (select 1 from public.subscriptions where agent_id in (:O, :S, :X)),
   '#M admin accounts get no profile and no subscription');
+
+-- A lapsed agent can't change types (can_write) but can still withdraw.
+update public.subscriptions set trial_ends_at = now() - interval '100 days', current_period_end = null where agent_id = :E;
+select tests.as_agent(:E);
+select tests.throws(format($$select public.set_membership_types(%L, '{life}')$$, :'m5'),
+  '#M set_membership_types needs a writable plan', '%plan_read_only%');
+select tests.ok(public.withdraw_company_request(:'m5') ->> 'status' = 'withdrawn', '#M a lapsed agent can still withdraw');
+reset role;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- Several approved companies: offers, custom-offer switch and the public `companies` list (DECISIONS #89, #90)
+-- ---------------------------------------------------------------------------
+\set C4 '''c4c4c4c4-0000-4000-8000-0000000000c4'''
+\set C5 '''c5c5c5c5-0000-4000-8000-0000000000c5'''
+\set R1 '''0f0000e1-0000-4000-8000-0000000000e1'''
+begin;
+insert into public.companies (id, slug, name, sort) values
+  (:C4, 'zeta-life', '{"en":"Zeta Life","hi":"ज़ेटा लाइफ"}', 4),
+  (:C5, 'omega-life', '{"en":"Omega Life","hi":"ओमेगा लाइफ"}', 5);
+insert into public.offers (id, company_id, content, starts_at, ends_at) values
+  (:R1, :C5, :CONTENT, now() - interval '1 day', now() + interval '10 days');
+update public.offers set status = 'live' where id = :R1;
+update public.companies set disclaimer = '{"en":"Bharat terms apply.","hi":"भारत की शर्तें लागू।"}' where id = :C2;
+update public.companies set is_active = true where id = :C3;
+-- E: approved for C1 (types stored out of order), C2 and C3; pending for C4. C2 was approved first (2 days ago),
+-- then C1 (1 day ago), then C3 (now; inactive again afterwards).
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values
+  (:E, :C1, 'E-123', '{health,life}'), (:E, :C2, 'E-456', '{motor}'), (:E, :C3, 'E-789', '{home}'), (:E, :C4, 'E-000', '{travel}');
+update public.company_memberships set status = 'approved' where agent_id = :E and company_id in (:C1, :C2, :C3);
+alter table public.company_memberships disable trigger memberships_guard;
+update public.company_memberships set reviewed_at = now() - interval '2 days' where agent_id = :E and company_id = :C2;
+update public.company_memberships set reviewed_at = now() - interval '1 day' where agent_id = :E and company_id = :C1;
+alter table public.company_memberships enable trigger memberships_guard;
+update public.companies set is_active = false where id = :C3;
+
+select tests.as_agent(:E);
+select tests.publish_with('{"hero":{"headline":"Esha Patel"},"contact":{"phone":"9876500001"}}') ->> 'ok' as ok_mc_auto;
+reset role;
+select public.get_public_site('esha-patel') as mc \gset
+select tests.ok((:'mc')::jsonb -> 'companies'
+                  = '[{"name":"भारत लाइफ","insurance_types":["motor"]},{"name":"एक्मे लाइफ","insurance_types":["life","health"]}]'::jsonb,
+  '#MC companies: approved, active companies, earliest approval first, names in the site''s language, types in catalog order (pending and inactive left out)',
+  (:'mc')::jsonb ->> 'companies');
+select tests.ok((select bool_and((select array_agg(k order by k) from jsonb_object_keys(e) k) = array['insurance_types', 'name'])
+                   from jsonb_array_elements((:'mc')::jsonb -> 'companies') e)
+                and (:'mc')::text not like '%acme-life%' and (:'mc')::text not like '%bharat-life%'
+                and (:'mc')::text not like '%company-media/logos%' and (:'mc')::text not like '%c1c1c1c1%'
+                and (:'mc')::text not like '%Zeta%' and (:'mc')::text not like '%ज़ेटा%' and (:'mc')::text not like '%पुरानी%',
+  '#MC each company is {name, insurance_types} only: no logo, slug or id; the pending and inactive companies appear nowhere');
+select tests.ok(((:'mc')::jsonb - 'companies')::text not like '%Acme Life%' and ((:'mc')::jsonb - 'companies')::text not like '%एक्मे लाइफ%'
+                and ((:'mc')::jsonb - 'companies')::text not like '%भारत लाइफ%',
+  '#MC company names appear only in companies (not in company or offers)');
+select tests.ok((:'mc')::jsonb -> 'company' = '{"disclaimer":"भारत की शर्तें लागू।"}'::jsonb,
+  '#MC the disclaimer is the earliest-approved company''s');
+select tests.ok((select array_agg(e ->> 'id' order by n) from jsonb_array_elements((:'mc')::jsonb #> '{offers,items}') with ordinality x(e, n))
+                  = array[trim(both '''' from :'P1'), trim(both '''' from :'O1')],
+  '#MC auto offers come from every approved company, in turn (earliest-approved company first)');
+
+select (public.get_public_site('esha-patel') -> 'companies')::text as mc_companies \gset
+select tests.as_agent(:E);
+select tests.ok(public.preview_site_offers('{"hero":{"headline":"Esha Patel"}}', 'classic') -> 'companies' = (:'mc_companies')::jsonb,
+  '#MC preview_site_offers carries the same companies list');
+select tests.ok((select array_agg(distinct o ->> 'company_id' order by o ->> 'company_id') from jsonb_array_elements(public.my_company_offers() -> 'offers') o)
+                  = array[trim(both '''' from :'C1'), trim(both '''' from :'C2')]
+                and jsonb_array_length(public.my_company_offers() -> 'memberships') = 4,
+  '#MC my_company_offers: offers of both approved, active companies, each tagged with its company_id; every membership listed');
+select tests.publish_with(jsonb_build_object('hero', jsonb_build_object('headline', 'Esha Patel',
+  'featuredOffer', jsonb_build_object('source', 'company', 'id', trim(both '''' from :'O1'))), 'contact', '{"phone":"9876500001"}'::jsonb,
+  'offers', jsonb_build_object('items', jsonb_build_array(jsonb_build_object('source', 'company', 'id', trim(both '''' from :'P1')))))) as r \gset
+select tests.ok((:'r')::jsonb ->> 'ok' = 'true' and not (:'r')::jsonb ? 'warnings',
+  '#MC offers of either approved company can be picked (hero from one, section from the other)', :'r');
+reset role;
+select tests.ok(public.get_public_site('esha-patel') #>> '{offers,featured,id}' = trim(both '''' from :'O1')
+                and public.get_public_site('esha-patel') #>> '{offers,items,0,id}' = trim(both '''' from :'P1')
+                and public.get_public_site('esha-patel') #>> '{offers,items,0,cta,kind}' = 'link',
+  '#MC both picked offers render');
+select tests.as_agent(:E);
+select tests.ok(tests.has_issue(tests.publish_with(jsonb_build_object('hero', jsonb_build_object('headline', 'Esha Patel',
+                  'featuredOffer', jsonb_build_object('source', 'company', 'id', trim(both '''' from :'R1'))), 'contact', '{"phone":"9876500001"}'::jsonb)),
+                '{"section":"hero","field":"featuredOffer","rule":"offer_wrong_company"}'),
+  '#MC an offer of a third company the agent never asked for is rejected (offer_wrong_company)');
+select tests.ok(tests.has_issue(tests.publish_with(jsonb_build_object('hero', jsonb_build_object('headline', 'Esha Patel'), 'contact', '{"phone":"9876500001"}'::jsonb,
+                  'offers', jsonb_build_object('items', jsonb_build_array(jsonb_build_object('source', 'company', 'id', 'c3000000-0000-4000-8000-000000000000'))))),
+                '{"rule":"offer_wrong_company"}'),
+  '#MC an unknown offer is still offer_wrong_company');
+reset role;
+
+-- Custom offers: allowed unless any approved, active company turned them off (the strictest wins).
+create temp table mc_custom (c jsonb);
+insert into mc_custom values (jsonb_build_object('hero', jsonb_build_object('headline', 'Esha Patel'), 'contact', '{"phone":"9876500001"}'::jsonb,
+  'offers', jsonb_build_object('items', jsonb_build_array(jsonb_build_object('source', 'agent', 'id', 'abcdef01-0000-4000-8000-000000000001')),
+    'custom', jsonb_build_array(jsonb_build_object('id', 'abcdef01-0000-4000-8000-000000000001', 'title', 'Free policy review',
+      'endsOn', (current_date + 5)::text, 'ctaKind', 'call', 'confirmed', true)))));
+grant select on mc_custom to authenticated;
+update public.companies set allow_custom_offers = false where id = :C3;
+select tests.as_agent(:E);
+select tests.ok(tests.publish_with((select c from mc_custom)) ->> 'ok' = 'true',
+  '#MC an inactive company''s switch doesn''t count');
+reset role;
+select tests.ok(jsonb_array_length(public.get_public_site('esha-patel') #> '{offers,items}') = 1, '#MC ... and the custom offer renders');
+update public.companies set allow_custom_offers = false where id = :C2;
+select tests.ok(public.get_public_site('esha-patel') #> '{offers,items}' = '[]'::jsonb,
+  '#MC one approved company turning custom offers off drops them from the site');
+select tests.as_agent(:E);
+select tests.ok(tests.has_issue(tests.publish_with((select c from mc_custom)), '{"section":"offers","field":"items","item":0,"rule":"custom_offers_off"}'),
+  '#MC ... and publishing them is custom_offers_off (the strictest company wins)');
+reset role;
+update public.companies set allow_custom_offers = true where id = :C2;
+update public.companies set allow_custom_offers = false where id = :C1;
+select tests.as_agent(:E);
+select tests.ok(tests.has_issue(tests.publish_with((select c from mc_custom)), '{"rule":"custom_offers_off"}'),
+  '#MC ... whichever approved company it is');
+reset role;
+
+update public.company_memberships set status = 'revoked', review_note = 'Left' where agent_id = :E and company_id = :C2;
+select tests.ok(public.get_public_site('esha-patel') -> 'companies' = '[{"name":"एक्मे लाइफ","insurance_types":["life","health"]}]'::jsonb
+                and public.get_public_site('esha-patel') -> 'company' = '{"disclaimer":"बीमा आग्रह की विषय वस्तु है।"}'::jsonb,
+  '#MC revoking one company removes it from companies; the disclaimer moves to the next-approved company');
+select tests.ok(public.get_public_site('farhan-ali') -> 'companies' = '[]'::jsonb,
+  '#MC an agent without an approved company: companies is []');
+alter table public.companies disable trigger companies_guard;
+update public.companies set name = '{"en":"Acme Life"}' where id = :C1;
+alter table public.companies enable trigger companies_guard;
+select tests.ok(public.get_public_site('esha-patel') #>> '{companies,0,name}' = 'Acme Life',
+  '#MC a name missing in the site''s language falls back to the default locale');
 rollback;
 
 -- ---------------------------------------------------------------------------
@@ -396,7 +610,7 @@ rollback;
 \set U1 '''abcdef01-0000-4000-8000-000000000001'''
 \set U2 '''abcdef02-0000-4000-8000-000000000002'''
 begin;
-insert into public.company_memberships (agent_id, company_id, agency_code) values (:E, :C1, 'E-123');
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (:E, :C1, 'E-123', '{life}');
 update public.company_memberships set status = 'approved' where agent_id = :E and status = 'pending';
 create temp table good (c jsonb);
 insert into good values (replace(replace(replace(replace($j$
@@ -421,9 +635,10 @@ select public.get_public_site('esha-patel') as p \gset
 reset role;
 select tests.ok((:'p')::jsonb -> 'company' = jsonb_build_object('disclaimer', 'बीमा आग्रह की विषय वस्तु है।'),
   '#S payload company: only the disclaimer, in the site''s language (no name, no logo; DECISIONS #77)');
-select tests.ok((:'p')::text not like '%Acme Life%' and (:'p')::text not like '%एक्मे लाइफ%'
-                and (:'p')::text not like '%company-media/logos%' and (:'p')::text not like '%acme-life%',
-  '#S the company''s name, slug and logo appear nowhere in the payload');
+select tests.ok(((:'p')::jsonb - 'companies')::text not like '%Acme Life%' and ((:'p')::jsonb - 'companies')::text not like '%एक्मे लाइफ%'
+                and (:'p')::text not like '%company-media/logos%' and (:'p')::text not like '%acme-life%'
+                and (:'p')::jsonb -> 'companies' = '[{"name":"एक्मे लाइफ","insurance_types":["life"]}]'::jsonb,
+  '#S the company''s name only in companies (DECISIONS #90, in the site''s language); its slug and logo nowhere');
 select tests.ok((:'p')::jsonb #> '{offers,featured}' @> jsonb_build_object(
                   'source', 'company', 'id', trim(both '''' from :'O1'), 'title', 'टर्म कवर ऑफ़र', 'summary', 'इस महीने कम प्रीमियम',
                   'image_url', null, 'cta', '{"kind":"enquire","interest":"term"}'::jsonb, 'from_agent', false,
@@ -434,8 +649,9 @@ select tests.ok(jsonb_array_length((:'p')::jsonb #> '{offers,items}') = 1
                      'title', 'Free policy review', 'from_agent', true, 'image_url', null, 'cta', '{"kind":"call"}'::jsonb),
   '#S payload items: upcoming and ended offers skipped; the custom offer marked from_agent');
 select tests.ok(public.get_public_site('farhan-ali') -> 'company' = 'null'::jsonb
+                and public.get_public_site('farhan-ali') -> 'companies' = '[]'::jsonb
                 and public.get_public_site('farhan-ali') -> 'offers' = '{"featured":null,"items":[]}'::jsonb,
-  '#S an agent without a company: company null, no offers');
+  '#S an agent without a company: company null, companies [], no offers');
 
 select tests.as_agent(:E);
 select tests.ok(tests.has_issue(tests.publish_with(jsonb_set((select c from good), '{hero,featuredOffer,id}', to_jsonb(trim(both '''' from :'P1')))),
@@ -498,7 +714,7 @@ rollback;
 
 -- Payload after changes: an ended custom offer, the logo permission ending, an archived offer, a revoked link.
 begin;
-insert into public.company_memberships (agent_id, company_id, agency_code) values (:E, :C1, 'E-123');
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (:E, :C1, 'E-123', '{life}');
 update public.company_memberships set status = 'approved' where agent_id = :E and status = 'pending';
 create temp table good (c jsonb);
 insert into good values (jsonb_build_object(
@@ -552,7 +768,7 @@ rollback;
 -- admin_offer_usage and storage
 -- ---------------------------------------------------------------------------
 begin;
-insert into public.company_memberships (agent_id, company_id, agency_code) values (:E, :C1, 'E-123');
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (:E, :C1, 'E-123', '{life}');
 update public.company_memberships set status = 'approved' where agent_id = :E and status = 'pending';
 select tests.as_agent(:E);
 select tests.publish_with(jsonb_build_object('hero', jsonb_build_object('headline', 'Esha',
@@ -712,7 +928,7 @@ rollback;
 -- ---------------------------------------------------------------------------
 begin;
 update public.offers set internal_name = 'SECRET-INTERNAL-' || sort where company_id in (:C1, :C2);
-insert into public.company_memberships (agent_id, company_id, agency_code) values (:E, :C1, 'E-123');
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (:E, :C1, 'E-123', '{life}');
 update public.company_memberships set status = 'approved' where agent_id = :E and status = 'pending';
 select tests.as_agent(:E);
 select tests.publish_with(jsonb_build_object('hero', jsonb_build_object('headline', 'Esha',
@@ -734,8 +950,8 @@ select tests.ok((select array_agg(k order by k) from jsonb_object_keys((:'pi')::
 select tests.ok((select bool_and(o.v ->> 'title' is not null and o.v ->> 'from_agent' = 'false')
                    from (select (:'pi')::jsonb #> '{offers,featured}' as v
                          union all select e from jsonb_array_elements((:'pi')::jsonb #> '{offers,items}') e) o)
-                and (:'pi')::text not like '%Acme Life%' and (:'pi')::text not like '%एक्मे लाइफ%',
-  '#I offers carry their public title and no company name');
+                and ((:'pi')::jsonb - 'companies')::text not like '%Acme Life%' and ((:'pi')::jsonb - 'companies')::text not like '%एक्मे लाइफ%',
+  '#I offers carry their public title and no company name (names only in companies)');
 select tests.as_admin(:O);
 select tests.ok((select internal_name from public.offers where id = :O1) = 'SECRET-INTERNAL-1', '#I an admin reads internal_name');
 reset role;
@@ -753,7 +969,7 @@ rollback;
 \set A3 '''0f0000c3-0000-4000-8000-0000000000c3'''
 \set A4 '''0f0000c4-0000-4000-8000-0000000000c4'''
 begin;
-insert into public.company_memberships (agent_id, company_id, agency_code) values (:E, :C1, 'E-123');
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) values (:E, :C1, 'E-123', '{life}');
 update public.company_memberships set status = 'approved' where agent_id = :E and status = 'pending';
 -- Running live offers besides O1 (sort 1): A1 sort 0, A2 sort 2 (earlier start), A3 sort 2 (later start), A4 sort 9.
 insert into public.offers (id, company_id, content, image_url, starts_at, ends_at, sort) values
@@ -969,7 +1185,7 @@ select tests.ok((select bool_and(a.actor_kind = 'system' and a.actor_id is null)
 
 insert into auth.users (id, email, raw_user_meta_data) values (:G, 'demo.agent@example.com', '{"full_name":"Demo Agent"}');
 update public.profiles set designation = 'Insurance advisor', city = 'Pune', phone = '+919876500009' where id = :G;
-insert into public.company_memberships (agent_id, company_id, agency_code) select :G, id, 'D-1' from public.companies where slug = 'demo-life';
+insert into public.company_memberships (agent_id, company_id, agency_code, insurance_types) select :G, id, 'D-1', '{life}' from public.companies where slug = 'demo-life';
 update public.company_memberships set status = 'approved' where agent_id = :G;
 select tests.as_agent(:G);
 insert into public.sites (agent_id, slug, template_key, accent, locale, draft_content)
@@ -986,11 +1202,13 @@ create temp table demo_running as
 select tests.ok((:'pd')::jsonb -> 'company' = jsonb_build_object('disclaimer',
                   (select disclaimer ->> 'en' from public.companies where slug = 'demo-life')),
   '#D demo payload: company is {disclaimer} only');
-select tests.ok((:'pd')::text not like '%Demo Life Insurer%' and (:'pd')::text not like '%डेमो जीवन बीमा कंपनी%'
+select tests.ok(((:'pd')::jsonb - 'companies')::text not like '%Demo Life Insurer%' and ((:'pd')::jsonb - 'companies')::text not like '%डेमो जीवन बीमा कंपनी%'
                 and (:'pd')::text not like '%demo-life%'
                 and not exists (select 1 from public.offers o where o.internal_name is not null and strpos((:'pd')::text, o.internal_name) > 0)
-                and private.public_text_violation((:'pd')::text) is null,
-  '#D demo payload: no company name, slug or internal name, and no blocked term anywhere');
+                and private.public_text_violation(((:'pd')::jsonb - 'companies')::text) is null
+                and (:'pd')::jsonb -> 'companies' = jsonb_build_array(jsonb_build_object('name',
+                      (select name ->> 'en' from public.companies where slug = 'demo-life'), 'insurance_types', '["life"]'::jsonb)),
+  '#D demo payload: the company name only in companies; no slug or internal name, and no blocked term elsewhere');
 select tests.ok(case when (select count(*) from demo_running) = 0
                      then (:'pd')::jsonb -> 'offers' = '{"featured":null,"items":[]}'::jsonb
                      else (:'pd')::jsonb #>> '{offers,featured,title}' = (select title from demo_running where rn = 1)

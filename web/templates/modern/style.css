@@ -1,19 +1,56 @@
-/* Fresh ("Meet me"): split hero band (text left, portrait and greeting right), hairline cards in two columns */
-.tpl-modern .band{max-width:none;background:var(--c-surfaceContainerLow);border-bottom:1px solid var(--c-outlineVariant)}
-.tpl-modern .band .bubble{background:var(--c-surface)}
-.tpl-modern .hero-in{display:grid;gap:var(--space-l);max-width:880px;margin:0 auto;align-items:center}
-.tpl-modern .hero-photo{width:96px;height:96px;border-radius:var(--shape-lg)}
-.tpl-modern .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
-.tpl-modern .sec+.sec{border-top:0}
-.tpl-modern .cards{grid-template-columns:1fr}
+/* Fresh ("Meet me", DECISIONS #85): magazine. Full-width photo crop on phones, photo beside a large left-aligned
+   headline on wide screens; every section head has the same short accent rule above it; content sits in hairline
+   rows (numbered services, facts column, open Q&A, companies), not cards. */
+.tpl-modern h2::before{content:"";display:block;width:48px;height:2px;margin-bottom:var(--space-m);background:var(--accent)}
+.tpl-modern .sec-hero{max-width:none;padding:0 0 var(--sec-y)}
+.tpl-modern .hero-in{max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto}
+.tpl-modern .cover .hero-photo{width:100%;height:auto;aspect-ratio:4/3;border-radius:0;object-fit:cover;object-position:50% 30%}
+.tpl-modern .cover .mono{width:100%;height:auto;aspect-ratio:3/1;place-items:center start;padding:0 var(--gutter);border-radius:0;font-size:var(--text-xl);line-height:var(--line-xl)}
+.tpl-modern .hero-text{margin:0;padding:calc(var(--space-l)*2) var(--gutter) 0}
+.tpl-modern .hero-text .meta{margin-bottom:var(--space-m);color:var(--accent);font-weight:600}
+.tpl-modern .hero-offer{padding:0 var(--gutter)}
+.tpl-modern .chip{border-color:transparent;border-radius:var(--shape-sm);background:var(--c-surfaceContainer)}
+.tpl-modern .chip:hover{background:var(--tint)}
+/* rows, not cards */
+.tpl-modern .offers{gap:0 var(--space-l)}
+.tpl-modern .offer,.tpl-modern .quotes .card{border:0;border-top:1px solid var(--c-outlineVariant);border-radius:0;background:none}
+.tpl-modern .offer-b,.tpl-modern .quotes .card{padding:var(--space-l) 0}
+.tpl-modern .hero-offer .offer{border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-modern .quotes{gap:0 var(--space-l)}
+.tpl-modern .quotes blockquote{font-size:var(--text-m);line-height:var(--line-m);font-weight:400}
+.tpl-modern .about-grid{display:grid;gap:var(--space-l)}
+.tpl-modern .facts{display:flex;flex-wrap:wrap;gap:var(--space-m) var(--space-l);padding:var(--space-m) 0;border-block:1px solid var(--c-outlineVariant)}
+.tpl-modern .facts strong,.tpl-modern .svc-num{color:var(--accent);font-size:var(--text-m);line-height:var(--line-m);font-weight:600}
+.tpl-modern .fact-d{font-weight:600;flex-basis:100%}
+.tpl-modern .svc-list,.tpl-modern .qa,.tpl-modern .co-rows{border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-modern .svc-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"n t p" "n d p";column-gap:var(--space-m);align-items:start;padding:var(--space-m) 0;border-top:1px solid var(--c-outlineVariant)}
+.tpl-modern .svc-num{grid-area:n}
+.tpl-modern .svc-b{display:contents}
+.tpl-modern .svc-b h3{grid-area:t;font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-modern .svc-b p{grid-area:d;margin-top:var(--space-s);color:var(--c-onSurfaceVariant)}
+.tpl-modern .svc-row .pic{grid-area:p;width:96px;aspect-ratio:4/3;object-fit:cover;border-radius:var(--shape-sm)}
+.tpl-modern .hl-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-l) var(--space-m)}
+.tpl-modern .hl-row .ico{width:40px;height:40px;color:var(--accent);margin-bottom:var(--space-m)}
+.tpl-modern .hl-row p{margin-top:var(--space-s);color:var(--c-onSurfaceVariant)}
+.tpl-modern .qa>div,.tpl-modern .co-rows>li{display:grid;gap:var(--space-s);padding:var(--space-m) 0;border-top:1px solid var(--c-outlineVariant)}
+.tpl-modern .qa dt{font-weight:600}
+.tpl-modern .qa dd{max-width:var(--measure)}
+.tpl-modern .co-rows h3{font-size:var(--text-m);line-height:var(--line-m)}
 @media(min-width:720px){
-  .tpl-modern .hero-in{grid-template-columns:1fr 280px;column-gap:calc(var(--space-l)*2)}
-  .tpl-modern .hero-id{grid-column:2;grid-row:1;flex-direction:column;align-items:flex-start}
-  .tpl-modern .hero-photo{width:160px;height:160px}
-  .tpl-modern .hero-photo.mono{font-size:var(--text-l);line-height:var(--line-l)}
-  .tpl-modern .hero-text,.tpl-modern .hero-offer{grid-column:1}
-  .tpl-modern .hero-text{grid-row:1}
-  .tpl-modern .hero-offer{margin-top:0}
-  .tpl-modern .cards{grid-template-columns:repeat(2,1fr)}
+  .tpl-modern .sec-hero{padding-top:calc(var(--space-l)*2)}
+  .tpl-modern .hero-in{grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-areas:"cover text" "cover offer";column-gap:calc(var(--space-l)*2);align-items:center;padding:0 var(--gutter)}
+  .tpl-modern .cover{grid-area:cover}
+  .tpl-modern .cover .hero-photo{aspect-ratio:4/5;border-radius:var(--shape-md)}
+  .tpl-modern .cover .mono{aspect-ratio:4/5;place-items:center;border-radius:var(--shape-md)}
+  .tpl-modern .hero-text{grid-area:text;padding:0}
+  .tpl-modern .hero-offer{grid-area:offer;align-self:start;padding:0}
+  .tpl-modern .about-grid{grid-template-columns:minmax(0,2fr) minmax(0,1fr);column-gap:calc(var(--space-l)*2)}
+  .tpl-modern .about-grid .prose{grid-area:1/1}
+  .tpl-modern .facts{flex-flow:column;gap:var(--space-m);padding:0 0 0 var(--space-l);border:0;border-left:1px solid var(--c-outlineVariant)}
+  .tpl-modern .hl-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-l)}
+  .tpl-modern .qa>div,.tpl-modern .co-rows>li{grid-template-columns:minmax(0,1fr) minmax(0,2fr);column-gap:calc(var(--space-l)*2);align-items:start;padding:var(--space-l) 0}
+  .tpl-modern .svc-row{padding:var(--space-l) 0}
+  .tpl-modern .svc-row .pic{width:128px}
 }
-@media(min-width:1024px){.tpl-modern .sec-highlights .cards{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1024px){.tpl-modern .hero-text h1{font-size:var(--text-xl);line-height:var(--line-xl)}}
+.tpl-modern .list{max-width:none}

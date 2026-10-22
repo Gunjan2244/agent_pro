@@ -1,16 +1,23 @@
 // DEV ONLY. Not copied into production builds (scripts/build-web.sh copies it only when WEB_DEV=1),
 // and app.js only imports it on localhost with ?mock=1. Serves web/dev-fixtures/*.json.
-// Slugs: demo (EN), demo-hi (HI), offers (Best offers: spotlight + demo offers), seeded (a brand-new agent's site,
+// Slugs: demo (EN), demo-hi (HI), offers (Best offers: spotlight + demo offers), offers-hi (demo-hi as a Best offers
+// site: spotlight, offers moved after the hero and shown, as the app's family switch does), seeded (a brand-new agent's site,
 // built by scripts/site-seed.mjs), xss, minimal-empty, unpublished (-> null), error (-> throws).
 // ?t=classic|modern|minimal|spotlight|guide overrides the template. Phone ending 0000 => rate limited; 1111 => transport error, 2222 => unavailable, 3333 => invalid(email), 4444 => invalid(consent) on the enquiry form. Enquiry without a consent object => invalid(consent). Same 0000/1111/2222 for submit_data_request. Slug demo-hi has canonical_host.
 export function mockApi(real, q) {
-  const FIX = { demo: "sample-en", "demo-hi": "sample-hi", offers: "sample-offers", seeded: "sample-seeded", xss: "sample-xss", "minimal-empty": "sample-empty" };
+  const FIX = { demo: "sample-en", "demo-hi": "sample-hi", "offers-hi": "sample-hi", offers: "sample-offers", seeded: "sample-seeded", xss: "sample-xss", "minimal-empty": "sample-empty" };
   const log = (...a) => console.info("[mock]", ...a);
   return {
     async getPublicSite(slug) {
       if (slug === "error") throw new Error("boom");
       if (!FIX[slug]) return null;
       const row = await (await fetch(`/dev-fixtures/${FIX[slug]}.json`)).json();
+      if (slug === "offers-hi") {
+        const c = row.published_content;
+        row.template_key = "spotlight";
+        c.sectionOrder = ["hero", "offers", ...c.sectionOrder.filter((k) => k !== "hero" && k !== "offers")];
+        c.hidden = (c.hidden || []).filter((k) => k !== "offers");
+      }
       if (q.get("t")) row.template_key = q.get("t");
       return real.normalizeSite(row);
     },

@@ -1,18 +1,52 @@
-/* Simple ("Meet me"): type-led single column; small square portrait beside the greeting; hairline lists */
-.tpl-minimal .sec{max-width:640px}
-.tpl-minimal .sec+.sec{border-top:0}
-.tpl-minimal .hero-in{display:grid;gap:var(--space-l)}
-.tpl-minimal .hero-photo{width:80px;height:80px;border-radius:var(--shape-sm)}
-.tpl-minimal .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
-.tpl-minimal .hero-offer{margin-top:0}
-.tpl-minimal .cards,.tpl-minimal .offers{grid-template-columns:1fr;gap:0}
-.tpl-minimal .card,.tpl-minimal .offer{border:0;border-bottom:1px solid var(--c-outlineVariant);border-radius:0;background:transparent}
-.tpl-minimal .card{padding:var(--space-m) 0}
-.tpl-minimal .offer-b{padding:var(--space-m) 0}
-.tpl-minimal .offer.feat{border-top:1px solid var(--c-outlineVariant)}
-.tpl-minimal .contact-grid{grid-template-columns:1fr}
-.tpl-minimal .enq{background:transparent}
-.tpl-minimal .talk{max-width:240px}
-.tpl-minimal h1{font-weight:600}
+/* Simple ("Meet me", DECISIONS #85): a printed visiting card. One narrow column (the grid's --wrap is 640px), small
+   uppercase label headings, text links instead of buttons, plain lists with hairlines between rows, no cards. */
+.tpl-minimal{--wrap:640px}
+.tpl-minimal .sec-hero{padding-top:calc(var(--space-l)*3)}
+.tpl-minimal h2{font-size:var(--text-s);line-height:var(--line-s);color:var(--c-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:var(--space-m)}
+.tpl-minimal:lang(hi) h2{letter-spacing:0}
+.tpl-minimal .hero-id{gap:var(--space-m)}
+.tpl-minimal .hero-photo{width:56px;height:56px}
+.tpl-minimal .hero-photo.mono{font-size:var(--text-s);line-height:var(--line-s)}
+.tpl-minimal .who{display:block;color:var(--c-onSurfaceVariant)}
+.tpl-minimal .who strong{color:var(--c-onSurface)}
+.tpl-minimal h1{margin-top:var(--space-l);font-size:var(--text-m);line-height:var(--line-m);font-weight:600}
+.tpl-minimal .lead{margin-top:var(--space-s);font-size:var(--text-s);line-height:var(--line-s)}
+.tpl-minimal .prose{color:var(--c-onSurface)}
+/* inline link rows: Call · WhatsApp · Email, and the facts; the separator is CSS, wrapped lines start clean */
+.tpl-minimal .links,.tpl-minimal .facts{display:flex;flex-wrap:wrap;column-gap:var(--space-m);row-gap:var(--space-s)}
+.tpl-minimal .links{margin-top:var(--space-l);font-weight:600}
+.tpl-minimal .facts{margin-top:var(--space-s);color:var(--c-onSurfaceVariant)}
+.tpl-minimal .facts strong{color:inherit}
+.tpl-minimal .links a,.tpl-minimal .flow a,.tpl-minimal .chip,.tpl-minimal .contact-info .btn{text-decoration:underline;text-underline-offset:4px}
+.tpl-minimal .qr-h{margin-top:var(--space-l)}
 .tpl-minimal .qr{gap:var(--space-s) var(--space-m)}
-.tpl-minimal .chip{min-height:24px;padding:0;border:0;background:transparent;text-decoration:underline;text-underline-offset:4px}
+.tpl-minimal .chip,.tpl-minimal .contact-info .btn{min-height:24px;padding:0;border:0;border-radius:0;background:none;color:var(--accent);font-weight:500}
+.tpl-minimal .hero-offer{margin-top:var(--space-l);max-width:none}
+.tpl-minimal .meta{margin-bottom:var(--space-s)}
+.tpl-minimal .plain .meta,.tpl-minimal .offer .meta{margin:0}
+.tpl-minimal blockquote{white-space:pre-line}
+.tpl-minimal .plain li{padding:var(--space-m) 0;border-top:1px solid var(--c-outlineVariant)}
+.tpl-minimal .plain{border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-minimal .plain span{color:var(--c-onSurfaceVariant)}
+.tpl-minimal .qs summary{display:flex;align-items:center;gap:var(--space-s);min-height:48px;list-style:none;cursor:pointer}
+.tpl-minimal .qs summary::-webkit-details-marker{display:none}
+.tpl-minimal .qs summary h2{margin:0}
+.tpl-minimal .qs summary::after{content:"+";color:var(--accent);font-weight:600}
+.tpl-minimal .qs[open] summary::after{content:"\2212"}
+.tpl-minimal .qa>div{padding:var(--space-m) 0;border-top:1px solid var(--c-outlineVariant)}
+.tpl-minimal .qa dt{font-weight:600}
+.tpl-minimal .qa dd{margin-top:var(--space-s)}
+/* offers and lists as hairline rows; smaller titles than the visiting card's own <h1> */
+.tpl-minimal .offers,.tpl-minimal .contact-grid,.tpl-minimal .cards{grid-template-columns:1fr;gap:0}
+.tpl-minimal .offers{border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-minimal .offer,.tpl-minimal .enq{border:0;border-radius:0;background:none}
+.tpl-minimal .offer{border-top:1px solid var(--c-outlineVariant)}
+.tpl-minimal .offer-b,.tpl-minimal .hero-offer .offer-b{padding:var(--space-m) 0}
+.tpl-minimal .offer h3,.tpl-minimal .offer .ttl{font-size:var(--text-s);line-height:var(--line-s)}
+.tpl-minimal .hero-offer .offer{border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-minimal .list li:first-child{border-top:1px solid var(--c-outlineVariant)}
+.tpl-minimal .enq{padding:0}
+.tpl-minimal .enq h3{font-size:var(--text-s);line-height:var(--line-s)}
+.tpl-minimal .contact-grid{gap:calc(var(--space-l)*2)}
+.tpl-minimal .contact-info .actions{display:flex;flex-wrap:wrap;gap:var(--space-s) var(--space-m);max-width:none}
+.tpl-minimal .foot{background:none;padding-top:0;padding-bottom:calc(var(--space-l)*2)}

@@ -30,6 +30,18 @@ import com.sledje.agentpro.feature.website.ui.AppearanceScreen
 import com.sledje.agentpro.feature.website.ui.AppearanceUiState
 import com.sledje.agentpro.feature.website.ui.ContentScreen
 import com.sledje.agentpro.feature.website.ui.ContentUiState
+import com.sledje.agentpro.feature.website.ui.ServicesMatchContent
+import com.sledje.agentpro.feature.website.ui.ServicesMatchUiState
+import com.sledje.agentpro.feature.website.ui.ServicesMatchViewModel
+import com.sledje.agentpro.feature.website.data.ServicesUpdate
+import com.sledje.agentpro.resources.website_match_title
+import com.sledje.agentpro.core.designsystem.AgentProTheme
+import com.sledje.agentpro.core.designsystem.Spacing
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import com.sledje.agentpro.feature.website.ui.HubRow
 import com.sledje.agentpro.feature.website.ui.LinkScreen
 import com.sledje.agentpro.feature.website.ui.LinkUiState
@@ -150,6 +162,22 @@ class WebsiteScreenshotTest {
                 ContentUiState(loading = false, rows = rows), issues.map { it.section.key }.toSet(), remember { SnackbarHostState() },
                 {}, {}, { _, _ -> }, {}, { _, _ -> }, {},
             )
+        },
+        // DECISIONS #93: the hint while the services don't match the agent's insurance types, and the update sheet.
+        "WebsiteContentServicesHint" to {
+            ContentScreen(ContentUiState(loading = false, rows = rows), emptySet(), remember { SnackbarHostState() }, {}, {}, { _, _ -> }, {}, { _, _ -> }, {}, servicesMismatch = true)
+        },
+        "WebsiteServicesMatch" to {
+            val state = remember {
+                ServicesMatchUiState(
+                    update = ServicesUpdate(add = listOf("motor", "travel"), remove = listOf("child", "pension")), sheetOpen = true,
+                    removeForm = FormState(listOf(ServicesMatchViewModel.removeField(listOf("child", "pension")))),
+                )
+            }
+            Column(Modifier.fillMaxWidth().padding(vertical = Spacing.m)) {
+                Text(stringResource(Res.string.website_match_title), style = AgentProTheme.text.title, modifier = Modifier.padding(horizontal = Spacing.m).padding(bottom = Spacing.s))
+                ServicesMatchContent(state, {}, {})
+            }
         },
         "WebsiteSectionIssues" to {
             val hero = SiteSchema.section("hero")!!

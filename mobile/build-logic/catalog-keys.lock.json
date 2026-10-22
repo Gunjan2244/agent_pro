@@ -16,7 +16,12 @@
       "pension",
       "health",
       "ulip",
-      "other"
+      "other",
+      "motor",
+      "home",
+      "travel",
+      "business",
+      "accident"
     ],
     "enquirySources": [
       "website",
@@ -138,6 +143,15 @@
     "templateFamilies": [
       "personal",
       "offers"
+    ],
+    "insuranceTypes": [
+      "life",
+      "health",
+      "motor",
+      "home",
+      "travel",
+      "business",
+      "accident"
     ]
   },
   "privacyNoticeHashes": {

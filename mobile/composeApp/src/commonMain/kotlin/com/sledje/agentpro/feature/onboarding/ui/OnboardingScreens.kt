@@ -49,6 +49,10 @@ import com.sledje.agentpro.core.forms.message
 import androidx.compose.ui.platform.testTag
 import com.sledje.agentpro.core.ui.LocalIsOnline
 import com.sledje.agentpro.core.designsystem.components.NetworkImage
+import com.sledje.agentpro.feature.offers.ui.CompaniesBlock
+import com.sledje.agentpro.feature.offers.ui.CompaniesUiState
+import com.sledje.agentpro.feature.offers.ui.CompanyActions
+import com.sledje.agentpro.feature.offers.ui.CompanySheets
 import com.sledje.agentpro.feature.website.data.ImageUnreadable
 import com.sledje.agentpro.feature.website.data.SiteLinks
 import com.sledje.agentpro.feature.website.ui.TemplateChooserBackHandler
@@ -101,7 +105,8 @@ private fun ErrorLine(text: String) {
 /**
  * Step 1: name, mobile, designation and city; agency code and branch under More details. When sign-up
  * already gave the name and mobile ([OnboardingUiState.contactSummary]), they show as a card with
- * **Edit** (which brings back their fields) and aren't asked again.
+ * **Edit** (which brings back their fields) and aren't asked again. After the profile fields comes the required
+ * "Your companies" block ([companies]; docs/UX.md); Continue waits for at least one company.
  */
 @Composable
 fun OnboardingProfileScreen(
@@ -111,6 +116,9 @@ fun OnboardingProfileScreen(
     onEditContact: () -> Unit = {},
     /** Opens the photo picker (MediaPicker); the view model uploads the result. */
     onPickPhoto: () -> Unit = {},
+    /** The "Your companies" block's state; null hides the block (and its rule) for previews that predate it. */
+    companies: CompaniesUiState? = null,
+    companyActions: CompanyActions = CompanyActions.None,
 ) {
     val online = LocalIsOnline.current
     AppScaffold(
@@ -120,7 +128,7 @@ fun OnboardingProfileScreen(
             BottomActionBar(
                 text = stringResource(Res.string.onboarding_continue),
                 onClick = onContinue,
-                enabled = online && form.isValid && !state.saving && !state.uploadingPhoto,
+                enabled = online && form.isValid && !state.saving && !state.uploadingPhoto && (companies == null || companies.satisfiesOnboarding),
                 helperText = if (!online) stringResource(Res.string.needs_internet) else null,
             )
         },
@@ -138,10 +146,12 @@ fun OnboardingProfileScreen(
                 onPickImage = { if (online) onPickPhoto() },
                 imagePreview = { url -> NetworkImage(url) },
             )
+            if (companies != null) CompaniesBlock(companies, companyActions, requiredHint = true)
             if (state.uploadingPhoto) Text(stringResource(Res.string.website_photo_uploading), style = AgentProTheme.text.bodyMuted)
             state.error?.let { ErrorLine(stringResource(if (it == ImageUnreadable) Res.string.website_photo_unreadable else it.message)) }
         }
     }
+    if (companies != null) CompanySheets(companies, companyActions)
 }
 
 /** Step 1's name and mobile from sign-up, with **Edit**. */

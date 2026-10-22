@@ -38,11 +38,17 @@ enum class SignUpOutcome {
     /** Email confirmation is off in the Auth project: the session has started, so the gate moves on. */
     SignedIn,
 
-    /** "Check your email" follows; [AuthRepository.signInAfterConfirmation] finishes the sign-in. */
+    /** "Check your email" follows: the agent enters the code from the email ([AuthRepository.verifySignUpCode]). */
     ConfirmEmail,
+
+    /** The address already has an account (Supabase hides that: a fake user, no email). Never reaches the screen: it becomes `Conflict`. */
+    AccountExists,
 }
 
-/** Email + password auth (DECISIONS #3; docs/BACKEND.md, Auth: email confirmation on, minimum 8 characters). */
+/**
+ * Email + password auth, with a one-time code from the email in place of links: sign-up is confirmed and a
+ * forgotten password is reset by entering the code (DECISIONS #3, #84; docs/BACKEND.md, Auth).
+ */
 interface AuthRepository {
     val state: StateFlow<AuthState>
 
@@ -57,17 +63,22 @@ interface AuthRepository {
     suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome>
 
     /**
-     * "Check your email": signs in with the email and password of this run's last sign-up (or of a
-     * sign-in refused as unconfirmed) once the email is confirmed, so the agent never types them again.
-     * They're kept in memory only, never stored. True when signed in; false while the email is still
-     * unconfirmed, when nothing is pending, or on any failure (it's tried again on the next return).
+     * Confirms the email with the code from the sign-up email; success starts the session, so the gate
+     * moves on. A wrong or expired code is `Validation("code")`.
      */
-    suspend fun signInAfterConfirmation(): Boolean
+    suspend fun verifySignUpCode(email: String, code: String): AppResult<Unit>
 
+    /** Sends the confirmation code again. */
     suspend fun resendConfirmation(email: String): AppResult<Unit>
 
-    /** Sends the reset link (redirect [AuthCallbackLink.RECOVERY_REDIRECT]). */
+    /** Sends the reset code. */
     suspend fun sendPasswordReset(email: String): AppResult<Unit>
+
+    /**
+     * Checks the code from the reset email; success starts a recovery session, after which
+     * [updatePassword] sets the new password. A wrong or expired code is `Validation("code")`.
+     */
+    suspend fun verifyRecoveryCode(email: String, code: String): AppResult<Unit>
 
     /** Sets a new password for the signed-in (recovery) session: Set new password (docs/UX.md). */
     suspend fun updatePassword(password: String): AppResult<Unit>
@@ -102,6 +113,10 @@ object AuthRules {
 
     /** Supabase sends at most one auth email per address per this many seconds (Auth → Rate Limits). */
     const val EMAIL_RESEND_SECONDS = 60
+
+    /** Supabase's email code is 6 digits by default and can be set up to 10 (Auth → Emails → OTP length). */
+    const val CODE_MIN_LENGTH = 6
+    const val CODE_MAX_LENGTH = 10
 }
 
 /**
@@ -129,18 +144,9 @@ class SupabaseAuthRepository(
         }.stateIn(scope, SharingStarted.Eagerly, AuthState.Loading)
     } ?: notConfigured
 
-    /** The credentials [signInAfterConfirmation] uses: in memory only, cleared once signed in or out. */
-    private var pendingSignIn: Pair<String, String>? = null
-
-    override suspend fun signIn(email: String, password: String): AppResult<Unit> {
-        val result = passwordSignIn(email.trim(), password)
-        pendingSignIn = if (result is Result.Err && result.error == NOT_CONFIRMED) email.trim() to password else null
-        return result
-    }
-
-    private suspend fun passwordSignIn(email: String, password: String): AppResult<Unit> = remoteCall {
+    override suspend fun signIn(email: String, password: String): AppResult<Unit> = remoteCall {
         supabase.require().auth.signInWith(Email) {
-            this.email = email
+            this.email = email.trim()
             this.password = password
         }
     }
@@ -148,25 +154,26 @@ class SupabaseAuthRepository(
     override suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome> = remoteCall {
         val auth = supabase.require().auth
         val email = account.email.trim()
-        auth.signUpWith(Email) {
+        val user = auth.signUpWith(Email) {
             this.email = email
             this.password = account.password
             this.data = signUpMetadata(account, consent)
         }
-        if (auth.currentSessionOrNull() != null) {
+        // With email confirmation on, Supabase hides that the address is taken: it answers 200 with an
+        // obfuscated user whose `identities` is empty, and sends no email. A new user always has one.
+        if (user != null && user.identities?.isEmpty() == true) {
+            SignUpOutcome.AccountExists
+        } else if (auth.currentSessionOrNull() != null) {
             SignUpOutcome.SignedIn
         } else {
-            pendingSignIn = email to account.password
             SignUpOutcome.ConfirmEmail
         }
+    }.let { result ->
+        if (result is Result.Ok && result.value == SignUpOutcome.AccountExists) Result.Err(AppError.Conflict) else result
     }
 
-    override suspend fun signInAfterConfirmation(): Boolean {
-        val (email, password) = pendingSignIn ?: return false
-        val result = passwordSignIn(email, password)
-        // Wrong credentials won't come right by waiting (the email already had an account with another password).
-        if (result is Result.Ok || (result is Result.Err && result.error == CREDENTIALS)) pendingSignIn = null
-        return result is Result.Ok
+    override suspend fun verifySignUpCode(email: String, code: String): AppResult<Unit> = remoteCall {
+        supabase.require().auth.verifyEmailOtp(OtpType.Email.SIGNUP, email.trim(), code.trim())
     }
 
     override suspend fun resendConfirmation(email: String): AppResult<Unit> = remoteCall {
@@ -174,7 +181,11 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun sendPasswordReset(email: String): AppResult<Unit> = remoteCall {
-        supabase.require().auth.resetPasswordForEmail(email.trim(), redirectUrl = AuthCallbackLink.RECOVERY_REDIRECT)
+        supabase.require().auth.resetPasswordForEmail(email.trim())
+    }
+
+    override suspend fun verifyRecoveryCode(email: String, code: String): AppResult<Unit> = remoteCall {
+        supabase.require().auth.verifyEmailOtp(OtpType.Email.RECOVERY, email.trim(), code.trim())
     }
 
     override suspend fun updatePassword(password: String): AppResult<Unit> = remoteCall {
@@ -183,7 +194,6 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun signOut(): AppResult<Unit> {
-        pendingSignIn = null
         val result = remoteCall { supabase.require().auth.signOut() }
         // Signing out locally always succeeds; the cache goes either way.
         if (result is Result.Err) runCatching { supabase.client?.auth?.clearSession() }
@@ -203,12 +213,10 @@ class SupabaseAuthRepository(
                 fragment != null -> auth.importSession(auth.parseSessionFromFragment(fragment))
                 else -> Unit
             }
-        }.also { if (it is Result.Ok) pendingSignIn = null }
+        }
     }
 
     companion object {
         val LINK_EXPIRED = AppError.Validation("link", "expired")
-        private val NOT_CONFIRMED = AppError.Validation("email", "not_confirmed")
-        private val CREDENTIALS = AppError.Validation("credentials")
     }
 }

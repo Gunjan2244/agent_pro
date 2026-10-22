@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sledje.agentpro.core.catalog.AccentSwatch
 import com.sledje.agentpro.core.catalog.AppLocale
-import com.sledje.agentpro.core.catalog.TemplateFamily
 import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.data.AppError
@@ -74,11 +73,7 @@ class AppearanceViewModel(private val sites: SiteRepository) : ViewModel() {
             return
         }
         val from = Templates.fromKey(site.templateKey)
-        val draft = if (template.family == TemplateFamily.Offers && from?.family != TemplateFamily.Offers) {
-            SiteContent.withOffersAfterHero(site.draftContent, (from ?: template).sections).takeIf { it != site.draftContent }
-        } else {
-            null
-        }
+        val draft = SiteContent.afterSwitch(site.draftContent, from, template).takeIf { it != site.draftContent }
         save(onDone = { _state.update { it.copy(templateSaved = true) } }, draft = draft) { it.copy(templateKey = template.key) }
     }
 

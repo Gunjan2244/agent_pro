@@ -81,9 +81,9 @@ export function offerCard(o, ctx, opts = {}) {
 <p class="offer-top">${has(o.badge) ? `<span class="pill">${esc(o.badge)}</span>` : ""}<span class="src">${esc(src)}</span></p>
 ${title}${has(o.summary) ? `<p class="sum">${esc(o.summary)}</p>` : ""}
 ${has(o.details) ? `<details class="more"><summary>${esc(t("offer_field.details"))}</summary><p class="prose">${esc(o.details)}</p></details>` : ""}
-${ends ? `<p class="ends">${esc(t("site.offer_ends", { date: ends }))}</p>` : ""}
+<div class="offer-f">${ends ? `<p class="ends">${esc(t("site.offer_ends", { date: ends }))}</p>` : ""}
 ${offerCta(o, ctx, opts.button ? "btn" : "lnk")}
-${has(o.disclaimer) ? `<p class="fine">${esc(o.disclaimer)}</p>` : ""}
+${has(o.disclaimer) ? `<p class="fine">${esc(o.disclaimer)}</p>` : ""}</div>
 </div></${tag}>`;
 }
 

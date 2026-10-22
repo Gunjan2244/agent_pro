@@ -46,6 +46,8 @@ import com.sledje.agentpro.core.platform.MediaPicker
 import com.sledje.agentpro.core.platform.SitePreview
 import com.sledje.agentpro.feature.website.WebsiteServices
 import com.sledje.agentpro.feature.website.data.ImageUploader
+import com.sledje.agentpro.feature.offers.data.CompanyRepository
+import com.sledje.agentpro.feature.offers.data.SupabaseCompanyRepository
 import com.sledje.agentpro.feature.website.data.SiteRepository
 import com.sledje.agentpro.feature.website.data.SiteStatsRepository
 import com.sledje.agentpro.feature.website.data.WebsiteEnquirySource
@@ -131,9 +133,10 @@ class AppContainer(platform: PlatformServices) : AppDependencies {
     override val dataSync: DataSync = appDataSync
 
     override val isConfigured: Boolean get() = supabase.isConfigured
-    override val auth: AuthRepository = SupabaseAuthRepository(supabase, store, scope, onSignedOut = { appDataSync.clearAll() })
+    override val auth: AuthRepository = SupabaseAuthRepository(supabase, store, scope, onSignedOut = { appDataSync.clearAll(); companies.clear() })
     override val profiles: ProfileRepository = SupabaseProfileRepository(supabase, database.profileDao(), syncEngine)
     override val sites: SiteRepository = SupabaseSiteRepository(supabase, database.siteDao(), syncEngine)
+    override val companies: CompanyRepository = SupabaseCompanyRepository(supabase)
     override val enquiries: EnquiryRepository = SupabaseEnquiryRepository(supabase, database.enquiryDao(), syncEngine)
     override val customers: CustomerRepository = SupabaseCustomerRepository(supabase, database.customerDao(), syncEngine)
     override val policies: PolicyRepository =

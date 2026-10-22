@@ -29,6 +29,7 @@
     <string name="website_section_hidden">छिपा हुआ</string>
     <string name="website_section_empty">अभी भरा नहीं गया</string>
     <string name="website_section_items">%1$d जोड़े गए</string>
+    <string name="website_section_companies_note">यह वे कंपनियाँ दिखाता है जिन्हें एडमिन ने मंज़ूर किया है। इन्हें सेटिंग्स → प्रोफ़ाइल में सँभालें।</string>
     <string name="website_section_always_on">हमेशा दिखता है</string>
     <string name="website_section_show">%1$s दिखाएँ</string>
     <string name="website_section_needs_fix">प्रकाशित करने से पहले ठीक करें</string>
@@ -61,4 +62,13 @@
     <string name="website_stats_no_value">—</string>
     <string name="website_stats_chart_title">रोज़ के व्यूज़</string>
     <string name="website_stats_takeaway">पिछले %2$d दिनों में %1$d व्यूज़</string>
+    <!-- Services follow the agent's insurance types (DECISIONS #93; docs/UX.md, Settings → Profile, Website → Content) -->
+    <string name="website_match_title">वेबसाइट को इसके हिसाब से अपडेट करें?</string>
+    <string name="website_match_add">ये सेवाएँ जोड़ें: %1$s</string>
+    <string name="website_match_remove_label">जो सेवाएँ अब आपके काम में नहीं हैं, उन्हें हटाएँ</string>
+    <string name="website_match_keep_text">आपका लिखा हुआ टेक्स्ट वैसा ही रहेगा। बदलाव लाइव वेबसाइट पर दिखाने के लिए प्रकाशित करें।</string>
+    <string name="website_match_apply">वेबसाइट अपडेट करें</string>
+    <string name="website_match_hint">आपकी वेबसाइट की सेवाएँ आपके बीमा के प्रकारों से मेल नहीं खातीं।</string>
+    <string name="website_match_hint_action">सेवाएँ अपडेट करें</string>
+    <string name="website_match_done">सेवाएँ अपडेट हो गईं। इन्हें लाइव करने के लिए प्रकाशित करें।</string>
 </resources>

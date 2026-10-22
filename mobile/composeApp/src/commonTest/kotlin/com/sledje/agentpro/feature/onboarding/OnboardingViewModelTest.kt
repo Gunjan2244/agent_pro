@@ -21,7 +21,9 @@ import com.sledje.agentpro.feature.onboarding.ui.SlugSuggestion
 import com.sledje.agentpro.feature.website.data.PublishError
 import com.sledje.agentpro.feature.website.data.PublishOutcome
 import com.sledje.agentpro.feature.website.data.StarterContent
+import com.sledje.agentpro.testing.FakeCompanyRepository
 import com.sledje.agentpro.testing.FakeProfileRepository
+import com.sledje.agentpro.testing.testMembership
 import com.sledje.agentpro.testing.TEST_USER
 import com.sledje.agentpro.testing.FakeSiteRepository
 import com.sledje.agentpro.testing.testProfile
@@ -50,12 +52,14 @@ class OnboardingViewModelTest {
     private val sites = FakeSiteRepository()
     private val session = OnboardingSession().apply { start() }
     private val events = AppEvents()
+    /** Step 1 needs one company link (DECISIONS #89); most tests start with it already added. */
+    private val companies = FakeCompanyRepository(listOf(testMembership()))
 
     @BeforeTest fun setUp() = Dispatchers.setMain(StandardTestDispatcher())
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
-    private fun vm() = OnboardingViewModel(profiles, sites, session, events)
+    private fun vm() = OnboardingViewModel(profiles, sites, session, events, companies)
 
     @Test
     fun profileStepSavesAndMovesToTheTemplateStep() = runTest {
@@ -157,6 +161,24 @@ class OnboardingViewModelTest {
         assertTrue(created.draftContent["about"]!!.jsonObject["bio"]!!.jsonPrimitive.content.isNotBlank())
         assertEquals("offers", created.draftContent["sectionOrder"]!!.jsonArray[1].jsonPrimitive.content)
         assertFalse("offers" in created.draftContent["hidden"]!!.jsonArray.map { it.jsonPrimitive.content })
+    }
+
+    @Test
+    fun theSiteIsSeededFromTheInsuranceTypesOfStep1sCompanies() = runTest {
+        profiles.profile.value = testProfile()
+        companies.request("c2", null, "AG9", listOf("motor", "health"))
+        val vm = vm()
+        runCurrent()
+        assertEquals(listOf("life", "health", "motor"), vm.insuranceTypes(), "the union over the pending links, in catalog order")
+        vm.selectTemplate("classic")
+        vm.onSlugChange("ramesh-k")
+        advanceTimeBy(OnboardingViewModel.SLUG_DEBOUNCE_MILLIS + 1)
+        vm.later()
+        runCurrent()
+        val created = sites.created.single().draftContent
+        val offered = created["services"]!!.jsonObject["offered"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertEquals(listOf("term", "health", "motor", "endowment", "child", "pension"), offered)
+        assertEquals(StarterContent.from(testProfile(), Templates.fromKey("classic")!!, "en", TEST_USER, listOf("life", "health", "motor")), created)
     }
 
     @Test
@@ -371,5 +393,31 @@ class OnboardingViewModelTest {
         assertEquals(AppError.Offline, vm.state.value.error)
         assertEquals(null, vm.state.value.navigateTo, "never on to the site steps without knowing")
         assertFalse(vm.state.value.saving)
+    }
+
+    @Test
+    fun profileStepWaitsForAtLeastOneCompany() = runTest {
+        val noCompanies = FakeCompanyRepository()
+        val vm = OnboardingViewModel(profiles, sites, session, events, noCompanies)
+        runCurrent()
+        vm.profileForm.set(NAME, "Ramesh Kumar")
+        vm.profileForm.set(MOBILE, "98765 43210")
+        vm.saveProfile()
+        runCurrent()
+        assertTrue(profiles.updates.isEmpty(), "nothing is saved without a company")
+        assertEquals(AppError.Validation("companies", "required"), vm.state.value.error)
+        assertEquals(null, vm.state.value.navigateTo)
+    }
+
+    @Test
+    fun aRejectedCompanyAloneDoesNotCount() = runTest {
+        val rejected = FakeCompanyRepository(listOf(testMembership(status = "rejected", rejectReason = "not_found")))
+        val vm = OnboardingViewModel(profiles, sites, session, events, rejected)
+        runCurrent()
+        vm.profileForm.set(NAME, "Ramesh Kumar")
+        vm.profileForm.set(MOBILE, "98765 43210")
+        vm.saveProfile()
+        runCurrent()
+        assertTrue(profiles.updates.isEmpty())
     }
 }

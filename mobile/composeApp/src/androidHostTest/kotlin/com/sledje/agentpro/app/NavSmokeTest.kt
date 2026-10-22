@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithTag
@@ -18,13 +19,16 @@ import com.sledje.agentpro.core.forms.fieldTestTag
 import com.sledje.agentpro.feature.auth.data.AuthState
 import com.sledje.agentpro.feature.auth.data.SignUpOutcome
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
+import com.sledje.agentpro.feature.offers.ui.CompaniesViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.SLUG_FIELD
 import com.sledje.agentpro.testing.FakeAppDependencies
 import com.sledje.agentpro.testing.FakeAuthRepository
+import com.sledje.agentpro.testing.FakeCompanyRepository
 import com.sledje.agentpro.testing.FakeDataSync
 import com.sledje.agentpro.testing.FakeProfileRepository
 import com.sledje.agentpro.testing.TEST_USER
+import com.sledje.agentpro.testing.testMembership
 import com.sledje.agentpro.testing.testProfile
 import com.sledje.agentpro.testing.testSite
 import org.junit.Test
@@ -101,6 +105,19 @@ class NavSmokeTest {
         awaitText("Your profile")
         onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).performTextInput("Sunita Rao")
         onNodeWithTag(fieldTestTag(OnboardingViewModel.MOBILE)).performTextInput("9876543210")
+
+        // Your companies: Continue waits for one (DECISIONS #89). Add Alpha Insurance with its code and a type.
+        onNode(hasText("Continue") and hasClickAction()).assertIsNotEnabled()
+        awaitText("Add at least one company to continue")
+        button("Add company").performScrollTo().performClick()
+        awaitText("Choose your company")
+        onNode(hasText("Alpha Insurance") and hasClickAction()).performClick()
+        onNodeWithTag(fieldTestTag(CompaniesViewModel.AGENCY_CODE)).performTextInput("AG123")
+        onNode(hasText("Life") and hasClickAction()).performClick()
+        button("Save").performClick()
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(hasContentDescription("Waiting for approval")).fetchSemanticsNodes().isNotEmpty() }
+        onNode(hasText("Add at least one company to continue")).assertDoesNotExist()
+        assertEquals("AG123", deps.companies.requests.single().agencyCode)
         button("Continue").performClick()
 
         // Step 2: template (from the generated Templates).
@@ -144,7 +161,8 @@ class NavSmokeTest {
                 profiles.profile.value = testProfile(fullName = account.fullName, phone = account.phone, designation = null, city = null)
             }
         }
-        setContent { App(FakeAppDependencies(auth = auth, profiles = profiles, dataSync = sync)) }
+        val companies = FakeCompanyRepository(listOf(testMembership()))
+        setContent { App(FakeAppDependencies(auth = auth, profiles = profiles, dataSync = sync, companies = companies)) }
 
         awaitText("Create account")
         button("Create account").performClick()

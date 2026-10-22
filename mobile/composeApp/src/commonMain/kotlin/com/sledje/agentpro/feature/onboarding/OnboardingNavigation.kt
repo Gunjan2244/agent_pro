@@ -25,6 +25,8 @@ import androidx.navigation.compose.rememberNavController
 import com.sledje.agentpro.app.AppDependencies
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingLinkScreen
+import com.sledje.agentpro.feature.offers.ui.CompaniesViewModel
+import com.sledje.agentpro.feature.offers.ui.CompanyActions
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingProfileScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateScreen
@@ -36,6 +38,8 @@ import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.feature.settings.data.Profile
 import com.sledje.agentpro.feature.website.data.Site
 import com.sledje.agentpro.feature.website.data.SitePreviewPayload
+import com.sledje.agentpro.feature.website.data.rememberPreviewOffers
+import com.sledje.agentpro.feature.website.data.SiteServices
 import com.sledje.agentpro.feature.website.data.StarterContent
 
 /** Onboarding routes (docs/UX.md: 1 Profile → 2 Template → 3 Your link → Done). */
@@ -64,7 +68,12 @@ fun OnboardingNavHost(deps: AppDependencies) {
                 val state by vm.state.collectAsState()
                 Navigate(vm, state.navigateTo, nav)
                 val pickPhoto = deps.website.mediaPicker.rememberImagePicker { picked -> picked?.let(vm::uploadPhoto) }
-                OnboardingProfileScreen(vm.profileForm, state, onContinue = vm::saveProfile, onEditContact = vm::editContact, onPickPhoto = pickPhoto)
+                val companiesVm = viewModel { CompaniesViewModel(deps.companies) }
+                val companies by companiesVm.state.collectAsState()
+                OnboardingProfileScreen(
+                    vm.profileForm, state, onContinue = vm::saveProfile, onEditContact = vm::editContact, onPickPhoto = pickPhoto,
+                    companies = companies, companyActions = CompanyActions.of(companiesVm),
+                )
             }
             composable<OnboardingRoutes.Template> { entry ->
                 val vm = entry.onboardingViewModel(nav, deps)
@@ -82,7 +91,11 @@ fun OnboardingNavHost(deps: AppDependencies) {
                     // The agent's own starter content rendered in each template (docs/UX.md, Onboarding step 2).
                     preview = { template ->
                         val profile by deps.profiles.observeMine().collectAsState(null)
-                        val json = remember(profile, template.key, state.locale) { StarterPreview.json(profile, template, state.locale) }
+                        val memberships by deps.companies.memberships.collectAsState()
+                        val types = remember(memberships) { SiteServices.agentTypes(memberships) }
+                        val content = remember(profile, template.key, state.locale, types) { StarterPreview.content(profile, template, state.locale, types) }
+                        val offers = rememberPreviewOffers(deps.sites, content, template.key)
+                        val json = remember(profile, template.key, state.locale, offers, types) { StarterPreview.json(profile, template, state.locale, offers, types) }
                         deps.website.sitePreview.Render(json, Modifier.fillMaxSize())
                     },
                 )
@@ -133,7 +146,8 @@ private fun LaunchRoute(vm: OnboardingViewModel, deps: AppDependencies) {
         },
         onDone = vm::finishLaunch,
         preview = { modifier ->
-            val json = remember(site, profile) { site?.let { SitePreviewPayload.json(it, profile) } }
+            val offers = site?.let { rememberPreviewOffers(deps.sites, it.draftContent, it.templateKey) }
+            val json = remember(site, profile, offers) { site?.let { SitePreviewPayload.json(it, profile, previewOffers = offers) } }
             if (json != null) deps.website.sitePreview.Render(json, modifier)
         },
     )
@@ -143,7 +157,7 @@ private fun LaunchRoute(vm: OnboardingViewModel, deps: AppDependencies) {
 private fun NavBackStackEntry.onboardingViewModel(nav: NavController, deps: AppDependencies): OnboardingViewModel {
     val graphEntry = remember(this) { nav.getBackStackEntry<OnboardingRoutes.Graph>() }
     val vm: OnboardingViewModel = viewModel(viewModelStoreOwner = graphEntry) {
-        OnboardingViewModel(deps.profiles, deps.sites, deps.onboarding, deps.events, photoUploader = deps.website.imageUploader)
+        OnboardingViewModel(deps.profiles, deps.sites, deps.onboarding, deps.events, deps.companies, photoUploader = deps.website.imageUploader)
     }
     // The site is created in the app's language at that moment (docs/UX.md, Onboarding).
     val locale = currentAppLocale().key
@@ -163,14 +177,20 @@ private fun Navigate(vm: OnboardingViewModel, step: OnboardingStep?, nav: NavCon
     }
 }
 
-/** The renderSite input for step 2: the seeded starter content (from the saved profile) in [template], in [locale]. */
+/**
+ * The renderSite input for step 2: the seeded starter content (from the saved profile and the [types] of step 1's
+ * companies, DECISIONS #93) in [template], in [locale].
+ */
 internal object StarterPreview {
-    fun json(profile: Profile?, template: TemplateSpec, locale: String): String {
-        val content = profile?.let { StarterContent.from(it, template, locale, it.id) } ?: kotlinx.serialization.json.JsonObject(emptyMap())
+    fun content(profile: Profile?, template: TemplateSpec, locale: String, types: List<String> = emptyList()): kotlinx.serialization.json.JsonObject =
+        profile?.let { StarterContent.from(it, template, locale, it.id, types) } ?: kotlinx.serialization.json.JsonObject(emptyMap())
+
+    fun json(profile: Profile?, template: TemplateSpec, locale: String, previewOffers: kotlinx.serialization.json.JsonObject? = null, types: List<String> = emptyList()): String {
+        val content = content(profile, template, locale, types)
         val site = Site(
             id = "", slug = "", templateKey = template.key, accent = template.defaultAccent, locale = locale,
             draftContent = content, isPublished = false, publishedAt = null,
         )
-        return SitePreviewPayload.json(site, profile)
+        return SitePreviewPayload.json(site, profile, previewOffers = previewOffers)
     }
 }

@@ -1,21 +1,15 @@
-/* Guide ("Best offers"): needs first. The hero asks what to protect; big choice chips jump to anchored groups,
-   each opened by an agent bubble */
-.tpl-guide .hero-photo{width:72px;height:72px}
-.tpl-guide .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
-.tpl-guide .hero-text{margin-top:var(--space-l)}
-.tpl-guide h1{font-size:var(--text-l);line-height:var(--line-l)}
-.tpl-guide .qr-h{font-size:var(--text-m);line-height:var(--line-m);font-weight:600;color:var(--c-onSurface)}
-.tpl-guide .qr{display:grid;grid-template-columns:repeat(2,1fr)}
-.tpl-guide .chip{justify-content:center;width:100%;min-height:48px;text-align:center;font-weight:600}
-.tpl-guide .need+.need{border-top:1px solid var(--c-outlineVariant);margin-top:var(--space-l)}
-.tpl-guide .need .plan .offer-b{padding-top:var(--space-s)}
-@media(min-width:720px){.tpl-guide .qr{grid-template-columns:repeat(4,1fr)}}
+/* Guide ("Best offers"): needs first. The hero asks what to protect; big choice buttons jump to anchored groups
+   (heading, the agent's own description, then the cards). Hero layout and cards: base.css .fam-offers. */
+.tpl-guide .qr-h{margin-top:calc(var(--space-l)*2);font-size:var(--text-m);line-height:var(--line-m);font-weight:600;color:var(--c-onSurface)}
+.tpl-guide .qr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-s);margin-top:var(--space-m)}
+.tpl-guide .chip{justify-content:center;width:100%;min-height:48px;border-radius:var(--shape-md);text-align:center;font-weight:600}
+.tpl-guide .need .plan .offer-b{padding-top:var(--space-m)}
+@media(min-width:720px){.tpl-guide .qr{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1024px){.tpl-guide .qr{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* wide screens: each group is one row, its heading and the agent's description on the left, its cards on the right */
 @media(min-width:1024px){
-  .tpl-guide .hero-in{display:grid;grid-template-columns:1fr 400px;grid-template-rows:auto 1fr;column-gap:calc(var(--space-l)*2);grid-template-areas:"id side" "text side";align-items:start}
-  .tpl-guide .hero-id{grid-area:id}
-  .tpl-guide .hero-text{grid-area:text}
-  .tpl-guide .hero-side{grid-area:side;display:grid;gap:var(--space-l)}
-  .tpl-guide .hero-offer{margin-top:0}
-  .tpl-guide .scene{max-width:none;margin:0}
-  .tpl-guide .qr{grid-template-columns:repeat(2,1fr)}
+  .tpl-guide .need{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);grid-template-rows:auto 1fr;column-gap:calc(var(--space-l)*2);align-items:start}
+  .tpl-guide .need>h3{grid-area:1/1}
+  .tpl-guide .need-d{grid-area:2/1}
+  .tpl-guide .need .offers{grid-area:1/2/3/3;margin-top:0;grid-template-columns:repeat(2,minmax(0,1fr))}
 }

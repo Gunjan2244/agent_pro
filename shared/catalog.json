@@ -49,7 +49,8 @@
       "icon": "shield",
       "tone": "neutral",
       "order": 1,
-      "image": "interest-term"
+      "image": "interest-term",
+      "insuranceType": "life"
     },
     {
       "key": "endowment",
@@ -57,7 +58,8 @@
       "icon": "savings",
       "tone": "neutral",
       "order": 2,
-      "image": "interest-endowment"
+      "image": "interest-endowment",
+      "insuranceType": "life"
     },
     {
       "key": "money_back",
@@ -65,7 +67,8 @@
       "icon": "payments",
       "tone": "neutral",
       "order": 3,
-      "image": "interest-money-back"
+      "image": "interest-money-back",
+      "insuranceType": "life"
     },
     {
       "key": "child",
@@ -73,7 +76,8 @@
       "icon": "child_care",
       "tone": "neutral",
       "order": 4,
-      "image": "interest-child"
+      "image": "interest-child",
+      "insuranceType": "life"
     },
     {
       "key": "pension",
@@ -81,7 +85,8 @@
       "icon": "elderly",
       "tone": "neutral",
       "order": 5,
-      "image": "interest-pension"
+      "image": "interest-pension",
+      "insuranceType": "life"
     },
     {
       "key": "health",
@@ -89,7 +94,8 @@
       "icon": "health_and_safety",
       "tone": "neutral",
       "order": 6,
-      "image": "interest-health"
+      "image": "interest-health",
+      "insuranceType": "health"
     },
     {
       "key": "ulip",
@@ -97,15 +103,62 @@
       "icon": "trending_up",
       "tone": "neutral",
       "order": 7,
-      "image": "interest-ulip"
+      "image": "interest-ulip",
+      "insuranceType": "life"
+    },
+    {
+      "key": "motor",
+      "labelKey": "interest.motor",
+      "icon": "shield",
+      "tone": "neutral",
+      "order": 8,
+      "image": "interest-motor",
+      "insuranceType": "motor"
+    },
+    {
+      "key": "home",
+      "labelKey": "interest.home",
+      "icon": "home",
+      "tone": "neutral",
+      "order": 9,
+      "image": "interest-home",
+      "insuranceType": "home"
+    },
+    {
+      "key": "travel",
+      "labelKey": "interest.travel",
+      "icon": "public",
+      "tone": "neutral",
+      "order": 10,
+      "image": "interest-travel",
+      "insuranceType": "travel"
+    },
+    {
+      "key": "business",
+      "labelKey": "interest.business",
+      "icon": "work",
+      "tone": "neutral",
+      "order": 11,
+      "image": "interest-business",
+      "insuranceType": "business"
+    },
+    {
+      "key": "accident",
+      "labelKey": "interest.accident",
+      "icon": "verified_user",
+      "tone": "neutral",
+      "order": 12,
+      "image": "interest-accident",
+      "insuranceType": "accident"
     },
     {
       "key": "other",
       "labelKey": "interest.other",
       "icon": "more_horiz",
       "tone": "neutral",
-      "order": 8,
-      "image": "interest-other"
+      "order": 13,
+      "image": "interest-other",
+      "insuranceType": null
     }
   ],
   "enquirySources": [
@@ -1010,6 +1063,57 @@
       "icon": "more_horiz",
       "tone": "neutral",
       "order": 4
+    }
+  ],
+  "insuranceTypes": [
+    {
+      "key": "life",
+      "labelKey": "insurance_type.life",
+      "icon": "favorite",
+      "tone": "neutral",
+      "order": 1
+    },
+    {
+      "key": "health",
+      "labelKey": "insurance_type.health",
+      "icon": "health_and_safety",
+      "tone": "neutral",
+      "order": 2
+    },
+    {
+      "key": "motor",
+      "labelKey": "insurance_type.motor",
+      "icon": "shield",
+      "tone": "neutral",
+      "order": 3
+    },
+    {
+      "key": "home",
+      "labelKey": "insurance_type.home",
+      "icon": "home",
+      "tone": "neutral",
+      "order": 4
+    },
+    {
+      "key": "travel",
+      "labelKey": "insurance_type.travel",
+      "icon": "public",
+      "tone": "neutral",
+      "order": 5
+    },
+    {
+      "key": "business",
+      "labelKey": "insurance_type.business",
+      "icon": "work",
+      "tone": "neutral",
+      "order": 6
+    },
+    {
+      "key": "accident",
+      "labelKey": "insurance_type.accident",
+      "icon": "verified_user",
+      "tone": "neutral",
+      "order": 7
     }
   ],
   "pricing": {

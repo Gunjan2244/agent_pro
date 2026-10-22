@@ -53,6 +53,7 @@ import com.sledje.agentpro.resources.website_move_down
 import com.sledje.agentpro.resources.website_move_up
 import com.sledje.agentpro.resources.website_reorder
 import com.sledje.agentpro.resources.website_section_always_on
+import com.sledje.agentpro.resources.website_section_companies_note
 import com.sledje.agentpro.resources.website_section_empty
 import com.sledje.agentpro.resources.website_section_hidden
 import com.sledje.agentpro.resources.website_section_items
@@ -84,6 +85,9 @@ fun ContentScreen(
     onStartReorder: () -> Unit,
     onMove: (from: Int, to: Int) -> Unit,
     onDone: () -> Unit,
+    /** The services don't match the agent's insurance types (DECISIONS #93): the hint with "Update services" shows. */
+    servicesMismatch: Boolean = false,
+    onUpdateServices: () -> Unit = {},
 ) {
     val online = isOnline()
     AppScaffold(
@@ -111,6 +115,9 @@ fun ContentScreen(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 if (issueSections.isNotEmpty()) {
                     ErrorText(stringResource(Res.string.website_content_fix_banner), Modifier.padding(Spacing.m))
+                }
+                if (servicesMismatch && !state.reordering) {
+                    ServicesMatchHint(onUpdateServices, enabled = online && !state.saving, modifier = Modifier.padding(Spacing.m))
                 }
                 val movable = state.rows.filterNot { it.pinned }
                 state.rows.forEachIndexed { i, row ->
@@ -150,6 +157,8 @@ private fun SectionListRow(
     val title = stringResource(row.section.label)
     val supporting = when {
         hasIssue -> stringResource(Res.string.website_section_needs_fix)
+        // No fields to edit (`companies`): say where the content comes from instead of opening an empty form.
+        row.section.fields.isEmpty() && !row.hidden -> stringResource(Res.string.website_section_companies_note)
         row.hidden -> stringResource(Res.string.website_section_hidden)
         else -> when (val s = row.summary) {
             is SiteContent.Summary.Text -> s.value
@@ -165,7 +174,7 @@ private fun SectionListRow(
         title = title,
         supporting = supporting,
         leading = ListLeading.Icon(if (hasIssue) Res.drawable.ic_error else row.section.icon),
-        onClick = if (reordering) null else onOpen,
+        onClick = if (reordering || row.section.fields.isEmpty()) null else onOpen,
         modifier = Modifier
             .testTag(sectionRowTag(row.section.key))
             .onSizeChanged { rowHeight = it.height.coerceAtLeast(1) }

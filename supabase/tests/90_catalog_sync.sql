@@ -130,3 +130,43 @@ select tests.lives($$insert into public.enquiries (agent_id, name, source, statu
   '#D enquiries_interest_check keeps deprecated keys valid');
 reset role;
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Interests of every insurance type (DECISIONS #93): the new keys are accepted everywhere an interest is
+-- ---------------------------------------------------------------------------
+begin;
+select tests.ok(public.catalog_interest_keys() @> array['motor', 'home', 'travel', 'business', 'accident']
+  and public.catalog_interest_keys_all() @> array['motor', 'home', 'travel', 'business', 'accident']
+  and (public.catalog_interest_keys())[array_length(public.catalog_interest_keys(), 1)] = 'other',
+  '#T catalog_interest_keys(): motor, home, travel, business and accident are active; other stays last');
+select tests.as_anon();
+select tests.ok(
+  public.submit_enquiry('ramesh-sharma', null, 'Visitor Motor', '9833300002', null, 'motor', null, null, tests.consent('enquiry_form')) = '{"ok": true}'::jsonb
+  and public.submit_enquiry('ramesh-sharma', null, 'Visitor Accident', '9833300003', null, 'accident', null, null, tests.consent('enquiry_form')) = '{"ok": true}'::jsonb,
+  '#T submit_enquiry accepts the new interests');
+reset role;
+select tests.ok((select count(*) from public.enquiries where (name, interest) in (('Visitor Motor', 'motor'), ('Visitor Accident', 'accident'))) = 2,
+  '#T the enquiries are stored with their interest (enquiries_interest_check allows them)');
+select tests.as_agent(:A);
+update public.sites
+   set draft_content = jsonb_set(draft_content, '{services}',
+       '{"offered": ["motor", "home", "travel", "business", "accident", "other"], "items": [{"interest": "motor", "description": "Car and two-wheeler cover"}, {"interest": "travel"}]}')
+ where agent_id = :A;
+select tests.ok((public.publish_site() ->> 'ok')::boolean,
+  '#T publish_site accepts services of the new interests');
+reset role;
+select tests.ok(public.site_schema() -> 'sections' @> '[{"key": "companies"}]'::jsonb,
+  '#T site_schema() has the companies section (missing from the live copy of 20261022074432; this catalog_sync restores it)');
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- Insurance types (catalog.insuranceTypes, DECISIONS #89): catalog_insurance_types() in display order, not callable
+-- by the API roles
+-- ---------------------------------------------------------------------------
+select tests.ok(public.catalog_insurance_types() = array['life', 'health', 'motor', 'home', 'travel', 'business', 'accident'],
+  '#I catalog_insurance_types() holds the active keys in display order');
+select tests.ok(not has_function_privilege('anon', 'public.catalog_insurance_types()', 'EXECUTE')
+                and not has_function_privilege('authenticated', 'public.catalog_insurance_types()', 'EXECUTE'),
+  '#I catalog_insurance_types() is not executable by anon or authenticated');
+select tests.ok(private.ordered_insurance_types(array['accident', 'zzz', 'life']) = array['life', 'accident', 'zzz'],
+  '#I ordered_insurance_types: catalog order, unknown (deprecated) keys last');

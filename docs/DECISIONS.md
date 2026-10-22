@@ -754,3 +754,70 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
 - **Alternatives considered:** only fixing the race (still trusts a cache that can be emptied while the sync cursors survive); letting step 3 adopt the existing site on a conflict (the agent would still walk through steps they don't need, and a conflict can also mean the link is taken).
 - **Status:** Accepted.
 
+
+### #84 — 2026-10-20 — In-app previews get their offers from a signed-in RPC
+- **Decision:** a new `public.preview_site_offers(content jsonb, template_key text) returns jsonb` (SECURITY DEFINER, `authenticated` only, the caller from `auth.uid()`) returns `{company, offers}` exactly as `get_public_site` would resolve them for that draft and template: picked offers, or the automatic ones (DECISIONS #79), the featured one for the offers family, `company` = `{disclaimer}` only, never `internal_name`. The app adds the result to every `renderSite` payload. With no network, the preview renders without offers (as before).
+- **Why:** the preview only had the draft, so "Best offers" previews showed generic plan cards instead of the company's offers, and agents chose without seeing the family's main point. One server function keeps the preview and the live site resolving offers the same way.
+- **Alternatives considered:** the app re-implementing the resolution from `my_company_offers` (two copies of the rules to keep in step).
+- **Status:** Accepted.
+
+### #85 — 2026-10-20 — "Meet me" templates get distinct layouts
+- **Decision:** Classic, Modern and Minimal keep the same content, schema and section partials' data, but each template may arrange sections with its own structure, not only CSS: Classic stays centred and traditional; Modern becomes a magazine layout (photo beside the headline, two-column about with the facts in a side column, services as a numbered list); Minimal becomes a short one-page "visiting card" (compact header, about and services merged into one block, FAQ collapsed). Tokens, the 3 spacings, the 4 type sizes, one CTA per section, the semantic rules (one `<h1>`, an `<h2>` per section) and the SSR = client equality all still hold. The user approves screenshots before deploying.
+- **Why:** at phone size the three read as one page restyled (user review, 2026-10-20).
+- **Supersedes:** "the templates differ in layout only" is now "in layout and structure, never in content or colour scheme".
+- **Status:** Accepted.
+
+### #86 — 2026-10-20 — The Appearance preview shows the page after a family switch
+- **Decision:** when the agent previews a template of the other family in Website → Appearance, the preview uses the draft as it would be after switching (to "Best offers": `offers` un-hidden and moved after `hero`, as the switch does), plus the RPC's offers (#84). Nothing is saved until the agent chooses the template.
+- **Why:** the preview used the current draft, so Spotlight or Guide looked almost like "Meet me" and hid what switching would change.
+- **Status:** Accepted.
+
+### #87 — 2026-10-21 — No conversational (chat-style) layer on sites
+- **Decision:** remove the speech-bubble layer from all five templates: no bubble above section headings, no hero greeting bubble, no bubbles opening the guide's groups, the FAQ as a normal accordion, and a normal enquiry success message. Kept: the "What can I help you with?" interest links (ordinary buttons), the sticky Call/WhatsApp bar on phones, offers, images and both families' layouts. The first-person seed copy stays ("Hello, I'm …"), as on any personal site.
+- **Why:** the user saw it live and found it looked bad ("keep it normal").
+- **Supersedes:** the conversational layer in #76 (the families stay).
+- **Status:** Accepted. The unused `site.say_*` i18n keys get removed from `shared/` once the web change lands.
+
+### #88 — 2026-10-22 — Email codes (OTP) replace confirmation and reset links
+- **Decision:** sign-up confirmation and password reset use the one-time code Supabase emails (`{{ .Token }}`), entered in the app (`verifyEmailOtp`), instead of links through `agentpro://auth-callback`. Password sign-in stays. The sign-up details are no longer held in memory to sign in after a link: a right code starts the session itself. The deep-link handling is kept only so links in older emails still work.
+- **Why:** user request. Links depended on the phone's mail app opening the app, on the redirect allow-list, and on the same device; a code works from any mail client.
+- **Cost:** the two email templates must be pasted again in Supabase (generated, see BACKEND.md), and Auth's OTP length/expiry settings now matter. Until pasted, emails still carry links and the code field has nothing to enter.
+- **Status:** Accepted.
+
+### #89 — 2026-10-22 — An agent can have several companies, each with its insurance types
+- **Decision:** `company_memberships` allows **one pending or approved row per agent and company** (was one per agent), and each row carries `insurance_types text[]` (≥ 1 key of the new `catalog.insuranceTypes`, a list separate from the enquiry `interests`). The agent picks them in onboarding step 1 (Create account has no session until the email code is entered, so company links can't be saved there) and edits them in Settings → Profile. Everything else about #53 stays: each link is requested by the agent with an agency code and decided by an admin.
+- **Consequences:** offers from **every approved company** can be placed and appear on the site (a featured or picked offer must belong to one of them); the site's company disclaimer comes from the earliest-approved company, and each offer keeps its own; custom offers are allowed unless **any** approved company has `allow_custom_offers = false` (the strictest wins). Changing the types of an approved link needs no new review; changing the agency code or company does (a new request). Supersedes the "one current membership per agent" part of #53.
+- **Why:** agents often hold agencies with several insurers and deal in different lines at each.
+- **Provisional:** the `insuranceTypes` values and their Hindi labels need the user's review.
+
+### #90 — 2026-10-22 — Approved company names are shown on sites, as text
+- **Decision:** the public payload gains `companies: [{name, insurance_types}]` (the agent's **approved** links to **active** companies, oldest approval first; the name in the site's language with the default-locale fallback; type keys from `catalog.insuranceTypes`). Templates render them as a "Companies I represent" section with the types per company. **Names only, as plain text: no logos, slugs or links** (the logo stays admin/app-only). Pending, rejected, revoked and withdrawn links never appear.
+- **Supersedes** the "no company name on sites" part of DECISIONS #77, at the user's request (2026-10-22). The rest of #77 stays: offers keep generic public names, `internal_name` never appears, and the blocked-term check still applies to offer text, custom offers and disclaimers (a company's name inside offer copy is still refused; the companies section comes from the `companies` table, not from agent text).
+- **Why:** the user wants customers to see which insurers the agent represents. It may also satisfy IRDAI's rule that an agent's advertising names the insurer (the open counsel question under #77).
+- **Risk:** trademark use of insurer names in plain text (nominative use) still needs counsel review before a public launch; it's a launch gate, listed in STATUS.md.
+
+### #91 — 2026-10-22 — One layout system for every site template
+- **Decision:** all templates share `web/styles/base.css`: one content width (1080px; minimal 640px), sections separated by whitespace only (48px phone / 96px desktop, no hairline dividers; hairlines only between list rows), one heading scale, one card style, 48px buttons with 12px corners. Templates differ in structure, not in ad-hoc spacing. The companies section uses JSON-LD `affiliation` (not `worksFor`/`memberOf`: an agent represents an insurer, isn't employed by or a member of it).
+- **Size caps raised in the tests** because the shared stylesheet grew (11 → 15 KB raw): SSR first-paint CSS 20 → 26 KB raw plus a new 7 KB gzip cap (actual 19.7–23.8 KB raw, 5.2–6.1 KB gzip); the in-app preview / fallback path 90 → 100 KB (106 KB with the install modules; privacy page 94 KB).
+- **Why:** the user asked for sites that look "standard and planned"; the audit found five different widths, dividers everywhere, mismatched corners and misaligned cards.
+
+### #92 — 2026-10-22 — Company links are saved as they're added, and kept remote only
+- **Decision:** in onboarding step 1 each company is sent to `request_company` when its form is saved (not on Continue), so edits and removals act on real ids and closing the app loses nothing. Memberships live in the repository's memory (refreshed after each write), not in Room: OFFERS.md's planned Room snapshot is deferred until something needs offline memberships. Changing an agency code is Remove + Add (no in-place edit).
+- **Why:** the server decides the status (admin-verified links, #53), and a Room table would add a schema migration for no current need.
+
+### #93 — 2026-10-22 — Site services and starter copy follow the agent's insurance types
+- **Decision:**
+  - **Interests cover every insurance type.** Each `catalog.interests` entry names its `insuranceType` (term, endowment, money_back, child, pension, ulip → life; health → health; `other` → none, always available). New interests `motor`, `home`, `travel`, `business` and `accident` (provisional labels, EN + HI). Until their illustrations exist, they use the generic fallback image; IMAGES.md gets their prompts.
+  - **The agent's types** are the union of `insurance_types` over their **pending and approved** links (what they declared; rejected, revoked and withdrawn don't count). Company *names* still appear only once approved (#90).
+  - **Seeding at site creation** (onboarding step 3, after step 1's companies): `services.offered` and the service items come from the agent's types (a default interest list per type in `shared/`), and the hero subheadline and About bio use copy written for the mix: the current life-and-family copy when every type is life, otherwise copy for general and mixed agents. Nothing is invented.
+  - **The enquiry form's "Interested in"** lists the site's offered interests plus "Other" (and `submit_enquiry` accepts every catalog interest).
+  - **When the types change later** (Settings → Profile), the app offers once to update the website: add services for new types, and remove services whose type is no longer dealt in. It never rewrites the agent's own text silently. A site whose services don't match the types shows a hint in Website → Content with the same action, which also covers sites made before this change.
+- **Why:** a motor or health agent got a life-insurance site.
+- **Not done:** the renderer doesn't filter the agent's content by type; the agent's saved content stays the source of truth.
+
+### #94 — 2026-10-22 — Real insurance companies replace the single "Demo Life Insurer" test row
+- **Decision:** the live `companies` table holds **11 real, IRDAI-registered insurers** (LIC, HDFC Life, ICICI Prudential Life, SBI Life, Max Life, Bajaj Allianz Life, Tata AIA Life, Kotak Mahindra Life, Aditya Birla Sun Life, PNB MetLife, Star Health), each with an EN/HI name and the standard IRDAI solicitation disclaimer. Only names, per #90; no logos are added (CLAUDE.md branding rule). The fake "Demo Life Insurer" row is **deactivated** (`is_active = false`), not deleted: its 6 disguised test offers are re-created (same content, per #77) under LIC because `offers_guard` forbids moving an offer between companies, and the 4 existing test memberships move from demo-life to LIC through the normal withdraw → request → approve state machine, because `memberships_guard` forbids changing `company_id` on an already-linked row. A real `DELETE` of demo-life was tried first and rejected (`23503`, `company_memberships_company_id_fkey`): withdrawn memberships keep their `company_id` as history, so `ON DELETE RESTRICT` blocks it even once nothing active points there — which is also exactly why `is_active` exists ("never hard-deleted", OFFERS.md). SQL: `supabase/migrations/20261022180000_real_companies.sql` (data-only; run once as postgres in the SQL Editor, not through the connector, which declines it as a production write; the whole thing is one transaction, so the first failed attempt rolled back cleanly with nothing committed).
+- **Scope:** this is the **live `AGENT_PRO` project only**. `supabase/demo/demo-offers.json`, `gen_demo_offers.py`/`demo_offers.sql`, `supabase/tests/95_offers.sql` and `web/dev-fixtures/*` keep the fictional `demo-life` company for local Postgres tests and web dev fixtures — that's an internal test fixture, not production data, and doesn't need to match the live catalog.
+- **Why:** the user asked to use real insurance companies, not a demo placeholder, now that #90 allows a real company's name to appear on an agent's site.
+- **Risk:** this is exactly the trademark/nominative-use question #90 already flagged for counsel, now with real data live rather than hypothetical — still a launch gate (STATUS.md).
+- **Not done:** the admin panel (8c) to manage this list doesn't exist yet, so adding, editing or deactivating a company is still a manual SQL statement by the user. `offers.internal_name` was left null for the 6 re-created LIC offers (admin-only field, unused until 8c).

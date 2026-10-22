@@ -84,7 +84,7 @@ fun AppNavHost(deps: AppDependencies) {
             AppGate.Loading -> SplashScreen()
             AppGate.NotConfigured -> NotConfiguredScreen()
             AppGate.Error -> StartupErrorScreen(onRetry = root::refresh)
-            AppGate.SignedOut -> AuthNavHost(deps)
+            AppGate.SignedOut -> AuthNavHost(deps, onRecoveryVerified = root::onRecoveryCodeVerified)
             AppGate.Onboarding -> OnboardingNavHost(deps)
             AppGate.Ready -> MainShell(deps)
         }

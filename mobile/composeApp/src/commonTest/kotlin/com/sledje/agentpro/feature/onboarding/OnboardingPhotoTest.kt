@@ -12,6 +12,8 @@ import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.M
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.NAME
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.PHOTO
 import com.sledje.agentpro.feature.website.data.MediaPaths
+import com.sledje.agentpro.testing.FakeCompanyRepository
+import com.sledje.agentpro.testing.testMembership
 import com.sledje.agentpro.testing.FakeProfileRepository
 import com.sledje.agentpro.testing.FakeSiteRepository
 import com.sledje.agentpro.testing.FakeWebsite
@@ -40,7 +42,7 @@ class OnboardingPhotoTest {
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
-    private fun vm() = OnboardingViewModel(profiles, FakeSiteRepository(), OnboardingSession(), AppEvents(), photoUploader = website.services.imageUploader)
+    private fun vm() = OnboardingViewModel(profiles, FakeSiteRepository(), OnboardingSession(), AppEvents(), FakeCompanyRepository(listOf(testMembership())), photoUploader = website.services.imageUploader)
 
     @Test
     fun photoIsAnOptionalSquareImageUnderMoreDetails() {

@@ -4,12 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sledje.agentpro.core.ui.SharedAxisNavHost
 import androidx.navigation.compose.composable
@@ -27,14 +22,15 @@ import com.sledje.agentpro.feature.auth.ui.CheckEmailScreen
 import com.sledje.agentpro.feature.auth.ui.LinkExpiredScreen
 import com.sledje.agentpro.feature.auth.ui.RecoveryStep
 import com.sledje.agentpro.feature.auth.ui.ResendEmailViewModel
-import com.sledje.agentpro.feature.auth.ui.ResetSentScreen
+import com.sledje.agentpro.feature.auth.ui.ResetCodeScreen
 import com.sledje.agentpro.feature.auth.ui.SetNewPasswordScreen
 import com.sledje.agentpro.feature.auth.ui.SetNewPasswordViewModel
+import com.sledje.agentpro.feature.auth.ui.VerifyCodeViewModel
 import com.sledje.agentpro.feature.auth.ui.WelcomeScreen
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/** Signed-out routes (docs/UX.md: Welcome → Sign in ⇄ Create account → Check your email; Forgot password → Reset sent). */
+/** Signed-out routes (docs/UX.md: Welcome → Sign in ⇄ Create account → Check your email; Forgot password → Enter the code → Set new password). */
 object AuthRoutes {
     @Serializable data object Welcome
     @Serializable data object SignIn
@@ -45,16 +41,19 @@ object AuthRoutes {
     /** [sendNow]: opened from Sign in for an unconfirmed email, so the confirmation is sent on open. */
     @Serializable data class CheckEmail(val email: String, val sendNow: Boolean = false)
     @Serializable data object ForgotPassword
-    @Serializable data class ResetSent(val email: String)
+    @Serializable data class ResetCode(val email: String)
 
-    /** Opened only by a reset link (docs/UX.md, Set new password). */
+    /** Opened by the reset code, or by a reset link (docs/UX.md, Set new password). */
     @Serializable data object SetNewPassword
     @Serializable data object LinkExpired
 }
 
-/** The signed-out navigation graph, shown by the app gate while there is no session. */
+/**
+ * The signed-out navigation graph, shown by the app gate while there is no session. [onRecoveryVerified]
+ * is called once a reset code has started the recovery session, so the app shows Set new password above the gate.
+ */
 @Composable
-fun AuthNavHost(deps: AppDependencies) {
+fun AuthNavHost(deps: AppDependencies, onRecoveryVerified: () -> Unit) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
     SharedAxisNavHost(nav, startDestination = AuthRoutes.Welcome) {
@@ -84,30 +83,30 @@ fun AuthNavHost(deps: AppDependencies) {
         composable<AuthRoutes.ForgotPassword> {
             AuthForm(deps, AuthFormMode.ResetPassword, onBack = { nav.popBackStack() },
                 onSwitchMode = {}, onForgotPassword = {},
-                onSent = { email -> nav.navigate(AuthRoutes.ResetSent(email)) { popUpTo(AuthRoutes.SignIn) } })
+                onSent = { email -> nav.navigate(AuthRoutes.ResetCode(email)) { popUpTo(AuthRoutes.SignIn) } })
         }
         composable<AuthRoutes.CheckEmail> { entry ->
             val route = entry.toRoute<AuthRoutes.CheckEmail>()
-            val vm = viewModel { ResendEmailViewModel(route.email, deps.auth::resendConfirmation, sendOnOpen = route.sendNow) }
-            val state by vm.state.collectAsState()
-            // Back from the email app or browser after confirming: sign in with the details just typed,
-            // so the gate moves on to onboarding. The first resume is this screen opening, so skip it.
-            var opened by remember { mutableStateOf(false) }
-            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-                if (opened) scope.launch { deps.auth.signInAfterConfirmation() } else opened = true
-            }
+            val resend = viewModel { ResendEmailViewModel(route.email, deps.auth::resendConfirmation, sendOnOpen = route.sendNow) }
+            val resendState by resend.state.collectAsState()
+            // A confirmed code starts the session, so the gate moves on to onboarding by itself.
+            val code = viewModel { VerifyCodeViewModel(route.email, deps.auth::verifySignUpCode) }
+            val codeState by code.state.collectAsState()
             CheckEmailScreen(
                 email = route.email,
-                state = state,
+                form = code.form,
+                code = codeState,
+                onVerify = code::submit,
+                resend = resendState,
                 onOpenEmailApp = deps.urlLauncher::openEmailApp,
-                onResend = vm::resend,
-                onResentShown = vm::onResentShown,
-                onErrorShown = vm::onErrorShown,
+                onResend = resend::resend,
+                onResentShown = resend::onResentShown,
+                onErrorShown = resend::onErrorShown,
                 onBack = { nav.popBackStack() },
             )
         }
-        composable<AuthRoutes.ResetSent> { entry ->
-            ResetSentRoute(deps, entry.toRoute<AuthRoutes.ResetSent>().email, onBackToSignIn = { nav.popBackStack() })
+        composable<AuthRoutes.ResetCode> { entry ->
+            ResetCodeRoute(deps, entry.toRoute<AuthRoutes.ResetCode>().email, onBack = { nav.popBackStack() }, onVerified = onRecoveryVerified)
         }
     }
 }
@@ -145,26 +144,36 @@ fun PasswordRecoveryNavHost(
         composable<AuthRoutes.ForgotPassword> {
             AuthForm(deps, AuthFormMode.ResetPassword, onBack = { nav.popBackStack() },
                 onSwitchMode = {}, onForgotPassword = {},
-                onSent = { email -> nav.navigate(AuthRoutes.ResetSent(email)) { popUpTo(AuthRoutes.LinkExpired) } })
+                onSent = { email -> nav.navigate(AuthRoutes.ResetCode(email)) { popUpTo(AuthRoutes.LinkExpired) } })
         }
-        composable<AuthRoutes.ResetSent> { entry ->
-            ResetSentRoute(deps, entry.toRoute<AuthRoutes.ResetSent>().email, onBackToSignIn = onClose)
+        composable<AuthRoutes.ResetCode> { entry ->
+            ResetCodeRoute(
+                deps, entry.toRoute<AuthRoutes.ResetCode>().email, onBack = { nav.popBackStack() },
+                onVerified = { nav.navigate(AuthRoutes.SetNewPassword) { popUpTo(AuthRoutes.LinkExpired) { inclusive = true } } },
+            )
         }
     }
 }
 
-/** "Reset link sent" with Resend (the reset email again, after the countdown). */
+/** "Enter the code" for a password reset, with Resend (the reset email again, after the countdown). */
 @Composable
-private fun ResetSentRoute(deps: AppDependencies, email: String, onBackToSignIn: () -> Unit) {
-    val vm = viewModel { ResendEmailViewModel(email, deps.auth::sendPasswordReset) }
-    val state by vm.state.collectAsState()
-    ResetSentScreen(
+private fun ResetCodeRoute(deps: AppDependencies, email: String, onBack: () -> Unit, onVerified: () -> Unit) {
+    val resend = viewModel { ResendEmailViewModel(email, deps.auth::sendPasswordReset) }
+    val resendState by resend.state.collectAsState()
+    val code = viewModel { VerifyCodeViewModel(email, deps.auth::verifyRecoveryCode) }
+    val codeState by code.state.collectAsState()
+    LaunchedEffect(codeState.verified) { if (codeState.verified) onVerified() }
+    ResetCodeScreen(
         email = email,
-        state = state,
-        onResend = vm::resend,
-        onResentShown = vm::onResentShown,
-        onErrorShown = vm::onErrorShown,
-        onBackToSignIn = onBackToSignIn,
+        form = code.form,
+        code = codeState,
+        onVerify = code::submit,
+        resend = resendState,
+        onOpenEmailApp = deps.urlLauncher::openEmailApp,
+        onResend = resend::resend,
+        onResentShown = resend::onResentShown,
+        onErrorShown = resend::onErrorShown,
+        onBack = onBack,
     )
 }
 

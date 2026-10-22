@@ -289,5 +289,20 @@
  "company": {
   "disclaimer": "Insurance is the subject matter of solicitation. Benefits depend on the policy terms and conditions. Please read the sales brochure carefully before buying."
  },
- "published_at": "2026-10-01T10:00:00.000Z"
+ "published_at": "2026-10-01T10:00:00.000Z",
+ "companies": [
+  {
+   "name": "Sample Life Assurance",
+   "insurance_types": [
+    "life",
+    "accident"
+   ]
+  },
+  {
+   "name": "Example Health Insurance Co.",
+   "insurance_types": [
+    "health"
+   ]
+  }
+ ]
 }

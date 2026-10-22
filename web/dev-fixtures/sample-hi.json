@@ -250,5 +250,20 @@
  "company": {
   "disclaimer": "बीमा आग्रह की विषय-वस्तु है। लाभ पॉलिसी के नियमों और शर्तों पर निर्भर करते हैं। खरीदने से पहले बिक्री विवरणिका ध्यान से पढ़ें।"
  },
- "published_at": "2026-10-01T10:00:00.000Z"
+ "published_at": "2026-10-01T10:00:00.000Z",
+ "companies": [
+  {
+   "name": "सैंपल लाइफ़ एश्योरेंस",
+   "insurance_types": [
+    "life",
+    "accident"
+   ]
+  },
+  {
+   "name": "Example Health Insurance Co.",
+   "insurance_types": [
+    "health"
+   ]
+  }
+ ]
 }

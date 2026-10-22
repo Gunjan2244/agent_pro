@@ -26,6 +26,19 @@ export function optionLabel(ctx, section, fieldKey, itemKey, optKey) {
   const o = f && (f.options || []).find((x) => x.key === optKey);
   return o ? ctx.t(o.labelKey) : optKey;
 }
+// The enquiry form's "Interested in" options (DECISIONS #93): the interests the site offers (services items and
+// `offered`), those of the offers on the page (so an offer's Enquire link can preselect its interest), and the
+// interests of no insurance type (`other`), which are always available; in catalog order, deprecated ones left out.
+// A site that names none of its own gets every active interest, as before.
+export function formInterests(ctx) {
+  const all = arr(ctx.catalog.interests).filter((i) => i && !i.deprecated).slice().sort((a, b) => a.order - b.order);
+  const sv = (ctx.site && ctx.site.content && ctx.site.content.services) || {};
+  const own = new Set([...arr(sv.offered), ...arr(sv.items).map((i) => i && i.interest)]);
+  const o = ctx.offers || {};
+  for (const x of [...arr(o.grid), ...(o.hero ? [o.hero] : [])]) { const k = x && (x.interest ?? (x.cta && x.cta.interest)); if (k) own.add(k); }
+  if (!all.some((i) => own.has(i.key))) return all;
+  return all.filter((i) => own.has(i.key) || i.insuranceType == null);
+}
 export const interestLabel = (ctx, key) => {
   const i = (ctx.catalog.interests || []).find((x) => x.key === key);
   return i ? ctx.t(i.labelKey) : "";

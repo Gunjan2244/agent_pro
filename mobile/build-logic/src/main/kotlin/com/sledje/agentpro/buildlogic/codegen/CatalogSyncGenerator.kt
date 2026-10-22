@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter
  * - With offer-schema.json and the offers lists (docs/OFFERS.md), it emits `offer_schema()`, the CTA-kind,
  *   reject-reason and limit functions, and the CHECKs on `offers`, `admins` and `company_memberships` (tables from
  *   the 8b-2 `*_companies_offers.sql`, which sorts before the catalog_sync that adds them; DECISIONS #72).
+ * - With `insuranceTypes`, it emits `catalog_insurance_types()` (active keys in display order; DECISIONS #89).
  * - With `templateFamilies`, it emits `catalog_template_families()` and `catalog_template_family(text)`; with
  *   `publicTextRules`, `catalog_blocked_terms()` (DECISIONS #76, #77).
  */
@@ -180,6 +181,12 @@ class CatalogSyncGenerator(
             sb.append("-- Reasons an admin may give when rejecting a company membership (active keys only).\n")
             sb.append(function("catalog_membership_reject_reasons()", "text[]", textArray(it.activeKeys)))
         }
+        defs.catalogList(INSURANCE_TYPES)?.let { list ->
+            val ordered = list.entries.filterNot { it.bool("deprecated") == true }.sortedBy { it.long("order") ?: 0 }.mapNotNull { it.string("key") }
+            sb.append("-- Insurance types an agent may give for a company membership (catalog.insuranceTypes, active keys only, in\n")
+            sb.append("-- display order: payloads list a membership's types in this order; DECISIONS #89).\n")
+            sb.append(function("catalog_insurance_types()", "text[]", textArray(ordered)))
+        }
         defs.catalog["offers"]?.let { limits ->
             require(limits is JsonObject) { "catalog.json: \"offers\" must be an object" }
             sb.append("-- Offer limits (catalog.offers): section size, validity, logo and image sizes.\n")
@@ -287,6 +294,8 @@ class CatalogSyncGenerator(
     companion object {
         private val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
         private const val TEMPLATES = "templates/index.json"
+        /** catalog.insuranceTypes (DECISIONS #89): the types an agent deals in at each company. */
+        const val INSURANCE_TYPES = "insuranceTypes"
         private val CHECKS = listOf(
             Check("enquiries", "status", "enquiryStatuses"),
             Check("enquiries", "interest", "interests"),

@@ -106,8 +106,8 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
     val signUpConsents = mutableListOf<NoticeConsent>()
     val signUpAccounts = mutableListOf<NewAccount>()
 
-    /** Whether [signInAfterConfirmation] finds the email confirmed. */
-    var emailConfirmed = false
+    /** The code the fake accepts; any other is refused as `Validation("code")`. */
+    var validCode = "123456"
 
     override suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome> {
         calls += "signUp:${account.email}"
@@ -118,10 +118,19 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
         return result
     }
 
-    override suspend fun signInAfterConfirmation(): Boolean {
-        calls += "signInAfterConfirmation"
-        if (emailConfirmed) state.value = AuthState.SignedIn(TEST_USER, signUpAccounts.lastOrNull()?.email)
-        return emailConfirmed
+    override suspend fun verifySignUpCode(email: String, code: String): AppResult<Unit> {
+        calls += "verifySignUp:$email:$code"
+        if (code != validCode) return Result.Err(AppError.Validation("code"))
+        state.value = AuthState.SignedIn(TEST_USER, email)
+        return Result.Ok(Unit)
+    }
+
+    /** A right code starts the recovery session, like `verifyEmailOtp` in supabase-kt. */
+    override suspend fun verifyRecoveryCode(email: String, code: String): AppResult<Unit> {
+        calls += "verifyRecovery:$email:$code"
+        if (code != validCode) return Result.Err(AppError.Validation("code"))
+        state.value = AuthState.SignedIn(TEST_USER, email)
+        return Result.Ok(Unit)
     }
     override suspend fun resendConfirmation(email: String): AppResult<Unit> { calls += "resend:$email"; return resendResult }
     override suspend fun sendPasswordReset(email: String): AppResult<Unit> { calls += "reset:$email"; return resetResult }
@@ -243,6 +252,15 @@ class FakeSiteRepository(initial: Site? = null) : SiteRepository {
     val appearances = mutableListOf<SiteAppearance>()
     val slugChanges = mutableListOf<String>()
 
+    /** `preview_site_offers`: [previewOffersResult] is returned (default: not live yet, an error). */
+    var previewOffersResult: AppResult<JsonObject> = Result.Err(AppError.Unknown("rpc missing"))
+    val previewOfferCalls = mutableListOf<Pair<JsonObject, String>>()
+
+    override suspend fun previewOffers(content: JsonObject, templateKey: String): AppResult<JsonObject> {
+        previewOfferCalls += content to templateKey
+        return previewOffersResult
+    }
+
     override suspend fun saveDraft(content: JsonObject): AppResult<Site> {
         writeError?.let { return Result.Err(it) }
         if (!SiteContent.fitsSizeCap(content)) return Result.Err(ContentTooLarge)
@@ -296,6 +314,7 @@ class FakeAppDependencies(
     override val auth: FakeAuthRepository = FakeAuthRepository(),
     override val profiles: FakeProfileRepository = FakeProfileRepository(),
     override val sites: FakeSiteRepository = FakeSiteRepository(),
+    override val companies: FakeCompanyRepository = FakeCompanyRepository(),
     override val network: FakeNetworkMonitor = FakeNetworkMonitor(),
     override val locale: FakeLocaleController = FakeLocaleController(),
     override val urlLauncher: FakeUrlLauncher = FakeUrlLauncher(),

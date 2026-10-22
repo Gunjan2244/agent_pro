@@ -212,5 +212,29 @@
   "name": "Evil Co",
   "logo_url": "https://x.test/logo.png",
   "disclaimer": "<script>alert(15)</script>"
- }
+ },
+ "companies": [
+  {
+   "name": "<script>alert(21)</script>",
+   "insurance_types": [
+    "life",
+    "\"><script>",
+    "bogus"
+   ],
+   "logo_url": "https://evil.test/logo.png",
+   "slug": "evil-co"
+  },
+  {
+   "name": "   ",
+   "insurance_types": [
+    "life"
+   ]
+  },
+  {
+   "insurance_types": [
+    "life"
+   ]
+  },
+  "junk"
+ ]
 }

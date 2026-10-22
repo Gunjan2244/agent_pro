@@ -1,5 +1,6 @@
-// The page <header>: photo (or initials monogram, never a stock face), the agent's greeting bubble, the single
-// <h1>, quick-reply chips, the featured-offer banner (never an image) and, on the offers family, a hero scene.
+// The page <header>: photo (or initials monogram, never a stock face) with the agent's name, designation and city,
+// the single <h1>, the lead, one button, quick-interest chips, the featured-offer banner (never an image) and, on the
+// offers family, a hero scene. No greeting bubble (DECISIONS #87).
 import { esc, has, arr, textOr, interestLabel } from "./util.js";
 import { initials, pic, fnv1a32 } from "./media.js";
 import { offerCard } from "./offer.js";
@@ -7,7 +8,7 @@ import { needGroups } from "./offers.js";
 
 const MAX_CHIPS = 4;
 
-function chips(ctx, d) {
+export function chips(ctx, d) {
   const { t } = ctx;
   // Guide: "What would you like to protect?" jumps to the anchored groups of the offers section (no JS needed).
   if (ctx.layout === "needs" && ctx.visible.has("offers")) {
@@ -32,7 +33,10 @@ function scene(ctx) {
 // screens; on phones it is `display: contents`, so CSS `order` puts the chips before the scene.
 const side = (banner, sceneHtml, more) => `${more}<div class="hero-side">${banner ? `<div class="hero-offer">${banner}</div>` : ""}${sceneHtml}</div>`;
 
-export function hero(d, ctx) {
+// The hero's pieces, shared by every template; templates that arrange the hero differently (modern, minimal) take
+// these instead of re-deriving them, so the data handling and escaping live here once.
+// opts.photo = [w, h]: the photo's width/height attributes (a template whose CSS gives it another aspect ratio).
+export function heroParts(d, ctx, opts = {}) {
   const { t, profile: p } = ctx;
   const photo = ctx.photo;
   const sub = [p.designation, p.city].filter(has).map(esc).join(" · ");
@@ -43,23 +47,35 @@ export function hero(d, ctx) {
   const leadOffer = Boolean(feat) && ctx.family === "offers" && !needs;
   const cta = leadOffer || needs ? "" : textOr(ctx, "hero", "ctaLabel", d.ctaLabel);
   const ini = initials(p.full_name);
+  const [pw, ph] = opts.photo || [160, 160];
   const face = photo
-    ? `<img class="hero-photo" src="${photo}" width="160" height="160" alt="${esc(p.full_name)}" fetchpriority="high" decoding="async">`
+    ? `<img class="hero-photo" src="${photo}" width="${pw}" height="${ph}" alt="${esc(p.full_name)}" fetchpriority="high" decoding="async">`
     : ini ? `<span class="hero-photo mono" aria-hidden="true">${esc(ini)}</span>` : "";
-  const greet = t("site.say_greeting", { firstName: ctx.firstName });
   const h1 = has(d.headline) ? d.headline : p.full_name;
-  // No greeting when the headline already introduces the agent (e.g. the seeded "Hello, I'm Priya Nair").
-  const hi = ctx.firstName && greet !== "site.say_greeting" && !String(h1 || "").includes(ctx.firstName) ? `<p class="bubble hi">${esc(greet)}</p>` : "";
   const banner = feat ? offerCard(feat, ctx, { tag: "div", featured: true, button: leadOffer }) + (!ctx.visible.has("offers") && has(ctx.site.company && ctx.site.company.disclaimer) ? `<p class="fine disc">${esc(ctx.site.company.disclaimer)}</p>` : "") : "";
+  return {
+    face, ini, sub, cta, leadOffer, banner,
+    // "Asha Verma" over "Insurance Advisor · Pune": who the page is about, beside or under the portrait.
+    who: has(p.full_name) || sub ? `<p class="who">${has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : ""}${sub ? `<span>${sub}</span>` : ""}</p>` : "",
+    h1: `<h1>${esc(h1)}</h1>`,
+    lead: has(d.subheadline) ? `<p class="lead">${esc(d.subheadline)}</p>` : "",
+    meta: sub ? `<p class="meta">${has(p.full_name) ? esc(p.full_name) + " · " : ""}${sub}</p>` : "",
+    button: cta ? `<a class="btn" href="#contact">${esc(cta)}</a>` : "",
+    chips: leadOffer ? "" : chips(ctx, d),
+    offer: banner ? `<div class="hero-offer">${banner}</div>` : "",
+  };
+}
+
+export function hero(d, ctx) {
+  const x = heroParts(d, ctx);
   return `<div class="hero-in">
-<div class="hero-id">${face}${hi}</div>
+<div class="hero-id">${x.face}${x.who}</div>
 <div class="hero-text">
-<h1>${esc(h1)}</h1>
-${has(d.subheadline) ? `<p class="lead">${esc(d.subheadline)}</p>` : ""}
-${sub ? `<p class="meta">${has(p.full_name) ? esc(p.full_name) + " · " : ""}${sub}</p>` : ""}
-${cta ? `<a class="btn" href="#contact">${esc(cta)}</a>` : ""}
-${leadOffer ? "" : chips(ctx, d)}
+${x.h1}
+${x.lead}
+${x.button}
+${x.chips}
 </div>
-${ctx.family === "offers" ? side(banner, scene(ctx), leadOffer ? `<div class="hero-more">${chips(ctx, d)}</div>` : "") : banner ? `<div class="hero-offer">${banner}</div>` : ""}
+${ctx.family === "offers" ? side(x.banner, scene(ctx), x.leadOffer ? `<div class="hero-more">${chips(ctx, d)}</div>` : "") : x.offer}
 </div>`;
 }

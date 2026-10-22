@@ -7,8 +7,8 @@ Every screen follows the **calm-screen rules** in DESIGN_SYSTEM.md. In short:
 
 ## Navigation map
 ```
-Splash ─ no session ──→ Welcome → Sign in ⇄ Create account → Check your email
-       │                           └→ Forgot password → Reset sent
+Splash ─ no session ──→ Welcome → Sign in ⇄ Create account → Check your email (code)
+       │                           └→ Forgot password → Enter the code → Set new password
        └ reset link (agentpro://auth-callback) ──→ Set new password → Home
        ├ session, no profile or no site → Onboarding: 1 Profile → 2 Template → 3 Your link → Done
        │   ("no site" is confirmed with the server first; an agent who has one goes to Main)
@@ -95,13 +95,13 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
 - **Create account:** a third element under the password, an **unticked, required checkbox** (never pre-ticked; `FieldType.Consent`, built by `FormRenderer`): "I'm 18 or older, and I agree to the **Terms** and the **Privacy notice**" (generated `agent_signup` text, EN/HI). "Privacy notice" opens the in-app **Notice screen**; "Terms" opens `<SITE_BASE_URL>/terms` in the browser (the Notice screen when no host is configured). The button stays disabled until the box is ticked; the request carries `data.consent = {notice_key, version, hash}` for the language shown. Next comes "Check your email to confirm", with Resend and Open email app (see **Resend** below).
 - **Signed in automatically after sign-up** (DECISIONS #70):
   - If Supabase's Confirm email setting is off, sign-up starts the session, and the app goes straight to onboarding with no "Check your email".
-  - Otherwise "Check your email" says "…Then come back here and you'll be signed in." Opening the confirmation link in the app signs in through `agentpro://auth-callback`. Coming back to the app any other way (from the email app or the browser) retries the sign-in with the email and password just typed. They're held **in memory only**, never stored, and dropped once signed in, on sign-out, or when the app process ends. After a restart the agent signs in by hand.
+  - Otherwise "Check your email" says "We sent a code to … Enter it below to confirm your email." It has a **Code** field (6 to 10 characters; kept as text so a leading zero survives), **Verify** in the bottom bar, Resend beside it and an **Open email app** text button. A right code confirms the email and starts the session, so the gate moves on to onboarding. A wrong or expired code shows "That code is wrong or has expired. Check it, or ask for a new one." and the field stays. Nothing is held in memory: no links, no password kept (DECISIONS #88).
   - The same applies after Sign in → "Resend confirmation email".
-- **Sign in with an unconfirmed email:** under "Confirm your email first", a text button **Resend confirmation email** opens "Check your email" for that address and sends the confirmation at once.
+- **Sign in with an unconfirmed email:** under "Confirm your email first", a text button **Resend confirmation email** opens "Check your email" for that address and sends a new code at once.
 - **Notice screen** (Create account link and Settings → Privacy notice): the notice's title, intro, one itemised block per data item (Data in bold, then Purpose and Kept) and the plain paragraphs, in the app language, rendered from the generated ordered texts.
-- **Forgot password:** sends a reset email and shows "Reset link sent", with **Back to sign in** and Resend.
-- **Resend** ("Check your email" and "Reset link sent"; DECISIONS #67):
-  - Supabase sends at most one email per address per minute, so after each send the text button reads **"Resend in 42 s"** (disabled) and counts down to **Resend**. "Email sent again" is a snackbar.
+- **Forgot password:** sends a reset email with a code and shows "Enter the code" (same layout as Check your email: Code field, **Verify**, Resend, Open email app). A right code starts a recovery session and opens Set new password.
+- **Resend** ("Check your email" and "Enter the code"; DECISIONS #67):
+  - Supabase sends at most one email per address per minute, so after each send the text button reads **"Resend in 42 s"** (disabled) and counts down to **Resend**. "Code sent again" is a snackbar.
   - If Supabase still asks to wait ("after N seconds"), the countdown restarts at N with no error message.
   - If the project's hourly email quota is used up, the snackbar says "We can't send more emails right now. Try again in about an hour", and Resend opens again after a minute.
   - Other failures (offline, unknown) show their message, and Resend can be tapped again at once.
@@ -109,14 +109,14 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
   - The same quota message replaces "Too many tries. Wait a minute" on Create account and Forgot password.
 
 ### Set new password
-- **Opened by** the reset link in the email (`agentpro://auth-callback`, a recovery session). It's never reachable any other way.
+- **Opened by** the reset code (Enter the code → Verify, a recovery session). A reset *link* from an older email (`agentpro://auth-callback`) still opens it too.
 - **One field:** new password, with a show/hide toggle and the same rules as sign-up (at least 8 characters).
 - **One primary button:** "Save password". On success, go to Home and show a snackbar, "Password updated".
 - **If the link has expired or is invalid:** show "This link has expired", with one button, **Send a new link**, which opens Forgot password.
 - **If the agent leaves without saving,** they stay signed in. The password can still be changed later in Settings → Change password.
 - **Details:**
   - While the link's session is being read, the Splash shows. The flow covers whatever screen was open.
-  - Back (the top-bar arrow) leaves the flow. Leaving Reset sent ("Back to sign in") also leaves it.
+  - Back (the top-bar arrow) leaves the flow. Back on Enter the code returns to Forgot password.
   - The button is disabled while saving and offline ("Needs internet"). Errors are inline: "Choose a stronger password", and "Choose a password different from your old one".
   - If the reset session has run out by the time the agent saves, "This link has expired" shows.
   - The expired screen's text: "Reset links work once and only for a short time. Ask for a new one."
@@ -129,12 +129,15 @@ Each step has a progress bar at the top and one primary button at the bottom.
 - **After step 1:** with an incomplete profile, onboarding opens on step 1 as usual. Continue saves the profile and then asks the server; if a site exists, Main opens with it, skipping steps 2 and 3. If the server can't be asked, step 1 stays with the error.
 - **While onboarding is open:** if the agent's site arrives (a late sync) once the profile is complete, onboarding closes and Main opens.
 - In each case the existing site, its link and its template are untouched, and there's no "trial started" message.
-1. **Profile:** name, mobile, designation and city. Photo, agency code and branch are under More details.
+1. **Profile:** name, mobile, designation and city, then **Your companies** (below). Photo, agency code and branch are under More details.
    - **Always the first step**, even when the name and mobile are already saved (they were given at sign-up), so the optional photo, designation and city aren't skipped. Everything already saved is prefilled.
    - When the name and mobile are both present and valid, they show as a **card** (name in bold, mobile formatted, `+91 98765 43210`) with an **Edit** text button, not as fields. Edit replaces the card with the two fields; the saved values go through Continue as usual.
    - The photo uses the same picker, centred square crop and WebP upload as the hero photo (Phase 8); Continue waits while it uploads.
    - **Photo tips** (docs/IMAGES.md, "Asking agents for their photo") show as three short helper lines under the photo slot: face and shoulders looking at the camera in daylight by a window; a plain background and smart everyday clothes; no sunglasses, group photos, insurer uniform or logos. (English and Hindi; the slot sits under More details.)
-2. **Template:** first the **family** on two cards, "Meet me" and "Best offers" (names and descriptions from the catalog's `templateFamilies`), with one line above: "Choose a style first. You can change it later." Tapping a card opens a full-height pager of that family's templates (3 and 2), each rendering **the agent's own seeded starter content** (`StarterContent.from(profile, template, locale, userId)`, DECISIONS #78): the section order and hidden sections differ per family, so the agent sees a finished site before choosing. The template name sits below it, with **Use this template**. Back (arrow or system) returns from the pager to the cards. **Publish now / Later** creates the site with that same seeded draft and the app's current language as the site language.
+   - **Your companies** (required, DECISIONS #89), after the profile fields: at least one company. Continue stays disabled until there is one pending or approved company link, and "Add at least one company to continue" shows while there is none. It is a block of **cards**, one per company (name, status pill, a status line, the agency code, the insurance types, and the actions its status allows; the same cards as Settings → Profile, below), then **Add company**.
+   - **Add company** opens a sheet: **Choose your company**. A search field shows when there are more than 8 companies; one row per company from `list_companies()` (initials avatar, the name in the app language; one already added shows "Already added" and can't be picked); and **My company isn't listed** at the end ("Type its name. We will check it and add it."), which works even when the list can't load. Picking one opens the form (a FormRenderer form): a listed company asks for the **agency code** (required, at most 30 characters; the admin verifies it) and the **insurance types** (chips from the catalog, at least one); a company that isn't listed asks for its **name** (required, at most 80) and the types. **Save** calls `request_company`, closes the sheet and shows the new card as "Waiting for confirmation". Back returns to the list.
+   - **Saved as each is added, not on Continue** (each add, change and removal is one RPC), so the list is the server's truth, survives the app closing between steps, and Edit and Remove have real ids to act on. Continue then saves the profile as before. A failed call keeps the sheet open with the error ("No internet connection", "Renew to make changes", "You have already added this company", "Choose at least one type of insurance"); Save and Add company are disabled offline with "Needs internet". If the first load fails, the block shows the error with Retry.
+2. **Template:** first the **family** on two cards, "Meet me" and "Best offers" (names and descriptions from the catalog's `templateFamilies`), with one line above: "Choose a style first. You can change it later." Tapping a card opens a full-height pager of that family's templates (3 and 2), each rendering **the agent's own seeded starter content** (`StarterContent.from(profile, template, locale, userId, insuranceTypes)`, DECISIONS #78, #93): the section order and hidden sections differ per family, so the agent sees a finished site before choosing. **The services and copy follow step 1's companies:** the insurance types are the union over the agent's pending and approved links, the services (and so the hero's quick links and the form's "Interested in") are seeded for those types, and the hero line, About text and FAQ use the life-and-family copy only when every type is life, otherwise copy written for general and mixed agents (SHARED_DEFINITIONS.md, site-seed.json). The preview re-renders if a company is added meanwhile. The template name sits below it, with **Use this template**. Back (arrow or system) returns from the pager to the cards. **Publish now / Later** creates the site with that same seeded draft and the app's current language as the site language.
 3. **Your link:** a slug suggested from the name, with live validation and an availability check, and a preview of the full URL. Then **Publish now** (primary) or **Later** (text button).
 
 **Site is live** (after **Publish now**, DECISIONS #71): three screens run before Home, in one scaffold whose progress bar slides between them. Back goes one screen back, and on the first it skips ahead.
@@ -278,6 +281,8 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
 
 **Content screen**
 - One row per section from the schema: icon, title, summary and a visibility switch. Hero and Contact are pinned on.
+- **Field-less section (`companies`, "Companies"):** listed, switchable and reorderable like the others, but it has no editor: the row isn't tappable and its line reads "Shows the companies an admin has approved. Manage them in Settings → Profile." ("Hidden" when switched off). A saved order that doesn't name it yet gets the row right after the schema section before it (`about`).
+- **Services hint (DECISIONS #93):** while the draft's services don't match the agent's insurance types (same rule as Settings → Profile; the screen loads the company links when it opens), a card on top says "Your website's services don't match the insurance you deal in." with **Update services**, which opens the same "Update your website to match?" sheet. It also covers sites made before the services followed the types. Hidden while reordering; the button is disabled offline.
 - **Reorder** in the top bar enables drag handles.
 - **As built:** the switch saves the draft at once. In Reorder mode, Hero stays first and Contact last (no handle); the other rows get a drag handle (TalkBack: Move up / Move down actions), and **Done** saves the new order. Summaries: the section's first text ("Ramesh Kumar"), else "3 added" for list/multi-select content, else "Not filled in yet" ("Always shown" for an empty pinned section), or "Hidden".
 
@@ -290,7 +295,7 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
 **Appearance screen**
 - Template (opens the picker), an accent row of 8 swatches, and Site language (English / हिन्दी).
 - **Template picker:** it opens straight on the pager of the **current template's family**, positioned on the current template: a full-height pager of the agent's real draft in each of that family's templates, with **Use this template**. Back (arrow or system) goes to the two family cards ("Meet me" / "Best offers"), where another style can be chosen; Back again leaves. (Onboarding step 2 starts on the cards.) Switching **to** a "Best offers" template from a "Meet me" one also un-hides `offers` and moves it right after `hero` in the draft, once (the draft is saved first, then the template); other sections stay as they are, and switching back (or between the two offers templates) changes nothing in the draft. The Content list still hides the `offers` section until its editor exists (8b-4), but its `sectionOrder` and `hidden` entries are kept by every save and by reordering.
-- **As built:** each choice is saved at once (no Save button). Template, accent and site language are columns the live site reads directly, so the screen says "Changes here show on your live website straight away." The picker renders the draft through `SitePreview` in each template (the `preview.webp` images aren't used in the app). Onboarding step 2 uses the same live render of the starter content.
+- **As built:** each choice is saved at once (no Save button). Template, accent and site language are columns the live site reads directly, so the screen says "Changes here show on your live website straight away." The picker renders the draft through `SitePreview` in each template (the `preview.webp` images aren't used in the app). Onboarding step 2 uses the same live render of the starter content. **Real offers:** every preview (step 2, the picker, Website → Preview) shows at once, then re-renders with the company's real offers and disclaimer when `preview_site_offers` answers; offline or on any error it stays as is, with no error shown (DECISIONS #84). **After a switch:** previewing a template of the other family shows the draft as it would be after switching (to "Best offers": `offers` un-hidden after `hero`; to "Meet me": unchanged), and nothing is saved until **Use this template** (DECISIONS #86).
 
 **Preview:** a full-screen WebView of the draft, with **Publish** in the top bar.
 
@@ -366,13 +371,29 @@ This screen has two sections.
 ### Settings
 | Group | Entries |
 |---|---|
-| Account | Profile, Change password |
+| Account | Profile (built: your companies), Change password |
 | Plan | Plan & billing (shows the plan's status pill) |
 | Preferences | Language, Appearance (System / Light / Dark), Notifications |
 | Data | Export CSV |
 | About | Privacy notice (built: opens the Notice screen), Privacy policy, Terms, Plan terms, Domain terms, Version |
 | — | Sign out, Delete account (the user types DELETE) |
 
+- **Profile (built, DECISIONS #89):** for now the screen holds **Your companies**: the same cards as onboarding step 1, one per company link, with a status pill from the catalog (`membershipStatuses`: Waiting for approval, Approved, Not approved, Removed; the pill is the only place the status is worded) and, where there is something extra to say, one detail line:
+
+| Status (pill) | Detail line | Actions |
+|---|---|---|
+| Waiting for approval | "Requested 16 Oct" | **Edit types**, **Cancel request** (asks first, then `withdraw_company_request`) |
+| Approved | none | **Edit types** (`set_membership_types`, no new review), **Remove** (asks first: "Its offers will leave your website.") |
+| Not approved | "Reason: {reason}" (from `membershipRejectReasons`) and the admin's note | **Try again** (the form opens prefilled and sends a new `request_company`) |
+| Removed | the admin's note, if any | **Request again** (same) |
+
+  Each card also shows the agency code and the types ("Life, Health"). **Add company** works as in onboarding. Changing the types is a sheet with just the types field. To change an agency code, remove the company and add it again. The profile's own fields (name, photo and so on) aren't editable here yet.
+- **"Update your website to match?" (DECISIONS #93):** after each successful Add company, Edit types, Cancel request, Remove or Try again, if the agent has a site whose draft services no longer match their insurance types (the union over pending and approved links), a sheet opens **once** for that change:
+  - "Add these services: Motor insurance, Travel insurance" (the seeded interests of each type that has no service on the site yet, with their seeded descriptions in the site's language; the items stop at the list's maximum of 8, the rest are still offered);
+  - "Remove services you no longer deal in": one chip per service whose type the agent no longer has, **none ticked** (removal is opt-in; `other` never counts);
+  - "Your own text stays as it is. Publish to show the changes on your live website." The hero, About, FAQ and the agent's own service descriptions are never changed;
+  - **Update website** (saves the draft only; disabled offline with "Needs internet", or when there is nothing to add and nothing ticked) and **Not now**. A failed save keeps the sheet open with the error; success says "Services updated. Publish to make them live."
+  - "Not now" closes it until the next change; Website → Content keeps the hint below. An agent with no type at all, or no site, never sees it.
 - **Notifications:** toggles for New enquiries, Follow-ups, Premium dues, and Plan & domain renewal. Plus a lead time of 3 / 7 / 15 days, and the digest time (default 9:00).
 - **Export:** checkboxes and an optional date range, then **Export**. It saves a zip through the system file picker, or can be shared.
 

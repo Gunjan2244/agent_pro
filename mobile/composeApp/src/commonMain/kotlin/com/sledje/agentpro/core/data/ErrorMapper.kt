@@ -44,6 +44,10 @@ object ErrorMapper {
             "plan_read_only" -> return AppError.ReadOnly
             "not_authenticated" -> return AppError.Unauthorized
             "not_latest_payment", "orders_in_progress", "media_not_deleted" -> return AppError.Conflict
+            // Company links (docs/BACKEND.md, Companies and offers): the row is gone or has already moved on.
+            "not_found", "invalid_transition" -> return AppError.Conflict
+            "duplicate_membership" -> return AppError.Validation("company", "duplicate")
+            "invalid_types" -> return AppError.Validation("insurance_types")
         }
         if (message in validationReasons) return AppError.Validation(message)
 
@@ -53,6 +57,8 @@ object ErrorMapper {
             code == "email_not_confirmed" -> return AppError.Validation("email", "not_confirmed")
             code == "weak_password" -> return AppError.Validation("password", "weak")
             code == "email_address_invalid" || code == "email_address_not_authorized" -> return AppError.Validation("email")
+            // A wrong, used or expired email code: Auth answers all three the same way.
+            code == "otp_expired" -> return AppError.Validation("code")
             code == "same_password" -> return AppError.Validation("password", "same")
             code in authUnauthorized -> return AppError.Unauthorized
             code in authConflict -> return AppError.Conflict

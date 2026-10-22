@@ -9,6 +9,7 @@ import com.sledje.agentpro.testing.testSite
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -37,6 +38,26 @@ class SitePreviewPayloadTest {
         assertEquals("classic", json["template_key"]!!.jsonPrimitive.content)
         assertEquals("teal", json["accent"]!!.jsonPrimitive.content, "the swatch key, never the hex")
         assertEquals("hi", json["locale"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun previewOffersAnswerPassesCompaniesCompanyAndOffersThrough() {
+        val answer = RowJson.parseToJsonElement(
+            """{"companies":[{"name":"Alpha Insurance","insurance_types":["life","health"]}],"company":{"disclaimer":"T&C"},"offers":{"featured":null,"items":[]}}""",
+        ).jsonObject
+        val json = SitePreviewPayload.buildWithPreviewOffers(site, profile, draft, "classic", answer)
+        assertEquals(answer["companies"], json["companies"])
+        assertEquals(answer["company"], json["company"])
+        assertEquals(answer["offers"], json["offers"])
+        val first = json["companies"]!!.jsonArray.single().jsonObject
+        assertEquals(setOf("name", "insurance_types"), first.keys, "names and types only, as sent")
+    }
+
+    @Test
+    fun anOlderServerAnswerWithoutCompaniesLeavesTheKeyOut() {
+        val answer = RowJson.parseToJsonElement("""{"company":null,"offers":{"featured":null,"items":[]}}""").jsonObject
+        assertFalse("companies" in SitePreviewPayload.buildWithPreviewOffers(site, profile, draft, "classic", answer))
+        assertFalse("companies" in SitePreviewPayload.build(site, profile))
     }
 
     @Test

@@ -10,7 +10,8 @@ export function trimWords(text, max = DESC_MAX) {
   return (sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\-–—]+$/, "") + "…";
 }
 // A section is on the page when it is in the order (if there is one) and not hidden. faq and services are never pinned.
-const shown = (c, key) => (!Array.isArray(c.sectionOrder) || c.sectionOrder.includes(key)) && !arr(c.hidden).includes(key);
+// The companies section is placed by the renderer when the order doesn't name it (sections/index.js placeCompanies).
+const shown = (c, key) => (key === "companies" || !Array.isArray(c.sectionOrder) || c.sectionOrder.includes(key)) && !arr(c.hidden).includes(key);
 
 // Pure: returns what app.js writes into <head> (and web/ssr.js serialises). `origin`+`path` describe the page's own URL
 // (with the trailing slash for /a/<slug>/). Optional `t`, `catalog`, `schema` add the translated labels used by the
@@ -29,7 +30,7 @@ export function headData(site, { origin, path = "/", canonicalHost = null, noind
   const phone10 = tenDigits(k.phone || p.phone);
   const agencyId = canonical + "#agency", personId = canonical + "#agent";
 
-  // The agency is the agent's own practice. No insurer or company name, and no Offer markup (OFFERS.md).
+  // The agency is the agent's own practice (never named after an insurer), and there is no Offer markup (OFFERS.md).
   const agency = { "@type": "InsuranceAgency", "@id": agencyId, name: p.full_name || title, url: canonical };
   if (description) agency.description = description;
   if (image) agency.image = image;
@@ -49,6 +50,11 @@ export function headData(site, { origin, path = "/", canonicalHost = null, noind
     if (image) person.image = image;
     if (phone10) person.telephone = agency.telephone;
     person.url = canonical;
+    // The insurers the agent represents (DECISIONS #90), as on the page: an agent is affiliated with them, not
+    // employed (so not worksFor) and not a member (memberOf). Names only, like the companies section.
+    const cos = arr(site.companies).filter((x) => x && has(x.name));
+    const onPage = shown(c, "companies") && (!t || t("site.companies_heading") !== "site.companies_heading");
+    if (cos.length && onPage) person.affiliation = cos.map((x) => ({ "@type": "Organization", name: String(x.name) }));
     agency.founder = { "@id": personId };
     graph.push(person);
   }

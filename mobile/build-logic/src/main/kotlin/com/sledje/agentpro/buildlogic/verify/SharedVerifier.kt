@@ -1,6 +1,7 @@
 package com.sledje.agentpro.buildlogic.verify
 
 import com.sledje.agentpro.buildlogic.codegen.CatalogList
+import com.sledje.agentpro.buildlogic.codegen.CatalogSyncGenerator
 import com.sledje.agentpro.buildlogic.codegen.Migrations
 import com.sledje.agentpro.buildlogic.codegen.Naming
 import com.sledje.agentpro.buildlogic.codegen.NoticeHashes
@@ -359,6 +360,7 @@ class SharedVerifier(private val inputs: VerifyInputs) {
     /**
      * Companies and offers (docs/OFFERS.md):
      * - `offerCtaKinds` entries carry a boolean `agentAllowed`, and at least one kind is allowed for agents;
+     * - `insuranceTypes`, when present, has at least one active entry (memberships need one; DECISIONS #89);
      * - `catalog.offers` holds whole numbers >= 1 and an `imageAspect` like "16:9";
      * - offer-schema.json: whole `version` >= 1; non-empty `localized` (text/multiline only) and `fields`
      *   ([OFFER_FIELD_TYPES]); unique keys; selects with a catalog `optionsFrom`; `requiredIf` naming another field and,
@@ -374,6 +376,26 @@ class SharedVerifier(private val inputs: VerifyInputs) {
             }
             if (kinds.entries.none { it.bool(SiteSchemaKotlinGenerator.AGENT_ALLOWED) == true && it.bool("deprecated") != true })
                 v += "catalog.offerCtaKinds: no active kind is agentAllowed"
+        }
+        // Every pending or approved company membership needs at least one type (DECISIONS #89).
+        val insuranceTypes = defs.catalog[CatalogSyncGenerator.INSURANCE_TYPES]
+        if (insuranceTypes != null && (defs.catalogList(CatalogSyncGenerator.INSURANCE_TYPES)?.activeKeys).isNullOrEmpty())
+            v += "catalog.insuranceTypes: needs at least one active entry"
+        // Each interest names the insurance type it belongs to, or null for one that is always available (DECISIONS #93).
+        // Required once any interest has it or the seed derives services from the types.
+        val interestEntries = defs.catalogList("interests")?.entries.orEmpty()
+        val typed = interestEntries.any { it.containsKey(INSURANCE_TYPE) } || defs.siteSeed?.let { SiteSeedJson.insuranceTypes(it) } != null
+        if (insuranceTypes != null && typed) {
+            val typeKeys = defs.catalogList(CatalogSyncGenerator.INSURANCE_TYPES)?.keys.orEmpty().toSet()
+            interestEntries.forEach { e ->
+                val at = "catalog.interests.${e.string("key")}"
+                when (val t = e[INSURANCE_TYPE]) {
+                    null -> v += "$at: needs \"$INSURANCE_TYPE\" (an insuranceTypes key, or null for an interest of every type)"
+                    is JsonPrimitive -> if (t !is kotlinx.serialization.json.JsonNull && (!t.isString || t.content !in typeKeys))
+                        v += "$at.$INSURANCE_TYPE: \"${t.content}\" is not an insuranceTypes key"
+                    else -> v += "$at.$INSURANCE_TYPE: must be a string or null"
+                }
+            }
         }
         val limits = defs.catalog["offers"]
         if (limits != null && limits !is JsonObject) v += "catalog.json: \"offers\" must be an object"
@@ -533,7 +555,16 @@ class SharedVerifier(private val inputs: VerifyInputs) {
             if (section !in sectionsByKey) v += "$at.visibility.visibleOnlyInFamily: unknown section \"$section\""
             if (family !in familyKeys) v += "$at.visibility.visibleOnlyInFamily.$section: unknown template family \"$family\""
         }
-        val ctx = SeedContext(placeholders.keys, required, activeLocales(), v)
+        val mixKeys = checkSeedInsuranceTypes(seed, v)
+        val ctx = SeedContext(placeholders.keys, required, activeLocales(), v, mixKeys)
+        SiteSeedJson.serviceDescriptions(seed).forEach { (interest, form) ->
+            val desc = sectionsByKey["services"]?.array("fields").orEmpty().filterIsInstance<JsonObject>().firstOrNull { it.string("key") == "items" }
+                ?.array("itemFields").orEmpty().filterIsInstance<JsonObject>().firstOrNull { it.string("key") == SiteSeedJson.ITEM_DESCRIPTION }
+            val where = "$at.insuranceTypes.serviceDescriptions.$interest"
+            if (desc == null) v += "$where: site-schema services.items has no \"${SiteSeedJson.ITEM_DESCRIPTION}\" item field"
+            else if (form !is SeedForm.Variants) v += "$where: must be {\"variants\": [...]}"
+            else checkSeedForm(form, desc, where, ctx)
+        }
         SiteSeedJson.sections(seed).forEach { (sectionKey, fields) ->
             val section = sectionsByKey[sectionKey]
             if (section == null) { v += "$at.sections: unknown section \"$sectionKey\""; return@forEach }
@@ -548,7 +579,57 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         return v
     }
 
-    private class SeedContext(val placeholders: Set<String>, val required: Set<String>, val locales: List<String>, val v: MutableList<String>)
+    private class SeedContext(
+        val placeholders: Set<String>, val required: Set<String>, val locales: List<String>, val v: MutableList<String>,
+        /** The declared copy mixes; null when site-seed.json has no `insuranceTypes`. */
+        val mixes: Set<String>?,
+    )
+
+    /**
+     * `site-seed.json` `insuranceTypes` (DECISIONS #93): every active catalog insurance type has at least one seed
+     * interest, each an active catalog interest of that type, listed once; no unknown type; `whenNone` non-empty and
+     * made of active types; every seed interest has a service description; `mixes` non-empty with unique keys, valid
+     * `onlyTypes`, and exactly the last one without `onlyTypes` (it matches everything). Returns the mix keys (null when absent).
+     */
+    private fun checkSeedInsuranceTypes(seed: JsonObject, v: MutableList<String>): Set<String>? {
+        val block = SiteSeedJson.insuranceTypes(seed) ?: return null
+        val at = "site-seed.json.insuranceTypes"
+        val types = defs.catalogList(CatalogSyncGenerator.INSURANCE_TYPES)
+        if (types == null) { v += "$at: catalog.json has no insuranceTypes list"; return SiteSeedJson.mixes(seed).map { it.first }.toSet() }
+        val active = types.activeKeys.toSet()
+        val interests = defs.catalogList("interests")?.entries.orEmpty().associateBy { it.string("key").orEmpty() }
+        val seedInterests = SiteSeedJson.seedInterests(seed)
+        (active - seedInterests.keys).forEach { v += "$at.seedInterests: insurance type \"$it\" needs at least one seed interest" }
+        seedInterests.forEach { (type, list) ->
+            if (type !in active) v += "$at.seedInterests: \"$type\" is not an active insurance type"
+            if (list.isEmpty()) v += "$at.seedInterests.$type: needs at least one interest"
+            dupes(list).forEach { v += "$at.seedInterests.$type: \"$it\" is listed twice" }
+            list.forEach { k ->
+                val e = interests[k]
+                when {
+                    e == null -> v += "$at.seedInterests.$type: unknown interest \"$k\""
+                    e.bool("deprecated") == true -> v += "$at.seedInterests.$type: interest \"$k\" is deprecated"
+                    e.string(INSURANCE_TYPE) != type -> v += "$at.seedInterests.$type: interest \"$k\" belongs to insurance type \"${e.string(INSURANCE_TYPE)}\""
+                }
+            }
+        }
+        val descriptions = SiteSeedJson.serviceDescriptions(seed)
+        (seedInterests.values.flatten().toSet() - descriptions.keys).forEach { v += "$at.serviceDescriptions: seed interest \"$it\" has no description" }
+        (descriptions.keys - interests.keys).forEach { v += "$at.serviceDescriptions: unknown interest \"$it\"" }
+        val whenNone = SiteSeedJson.whenNone(seed)
+        if (whenNone.isEmpty()) v += "$at.whenNone: needs at least one insurance type"
+        (whenNone - active).forEach { v += "$at.whenNone: \"$it\" is not an active insurance type" }
+        val mixes = SiteSeedJson.mixes(seed)
+        if (mixes.isEmpty()) v += "$at.mixes: needs at least one mix"
+        dupes(mixes.map { it.first }).forEach { v += "$at.mixes: \"$it\" is listed twice" }
+        mixes.forEachIndexed { i, (key, only) ->
+            val last = i == mixes.lastIndex
+            if (only == null && !last) v += "$at.mixes.$key: only the last mix may leave out \"onlyTypes\""
+            if (only != null && last) v += "$at.mixes.$key: the last mix must leave out \"onlyTypes\", so every agent gets one"
+            only?.let { (it - active).forEach { t -> v += "$at.mixes.$key.onlyTypes: \"$t\" is not an active insurance type" } }
+        }
+        return mixes.map { it.first }.toSet()
+    }
 
     private fun checkSeedForm(form: SeedForm, field: JsonObject, where: String, ctx: SeedContext) {
         val v = ctx.v
@@ -570,6 +651,25 @@ class SharedVerifier(private val inputs: VerifyInputs) {
                     checkSeedText(variant.key, maxLength, where, ctx, isFallback = false, hasFallback = variant.fallback != null)
                     variant.fallback?.let { checkSeedText(it, maxLength, "$where (fallback of ${variant.key})", ctx, isFallback = true, hasFallback = false) }
                 }
+            }
+            is SeedForm.ByMix -> {
+                val mixes = ctx.mixes
+                if (mixes == null) { v += "$where: byMix needs \"insuranceTypes.mixes\""; return }
+                (mixes - form.values.keys).forEach { v += "$where: byMix has no value for mix \"$it\"" }
+                (form.values.keys - mixes).forEach { v += "$where: byMix names unknown mix \"$it\"" }
+                form.values.forEach { (mix, f) -> checkSeedForm(f, field, "$where.$mix", ctx) }
+            }
+            is SeedForm.FromInsuranceTypes -> {
+                if (ctx.mixes == null) v += "$where: fromInsuranceTypes needs the \"insuranceTypes\" block"
+                val ok = when (form.kind) {
+                    SiteSeedJson.INTEREST_KEYS -> type == "multiSelect" && field.string("optionsFrom") == "catalog.interests"
+                    else -> type == "list" && field.array("itemFields").orEmpty().filterIsInstance<JsonObject>().let { items ->
+                        items.any { it.string("key") == SiteSeedJson.ITEM_INTEREST && it.string("optionsFrom") == "catalog.interests" } &&
+                            items.any { it.string("key") == SiteSeedJson.ITEM_DESCRIPTION && it.string("type") in setOf("text", "multiline") }
+                    }
+                }
+                if (!ok) v += "$where: fromInsuranceTypes \"${form.kind}\" needs " + if (form.kind == SiteSeedJson.INTEREST_KEYS)
+                    "a multiSelect with optionsFrom catalog.interests" else "a list with an \"interest\" select from catalog.interests and a text \"description\""
             }
             is SeedForm.Items -> {
                 if (type != "list") { v += "$where: items are only for list fields"; return }
@@ -774,6 +874,8 @@ class SharedVerifier(private val inputs: VerifyInputs) {
     private fun fmt(d: Double) = if (d == d.toLong().toDouble()) d.toLong().toString() else d.toString()
 
     companion object {
+        /** `catalog.interests[].insuranceType` (DECISIONS #93). */
+        const val INSURANCE_TYPE = "insuranceType"
         val REQUIRED_LISTS = listOf(
             "enquiryStatuses", "interests", "enquirySources", "premiumModes", "policyStatuses",
             "dueBuckets", "planStatuses", "domainStatuses", "accentSwatches", "locales", "features",

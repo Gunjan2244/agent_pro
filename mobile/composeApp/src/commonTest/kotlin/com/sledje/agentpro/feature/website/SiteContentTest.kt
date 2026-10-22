@@ -29,6 +29,24 @@ class SiteContentTest {
     private val empty = JsonObject(emptyMap())
 
     @Test
+    fun companiesIsAFieldlessMovableSectionRightAfterAbout() {
+        val companies = section("companies")
+        assertTrue(companies.fields.isEmpty() && !companies.pinned)
+        val keys = SiteContent.orderedSections(empty).map { it.key }
+        assertEquals(keys.indexOf("about") + 1, keys.indexOf("companies"))
+        // a saved order that predates the section: the row goes after the schema section before it, not last
+        val old = buildJsonObject { put(SiteContent.SECTION_ORDER, buildJsonArray { listOf("hero", "services", "about", "faq", "contact").forEach { add(it) } }) }
+        val oldKeys = SiteContent.orderedSections(old).map { it.key }
+        assertEquals(oldKeys.indexOf("about") + 1, oldKeys.indexOf("companies"))
+        // it can be hidden and moved; Done writes it into the order
+        val hidden = SiteContent.withHidden(empty, companies, true)
+        assertTrue(SiteContent.isHidden(hidden, companies))
+        val moved = SiteContent.move(empty, 0, 3)
+        assertTrue("companies" in moved[SiteContent.SECTION_ORDER]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(SiteContent.Summary.Empty, SiteContent.summary(empty, companies))
+    }
+
+    @Test
     fun defaultOrderIsTheSchemaOrderWithPinnedHeroFirstAndContactLast() {
         val keys = SiteContent.orderedSections(empty).map { it.key }
         assertEquals(SiteContent.sections.map { it.key }, keys)
@@ -43,7 +61,7 @@ class SiteContentTest {
             put(SiteContent.SECTION_ORDER, buildJsonArray { add("faq"); add("contact"); add("nope"); add("about"); add("hero"); add("faq") })
         }
         val keys = SiteContent.orderedSections(content).map { it.key }
-        assertEquals(listOf("hero", "faq", "about", "services", "highlights", "achievements", "testimonials", "contact"), keys)
+        assertEquals(listOf("hero", "faq", "about", "companies", "services", "highlights", "achievements", "testimonials", "contact"), keys)
     }
 
     @Test
@@ -59,10 +77,10 @@ class SiteContentTest {
     @Test
     fun movingASectionWritesTheFullOrderWithPinnedSectionsFixed() {
         val movable = SiteContent.movableSections(empty).map { it.key }
-        assertEquals(listOf("about", "services", "highlights", "achievements", "testimonials", "faq"), movable)
-        val moved = SiteContent.move(empty, from = 5, to = 0)
+        assertEquals(listOf("about", "companies", "services", "highlights", "achievements", "testimonials", "faq"), movable)
+        val moved = SiteContent.move(empty, from = 6, to = 0)
         val order = moved[SiteContent.SECTION_ORDER]!!.jsonArray.map { it.jsonPrimitive.content }
-        assertEquals(listOf("hero", "faq", "about", "services", "highlights", "achievements", "testimonials", "contact"), order)
+        assertEquals(listOf("hero", "faq", "about", "companies", "services", "highlights", "achievements", "testimonials", "contact"), order)
         assertEquals(moved, SiteContent.move(moved, 9, 0), "out-of-range moves change nothing")
     }
 

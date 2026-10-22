@@ -6,7 +6,7 @@ import * as api from "./api.js";
 import { loadDict, makeT, localeKeys, pickLocale } from "./i18n.js";
 import { headData, applyHead } from "./head.js";
 import { wireForm, consentFor } from "./form.js";
-import { recordViewOnce, normalizeOffers } from "./api.js";
+import { recordViewOnce, normalizeOffers, normalizeCompanies } from "./api.js";
 import { resolveTarget as resolve, siteLinks } from "./route.js";
 import { makeCtx } from "./sections/index.js";
 import { esc } from "./sections/util.js";
@@ -136,7 +136,7 @@ const recordView = (target) => recordViewOnce(target, backend);
 export async function renderSite(input) {
   const site = typeof input === "string" ? JSON.parse(input) : input;
   const company = site.company && typeof site.company.disclaimer === "string" ? { disclaimer: site.company.disclaimer } : null;
-  const ctx = await show({ ...site, profile: site.profile || {}, offers: normalizeOffers(site.offers), company });
+  const ctx = await show({ ...site, profile: site.profile || {}, offers: normalizeOffers(site.offers), company, companies: normalizeCompanies(site.companies) });
   wireForm(root, Object.assign(ctx, { submit: async () => ({ status: "ok" }) }));
 }
 export { boot };

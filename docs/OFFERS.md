@@ -2,11 +2,11 @@
 
 **Status: 8b-1 (shared definitions and codegen) and 8b-2 (backend, local; not applied to `AGENT_PRO`) built; 8b-3 to 8b-5 and 8c designed, not built** (see [Roadmap](#roadmap)). The definitions in `shared/` are real (SHARED_DEFINITIONS.md, Offers) and the backend is described as built in BACKEND.md, "Companies and offers", which wins where it differs from the plan below (DECISIONS #74). The web, the app and the admin panel are still a plan. Values marked (provisional) aren't set by the user yet.
 
-Agent PRO serves agents of **many insurance companies**. **Each agent belongs to exactly one company** (DECISIONS #47), and **an admin verifies that link** before the company's offers and logo appear on the agent's site (DECISIONS #53). Admins manage the companies and their **ongoing offers** in a **separate web admin panel**. An agent shows offers on their website in two **slots**:
+Agent PRO serves agents of **many insurance companies**. **An agent can be linked to several companies, each with the insurance types they deal in there** (`catalog.insuranceTypes`; DECISIONS #89, replacing the one-company rule of #47/#53), and **an admin verifies each link** before that company's offers appear on the agent's site (DECISIONS #53). The approved companies' **names** (never logos) and types are listed on the site (DECISIONS #90). Admins manage the companies and their **ongoing offers** in a **separate web admin panel**. An agent shows offers on their website in two **slots**:
 1. a **featured offer** banner in the hero, and
 2. an **Offers section** that the agent can place anywhere in the section order.
 
-The agent works on the **on-device template preview**. They **tap a slot**, then pick one of their company's live offers, or add a **custom offer** of their own. Expired offers disappear by themselves.
+The agent works on the **on-device template preview**. They **tap a slot**, then pick one of their approved companies' live offers, or add a **custom offer** of their own. Expired offers disappear by themselves.
 
 Related docs: BACKEND.md (tables, RLS, RPCs), SHARED_DEFINITIONS.md (catalog, schemas), WEB_RENDERER.md (rendering), UX.md (screens), PRIVACY.md (DPDP duties of the admin panel and the audit log), TESTING.md.
 
@@ -25,6 +25,7 @@ Related docs: BACKEND.md (tables, RLS, RPCs), SHARED_DEFINITIONS.md (catalog, sc
 | Admin roles `owner`, `editor` | `catalog.adminRoles` | Stored enum |
 | Membership statuses `pending` (info), `approved` (success), `rejected` (danger), `revoked` (danger), `withdrawn` (neutral) | `catalog.membershipStatuses` (CHECK on `company_memberships.status`) | Stored enum; labels and tones for the app's pills and the admin panel |
 | Rejection reasons `not_found`, `details_mismatch`, `not_agent`, `other` | `catalog.membershipRejectReasons` (provisional) | Shown to the agent in their language |
+| Insurance types `life`, `health`, `motor`, `home`, `travel`, `business`, `accident` | `catalog.insuranceTypes` (provisional; DECISIONS #89) | Stored per membership (`company_memberships.insurance_types`); `catalog_insurance_types()` |
 | Limits | `catalog.offers` object: `maxSectionItems` 6, `maxValidityDays` 366, `logoMaxBytes` 262144, `imageMaxBytes` 524288, `imageAspect` `"16:9"`, `logoMaxPx` 512 (all provisional) | Server-authoritative numbers |
 | Company offer fields | New `shared/offer-schema.json` | Drives the admin panel form, SQL validation (`offer_schema()`), and the renderer's field limits |
 | Site slots and custom offers | `site-schema.json`: `hero.featuredOffer`, new `offers` section | Agent content |
@@ -122,14 +123,15 @@ The agent's company is a **membership request that an admin approves**. It's a t
 | `status` | `catalog.membershipStatuses`, default `pending` |
 | `reject_reason` | `catalog.membershipRejectReasons` key, required when `rejected` |
 | `review_note` | ≤ 200, optional, shown to the agent |
+| `insurance_types` | `text[]`, keys of `catalog.insuranceTypes`, unique; **at least one** on pending and approved rows (DECISIONS #89). Changing them needs no new review. Rows from before #89 were backfilled `{life}` |
 | `requested_at`, `reviewed_at`, `reviewed_by` | `reviewed_by` = the admin |
 
-- **One current membership per agent:** a partial unique index on `agent_id` where `status in ('pending', 'approved')`. Rejected, revoked and withdrawn rows stay as history.
-- **The agent's company** (for the picker, the payload and validation) is their current row's `company_id`. **Company offers and the logo are available only when that row is `approved`.** `pending`, `rejected` and no row all mean: custom offers only. There's no `profiles.company_id`.
-- **Changing company:** a new request withdraws the current row (`withdrawn`) in the same transaction, so an approved agent who switches goes back to custom offers until the new link is approved. Company-offer references for the old company stop resolving at once; the next publish reports them as warnings.
-- **Revoking** (the agent has left the company, say): the admin sets `revoked` with a note; the company's offers and logo leave the agent's site on the next page load.
+- **One current row per company** (DECISIONS #89): a partial unique index on `(agent_id, company_id)` where `status in ('pending', 'approved')`, plus at most one pending "not listed" row per agent. Rejected, revoked and withdrawn rows stay as history.
+- **The agent's companies** (for the picker, the payload and validation) are their `approved` rows. **Company offers are available only from approved companies**; `pending`, `rejected` and no row all mean: no offers from that company. Custom offers are available unless any approved, active company switched them off. There's no `profiles.company_id`.
+- **Adding a company** never touches the others. **Changing the agency code** for a company withdraws that row and makes a new pending request (a new review); **changing the types** doesn't (`set_membership_types`, or `request_company` with the same code). **Removing a company** is `withdraw_company_request(membership_id)`: its offers stop resolving at once and the next publish reports them as warnings.
+- **Revoking** (the agent has left the company, say): the admin sets `revoked` with a note; the company's offers and name leave the agent's site on the next page load.
 - `private.memberships_guard`: the company must be `is_active`; transitions are `pending → approved | rejected | withdrawn` and `approved → revoked | withdrawn`; `reviewed_at`/`reviewed_by` are set from `auth.uid()`.
-- **Privacy:** to verify a request, admins see only the agent's name, designation, city, agency code and email (PRIVACY.md). Every review is in `audit_log`.
+- **Privacy:** to verify a request, admins see only the agent's name, designation, city, agency code, the request's insurance types and email (PRIVACY.md), and the agent's previous decision **for the same company only** (a scoped admin never learns about the agent's other companies). Every review is in `audit_log`.
 
 ### Custom offers live in site content, not in a table
 Custom offers are stored in `sites.draft_content.offers.custom[]` (and published with the rest).
@@ -141,7 +143,7 @@ Custom offers are stored in `sites.draft_content.offers.custom[]` (and published
 ### New field types
 | Type | Value | FormRenderer | Publish validation |
 |---|---|---|---|
-| `offerRef` | `{"source": "company"|"agent", "id": "<uuid>"}` or absent | A `PickerField` row ("Featured offer · None") that calls `onPickOffer(slot)`, which opens the Offers picker sheet | Shape; `company` → the offer exists, belongs to the agent's current membership company, is `live` and not `ended`, and the membership is `approved`; `agent` → the id exists in `offers.custom` |
+| `offerRef` | `{"source": "company"|"agent", "id": "<uuid>"}` or absent | A `PickerField` row ("Featured offer · None") that calls `onPickOffer(slot)`, which opens the Offers picker sheet | Shape; `company` → the offer exists, belongs to one of the agent's `approved` companies, is `live` and not `ended`; `agent` → the id exists in `offers.custom` |
 | `offerList` | array of `offerRef`, `maxItems` | A list of rows (title, phase, Remove, drag to reorder) plus **Add offer**, which opens the picker | As above, per item; no duplicates |
 
 ### New field rules
@@ -176,7 +178,7 @@ Custom offers are stored in `sites.draft_content.offers.custom[]` (and published
 - Validates the new types and rules above.
 - **Ended or unavailable offers are warnings, not errors**, so one ended offer never blocks publishing unrelated edits. A company offer whose membership is no longer `approved` (withdrawn, revoked) is `offer_unavailable` too: `{ok:true, published_at, warnings:[{section, field, item, rule:'offer_ended'|'offer_unavailable'}]}`. The reference is kept (it's skipped at render) and the app offers "Replace" or "Remove".
 - Structural problems are errors: `rule: 'offer_shape'`, `'offer_wrong_company'`, `'offer_custom_missing'`, `'duplicate'`, `'equals'`, `'max_days_ahead'`.
-- When the agent's **approved** company has `allow_custom_offers = false`, custom-offer references are an error (`custom_offers_off`).
+- When **any** of the agent's approved, active companies has `allow_custom_offers = false`, custom-offer references are an error (`custom_offers_off`; the strictest wins, DECISIONS #89).
 
 ## Backend (planned)
 ### Storage bucket `company-media`
@@ -203,19 +205,21 @@ Agents never read `companies`, `offers`, `admins` or `audit_log` directly; they 
 | Function | Caller | Behaviour |
 |---|---|---|
 | `list_companies() → jsonb` | authenticated | Active companies `[{id, name:{en,hi}, logo_url}]` (logo only while permitted), sorted by `sort`, then name. For the onboarding and Settings pickers |
-| `request_company(company_id uuid, suggested_name text, agency_code text) → jsonb` | authenticated, `can_write()` | Withdraws the caller's current membership (if any) and inserts a `pending` one. Exactly one of `company_id` (an active company; `agency_code` required) and `suggested_name` ("My company isn't listed"). Requesting the company you're already approved for is a no-op. Returns the new membership. Errors: `not_found`, `invalid` (22023) |
-| `withdraw_company_request() → void` | authenticated | Sets the current `pending` row to `withdrawn` |
-| `my_company_offers() → jsonb` | authenticated | `{membership:{status, company:{id, name, logo_url, allow_custom_offers} | null, suggested_name, reject_reason, review_note, requested_at, reviewed_at} | null, offers:[{id, content, image_url, cta_kind, cta_url, interest, starts_at, ends_at, phase}]}`. `offers` is non-empty **only when the membership is `approved`**: the company's `live` offers that haven't ended (`upcoming` included, so the agent can place an offer before it starts). Works on a lapsed plan (read-only) |
+| `request_company(company_id uuid, suggested_name text, agency_code text, insurance_types text[]) → jsonb` | authenticated, `can_write()` | Inserts a `pending` request **without touching the agent's other companies** (DECISIONS #89). Exactly one of `company_id` (an active company; `agency_code` required) and `suggested_name` ("My company isn't listed"); `insurance_types` ≥ 1 catalog key. Re-requesting a company that's pending or approved with the same agency code only updates the types; a different code withdraws that row and makes a new request. Returns the membership (with `insurance_types`). Errors: `not_found`, `invalid`, `invalid_types` (22023). Full rules in BACKEND.md |
+| `withdraw_company_request(membership_id uuid) → jsonb` | authenticated | Sets that pending or approved row of the caller to `withdrawn` |
+| `set_membership_types(membership_id uuid, insurance_types text[]) → jsonb` | authenticated, `can_write()` | Replaces the types of a pending or approved row, with no new review |
+| `my_company_offers() → jsonb` | authenticated | `{memberships:[{id, status, company:{id, name, logo_url, allow_custom_offers} | null, suggested_name, agency_code, insurance_types, reject_reason, review_note, requested_at, reviewed_at}], offers:[{id, company_id, content, image_url, cta_kind, cta_url, interest, starts_at, ends_at, phase}]}`. `memberships`: per company, the current row, else the latest rejection or revocation (withdrawn ones left out). `offers`: the `live` offers that haven't ended (`upcoming` included, so the agent can place an offer before it starts) of **every approved, active company**, each with its `company_id`. Works on a lapsed plan (read-only) |
 | `admin_review_membership(membership_id uuid, decision text, reject_reason text, note text) → jsonb` | authenticated, `is_admin_for(company_id)` | `decision` is `approve`, `reject` (a reason is required) or `revoke`. For a "not listed" row, the admin first creates the company, then calls `admin_link_membership(membership_id, company_id)` (owner or unscoped editor), which sets the company and leaves it `pending` for review |
-| `admin_membership_queue(company_id uuid, status text) → jsonb` | authenticated, `is_admin_for` | The requests with only the agent fields needed to verify: name, designation, city, agency code (from the request), email, requested date; plus the agent's last decided request, if any |
+| `admin_membership_queue(company_id uuid, status text) → jsonb` | authenticated, `is_admin_for` | The requests with only the agent fields needed to verify: name, designation, city, agency code and insurance types (from the request), email, requested date; plus the agent's last decided request for the same company, if any |
 | `get_public_site*` (changed) | anon | The payload gains `company` and `offers` (below) |
 | `publish_site()` (changed) | authenticated, `can_write()` | See above |
 | `admin_offer_usage(offer_id uuid) → jsonb` | authenticated, `is_admin_for` | `{published_sites, draft_sites}` counts only, never which agents (minimisation) |
 
 ### Public payload additions (`private.public_site_payload`)
-As built (DECISIONS #77): `company` is `{disclaimer}` only. The plan's `name` and `logo_url` were removed so no insurer name or logo reaches a site.
+As built (DECISIONS #77, #90): `company` is `{disclaimer}` only (the plan's `name` and `logo_url` were removed), and since DECISIONS #90 a separate `companies` list carries the approved companies' **names** as plain text with their insurance types. No logo, slug, id or link ever reaches a site.
 ```json
 "published_at": "2026-10-18T09:30:00+00:00",
+"companies": [ { "name": "Bharat Life", "insurance_types": ["motor"] }, { "name": "Acme Life", "insurance_types": ["life", "health"] } ],
 "company": { "disclaimer": "Insurance is the subject matter of solicitation." },
 "offers": {
   "featured": { "source": "company", "id": "…", "title": "…", "summary": "…", "details": null, "badge": "Till 31 Dec",
@@ -223,10 +227,11 @@ As built (DECISIONS #77): `company` is `{disclaimer}` only. The plan's `name` an
                 "disclaimer": "…", "interest": "term", "from_agent": false },
   "items": [ { "...": "same shape" } ] }
 ```
-- `company` is null unless the agent's membership is `approved` and the company is active. It never carries the company's name, slug or logo (DECISIONS #77); `title` is the offer's public, generic name and `internal_name` never appears.
-- **Auto offers (DECISIONS #79):** a shown `offers` section with no `items` and no `custom` entries gets up to 3 of the company's live, running offers (by `sort`, then start), resolved the same way; on an `offers`-family template with no `hero.featuredOffer`, the first of them is featured (no image) and the rest are the items. Details in BACKEND.md, Public payload.
+- `companies` lists the agent's approved links to active companies, earliest approval first, the name in the site's language (fallback the default locale), the types in catalog order; `[]` when none (DECISIONS #90).
+- `company` is the **earliest-approved** active company's `{disclaimer}`, or null without one. It never carries the company's name, slug or logo (DECISIONS #77); `title` is the offer's public, generic name and `internal_name` never appears.
+- **Auto offers (DECISIONS #79):** a shown `offers` section with no `items` and no `custom` entries gets up to 3 live, running offers of the approved companies, taken in turn from each company (each by `sort`, then start; companies in approval order), resolved the same way; on an `offers`-family template with no `hero.featuredOffer`, the first of them is featured (no image) and the rest are the items. Details in BACKEND.md, Public payload.
 - Text is picked for `sites.locale`, falling back to the catalog's first locale (a new generated `catalog_default_locale()`), so the payload carries one language only.
-- **Skipped silently:** every company offer when the membership isn't `approved`; company offers that aren't `live`, are `upcoming` or `ended`, belong to another company, or whose company is inactive; custom offers whose `endsOn` has passed (Asia/Kolkata), or when the agent's approved company has `allow_custom_offers = false` (an agent without an approved company can always use custom offers). The featured image is always null (the hero keeps one image).
+- **Skipped silently:** company offers of companies the agent isn't `approved` for; company offers that aren't `live`, are `upcoming` or `ended`, or whose company is inactive; custom offers whose `endsOn` has passed (Asia/Kolkata), or when any approved, active company has `allow_custom_offers = false` (an agent without an approved company can always use custom offers). The featured image is always null (the hero keeps one image).
 - `cta`: `enquire` (with the offer's interest), `call` (the renderer uses `profile.phone`) or `link` (`url`, https only, company offers only).
 - The raw references in `published_content` are still returned verbatim, but the renderer reads only `offers`.
 
@@ -235,11 +240,15 @@ As built (DECISIONS #77): `company` is `{disclaimer}` only. The plan's `name` an
 - **Storage:** writes go through `public.can_manage_company_media(name)` (a logo path for admins of that company, an offer path for admins of that offer's company); listing is for admins only.
 - **Publish:** an unknown company offer id is `offer_wrong_company`; a company the agent asked for before but isn't approved for now (changed, withdrawn or revoked link) gives the warning `offer_unavailable`, so switching company never blocks a publish. The new rules (`equals`, `maxDaysAhead`, agent CTA kinds, date format) live in `validate_fields`, so custom offers are checked like any list; ids, references and company rules in `validate_site_offers`.
 - **Payload:** `disclaimer` on each offer is the offer's own (the company's is in `company.disclaimer`); custom offers also need the confirmation and an agent CTA kind to render.
-- **Memberships:** `requested_at` uses `clock_timestamp()` so "the latest request" is well defined; `my_company_offers` falls back to the latest rejection or revocation only; `admin_membership_queue(null, …)` means every company the admin may see.
+- **Memberships:** `requested_at` uses `clock_timestamp()` so "the latest request" is well defined; `my_company_offers` lists, per company, the current row or else the latest rejection or revocation; `admin_membership_queue(null, …)` means every company the admin may see. Since DECISIONS #89 (`20261022090000_multi_company.sql`): several companies, `insurance_types`, `set_membership_types`, `withdraw_company_request(membership_id)`, `admin_link_membership` refuses a company the agent already has (`duplicate_membership`).
 - **Disguised names (DECISIONS #77):** `offers.internal_name` (≤ 120, admin RLS) holds the real product name for the panel; `content.title` is the public, generic name. `private.public_text_violation` (BACKEND.md, Public text check) rejects any blocked term (`catalog.publicTextRules.blockedTerms`) or any company's name, in any locale, word-bounded with Devanagari vowel signs counted as letters: in every localized offer field and the link and image URLs (`offers_guard`, on save, on text change and on going live; error `blocked_term:<field>:<locale>:<term>`), in company disclaimers (`companies_guard`, its own name included), and in custom offers' title and summary at publish (error rule `blocked_term`). The payload's `company` is `{disclaimer}` only.
 - **Auto offers and the sitemap (DECISIONS #79):** see Public payload additions above; `get_public_site*` also return `published_at`, and the anon RPC `list_public_sites()` returns `{slug, published_at}` for every site `get_public_site` serves, except sites with an active custom domain (their domain serves its own sitemap; BACKEND.md, RPCs).
 - **`interest` on every offer:** each resolved offer (featured, items, auto) carries its catalog `interest` (null when unset) whatever the CTA kind, so the web can pick a fallback image and group offers in the guide template; `cta.interest` stays on `enquire` CTAs for compatibility.
-- **Demo data:** `supabase/demo/demo-offers.json` → `supabase/demo/demo_offers.sql` (generated by `gen_demo_offers.py`): the `demo-life` company and 6 disguised offers with internal names, run as `postgres` in the SQL Editor only with approval (BACKEND.md, Demo seed). The JSON's `image` is for the web fixtures; the seed leaves `image_url` null.
+- **Demo data (local tests and web fixtures only):** `supabase/demo/demo-offers.json` → `supabase/demo/demo_offers.sql` (generated by `gen_demo_offers.py`): a fictional `demo-life` company and 6 disguised offers with internal names, run as `postgres` in the SQL Editor only with approval (BACKEND.md, Demo seed). The JSON's `image` is for the web fixtures; the seed leaves `image_url` null. **This stays for local Postgres tests (`supabase/tests/95_offers.sql`) and `web/dev-fixtures/*`; it no longer reflects the live `AGENT_PRO` project.**
+- **Live companies (DECISIONS #94):** the `AGENT_PRO` `companies` table holds 11 real insurers (LIC and 10 private life/health insurers) alongside the demo row, seeded by `supabase/migrations/20261022180000_real_companies.sql`. The 6 disguised demo offers now belong to LIC; their content is unchanged. The old `demo-life` row is deactivated (`is_active = false`), not deleted — companies are **never hard-deleted** (history in `company_memberships` references them permanently via `ON DELETE RESTRICT`). Adding, editing or deactivating a company is still a manual SQL statement until the admin panel (8c) exists.
+
+### In-app preview offers (DECISIONS #84)
+`public.preview_site_offers(content, template_key)` (signed-in agents only; migration `20261020090000_preview_offers.sql`) returns `{company, offers}` for the caller's **draft**, resolved by the same `private.site_offers_payload` as `get_public_site`: picked offers, or the automatic ones (#79), with the featured one for the offers family. The app adds it to every `renderSite` payload, so previews show the company's offers as the live site will. Offline, the preview has no offers. BACKEND.md has the details.
 
 ### Edge Function `admin` (planned, JWT, `is_admin('owner')` with `aal2`)
 - `invite {email, role, company_id?}`: `auth.admin.inviteUserByEmail` with `app_metadata.account_kind = 'admin'`, then inserts `admins`.
@@ -247,10 +256,11 @@ As built (DECISIONS #77): `company` is `{disclaimer}` only. The plan's `name` an
 - Every action writes `audit_log`. An owner can't revoke or demote themselves if they're the last owner.
 
 ### Advisors
-The new `SECURITY DEFINER` functions exposed to `authenticated` (`is_admin`, `is_admin_for`, `list_companies`, `request_company`, `withdraw_company_request`, `my_company_offers`, `admin_review_membership`, `admin_link_membership`, `admin_membership_queue`, `admin_offer_usage`, `list_public_sites`) are added to BACKEND.md's accepted 0029 list. The anon list gains `list_public_sites` (0028; slugs and publish times only, DECISIONS #79).
+The new `SECURITY DEFINER` functions exposed to `authenticated` (`is_admin`, `is_admin_for`, `list_companies`, `request_company`, `withdraw_company_request`, `set_membership_types`, `my_company_offers`, `admin_review_membership`, `admin_link_membership`, `admin_membership_queue`, `admin_offer_usage`, `list_public_sites`) are added to BACKEND.md's accepted 0029 list. The anon list gains `list_public_sites` (0028; slugs and publish times only, DECISIONS #79).
 
 ## App (planned `feature/offers/`, flag `offers`)
-- **Package:** `feature/offers/` with `data/` (`CompanyRepository`, `OfferRepository` over `list_companies` and `my_company_offers`; `CompanyOfferEntity`/`Dao` and `MembershipEntity`: a Room snapshot replaced whole on every refresh, with no sync cursor) and `ui/` (`PlaceOffersScreen`, `OfferPickerSheet`, `CustomOfferForm`, `CompanyPickerSheet`), plus `OffersFeature.kt` (a `websiteHubEntries` row and the routes).
+- **Built (DECISIONS #89):** `feature/offers/data/CompanyRepository` (`Company`, `Membership`, `CompanyJson`; **remote only for now**: it holds the last `my_company_offers().memberships` in a `StateFlow`, refreshed after every write and cleared on sign-out, with no Room snapshot yet) over `list_companies`, `request_company`, `withdraw_company_request` and `set_membership_types`; `feature/offers/ui/` `CompaniesViewModel` (the picker, add, edit types, try again and remove flows, shared by onboarding step 1 and Settings → Profile), `CompaniesBlock`/`CompanyCard`, `CompanySheets` (`CompanyPickerContent`, `CompanyFormContent`). The offers parts below are still planned.
+- **Package (planned in full):** `feature/offers/` with `data/` (`CompanyRepository`, `OfferRepository` over `list_companies` and `my_company_offers`; `CompanyOfferEntity`/`Dao` and `MembershipEntity`: a Room snapshot replaced whole on every refresh, with no sync cursor) and `ui/` (`PlaceOffersScreen`, `OfferPickerSheet`, `CustomOfferForm`, `CompanyPickerSheet`), plus `OffersFeature.kt` (a `websiteHubEntries` row and the routes).
 - **Refresh:** with `DataSync.refreshAll()`, and when Place offers opens. A "new offers" dot compares offer ids with the last seen set (DataStore). When a refresh finds the membership has changed from `pending` to `approved` or `rejected`, the app posts one notification ("LIC has approved your link · Add their offers" / "Your company link wasn't approved") that opens Website → Offers.
 - **Forms:** `FieldType.OfferRef` and `FieldType.OfferList` in `core/forms`; FormRenderer renders them as picker rows and calls `onPickOffer(SlotRef)`, as it does `onPickImage`.
 - **Writes** are draft saves through `SiteRepository`, like the section editor.
@@ -268,22 +278,21 @@ The new `SECURITY DEFINER` functions exposed to `authenticated` (`is_admin`, `is
 - **Accessible path:** WebView placeholders aren't reliable with TalkBack, so every slot is also reachable as a list (the Offers section editor and the hero's Featured offer row), opening the same picker. Place offers has a **List** action in the top bar.
 
 ## Screens (UX.md style; planned)
-### Profile → Company (onboarding step 1 and Settings → Profile)
-- Onboarding stays **3 steps**: step 1 Profile gains a **Company** field (required, a `PickerField`) above designation. Choosing a company also makes **Agency code** required (it moves out of More details), because the admin verifies it.
-- It opens **CompanyPickerSheet**: a search field (when there are more than 8 companies), then one `ListRow` per company (logo 40dp if permitted, otherwise the name's initials in a neutral avatar; the name in the app language). The last row: **My company isn't listed**, which asks for the company's name (one text field).
-- Saving the profile calls `request_company`. **The agent is never blocked:** onboarding continues, and the whole app works at once, with custom offers only until approval. The finish snackbar becomes "Your 14-day free trial has started · We'll tell you when {company} is confirmed".
-- Agents who onboarded before this ships see a setup-checklist row, "Choose your company".
+### Profile → Companies (onboarding step 1 and Settings → Profile)
+> Built (2026-10-22, UX.md "Your companies"): onboarding step 1 and Settings → Profile, with every add, change and removal saved at once through its RPC (not on Continue). The backend contract it builds on: `request_company(company_id, suggested_name, agency_code, insurance_types)` per company, `set_membership_types`, `withdraw_company_request(membership_id)`, `my_company_offers().memberships` (BACKEND.md, Agent RPCs).
+- Step 1 Profile lists **one or more companies**, each with its **agency code** (required, the admin verifies it) and **the insurance types** the agent deals in there (one or more chips from `catalog.insuranceTypes`). **My company isn't listed** asks for the company's name (one text field) and its types.
+- The picker (**CompanyPickerSheet**): a search field (when there are more than 8 companies), then one `ListRow` per company (logo 40dp if permitted, otherwise the name's initials in a neutral avatar; the name in the app language); companies already added are marked.
+- Saving calls `request_company` once per new company, when its sheet is saved. **The agent is never blocked** (but onboarding step 1 needs at least one pending or approved company): onboarding continues, and the whole app works at once, with custom offers only until approval.
 
-**Company row in Settings → Profile, by membership status** (a `StatusPill` from `catalog.membershipStatuses` plus one line):
-| Status | Line | Action |
+**One row per company in Settings → Profile, by membership status** (a `StatusPill` from `catalog.membershipStatuses` plus an optional detail line; the catalog wording is the only status text), plus **Add company**:
+| Status (pill) | Detail line | Action |
 |---|---|---|
-| `pending` | "Waiting for confirmation · requested 16 Oct" | **Cancel request** (text button) |
-| `approved` | "{company} · confirmed" | **Change company** |
-| `rejected` | "Not confirmed: {reason}" plus the admin's note, if any | **Try again** (reopens the picker, prefilled) |
-| `revoked` | "No longer linked: {note}" | **Choose company** |
-| none / `withdrawn` | "No company chosen" | **Choose company** |
+| `pending` (Waiting for approval) | "Requested 16 Oct" plus the types | **Cancel request** (`withdraw_company_request`), **Edit types** |
+| `approved` (Approved) | the types | **Edit types** (no new review), **Remove** (`withdraw_company_request`) |
+| `rejected` (Not approved) | "Reason: {reason}" plus the admin's note, if any | **Try again** (reopens the request, prefilled) |
+| `revoked` (Removed) | the admin's note, if any | **Request again** |
 
-- **Change company** warns first: "Offers from {old company} will leave your website until {new company} confirms you." Then it calls `request_company`.
+- **Changing the agency code** of an approved company is a new request: warn first ("Offers from {company} will leave your website until {company} confirms you again").
 ### Website hub → Offers
 - A new `NavRow` between Content and Appearance: **Offers** · "2 on your site", or "Add offers" when none are placed; a small dot when the company has new offers since the last visit. While the membership is `pending`, the supporting line reads "Your own offers · {company} not confirmed yet".
 
@@ -387,13 +396,13 @@ These phases go after Phase 8 (they need the Website hub and `SitePreview`). The
 | 8c-4 Deploy | Cloudflare Worker and subdomain — **needs the user's approval** | — | 8c-2, 8c-3 | orchestrator |
 
 ## Tests (to add to TESTING.md when built)
-- **SQL (`95_offers.sql`):** anon has no access to the 5 new tables or the bucket; an agent can't insert or update `company_memberships` directly, can't approve themselves, and has at most one pending or approved row; a new request withdraws the old one; a scoped editor can't review another company's requests; `my_company_offers` and the payload return no company offers or logo while `pending`, `rejected` or `revoked`, and do after `approved`; revoking removes them on the next load; an agent can't read `companies`/`offers` directly; an admin without `aal2` is refused; an editor scoped to one company can't edit another's offers; `→ live` refuses missing Hindi, a past end, a `link` without https; archived offers and ended or upcoming offers never appear in the payload; another company's offer id is rejected by `publish_site` (`offer_wrong_company`); an ended offer is a warning; ended custom offers are dropped from the payload; the payload's company is `{disclaimer}` only (no name, slug or logo); `internal_name` never appears in `my_company_offers` or the payload; blocked terms and company names are rejected in EN and HI (offer fields, URLs, disclaimers, custom offers at publish) with the word-boundary cases; auto offers (≤ 3, running only, none when hidden, featured only for the `offers` family); `list_public_sites`; the demo seed; `admin_offer_usage` returns counts only; audit rows for every admin write; admin signups get no profile. (Built: see TESTING.md, `95_offers.sql`.)
+- **SQL (`95_offers.sql`):** anon has no access to the 5 new tables or the bucket; an agent can't insert or update `company_memberships` directly, can't approve themselves, and has at most one pending or approved row per company (several companies at once; a new company never withdraws another; insurance types required and validated; `set_membership_types` only by the owner); a scoped editor can't review another company's requests; `my_company_offers` and the payload return no company offers or logo while `pending`, `rejected` or `revoked`, and do after `approved`; revoking removes them on the next load; an agent can't read `companies`/`offers` directly; an admin without `aal2` is refused; an editor scoped to one company can't edit another's offers; `→ live` refuses missing Hindi, a past end, a `link` without https; archived offers and ended or upcoming offers never appear in the payload; another company's offer id is rejected by `publish_site` (`offer_wrong_company`); an ended offer is a warning; ended custom offers are dropped from the payload; the payload's company is `{disclaimer}` only (no name, slug or logo); `internal_name` never appears in `my_company_offers` or the payload; blocked terms and company names are rejected in EN and HI (offer fields, URLs, disclaimers, custom offers at publish) with the word-boundary cases; auto offers (≤ 3, running only, none when hidden, featured only for the `offers` family); `list_public_sites`; the demo seed; `admin_offer_usage` returns counts only; audit rows for every admin write; admin signups get no profile. (Built: see TESTING.md, `95_offers.sql`.)
 - **Web:** cards in 3 templates × 2 locales; the agent note on custom offers; no logo without `logo_url`; expired cards hidden client-side; slot placeholders appear only with `?preview=1` + `slots`; `preview-bridge.js` isn't loaded on public pages; the size budget.
 - **App:** `SlotMessage.parse` accepts only schema offer fields and in-range indexes; picker states (no company, pending, rejected, approved with none live, offline, lapsed); the Settings company row in each membership status; the one-time approval notification; custom form validation (`equals`, `maxDaysAhead`); publish warnings → snackbar; company change warning; screenshots of Place offers and the sheet in 4 variants.
 - **Admin:** a non-admin sees "No access"; MFA is required before any data loads; the logo upload is disabled until permission is recorded; reject needs a reason and revoke a note; a "not listed" request can be turned into a company and linked; archive removes the offer from a live site on the next load; audit entries appear.
 
 ## Decisions (2026-10-16)
-The user's answers are recorded in DECISIONS #49–#53:
-1. **Company membership is verified by an admin** (`company_memberships`, above). The agent picks their company or "My company isn't listed" and uses the app at once with custom offers; company offers and the logo appear only once an admin approves the link.
+The user's answers are recorded in DECISIONS #49–#53 (point 1 refined by #89: several companies per agent, each link verified separately; #90: the approved companies' names on sites):
+1. **Company membership is verified by an admin** (`company_memberships`, above). The agent picks their companies (each with its agency code and insurance types; DECISIONS #89) or "My company isn't listed" and uses the app at once with custom offers; a company's offers appear only once an admin approves that link.
 2. **Custom offers are on by default,** with the confirmation toggle, the "Details provided by the agent" note and a per-company off switch. **(counsel)** whether IRDAI's advertising rules require the insurer's prior approval of an agent's offer text.
 3. **Offers need English and Hindi** before they can go live.

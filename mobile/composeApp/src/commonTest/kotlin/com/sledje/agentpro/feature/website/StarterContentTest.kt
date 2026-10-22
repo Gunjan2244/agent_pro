@@ -34,7 +34,8 @@ class StarterContentTest {
         locale: String = "en",
         agentId: String = "agent-1",
         p: com.sledje.agentpro.feature.settings.data.Profile = profile,
-    ) = StarterContent.from(p, template, locale, agentId)
+        types: List<String> = emptyList(),
+    ) = StarterContent.from(p, template, locale, agentId, types)
 
     private fun JsonObject.section(key: String) = this[key]!!.jsonObject
     private fun JsonObject.text(section: String, field: String) = section(section)[field]!!.jsonPrimitive.content
@@ -85,8 +86,9 @@ class StarterContentTest {
             assertTrue(c.text("about", "bio").isNotBlank(), locale)
             assertEquals("LIC Agent", c.text("about", "designation"))
             assertEquals(listOf(if (locale == "hi") "hindi" else "english"), c.section("about")["languagesSpoken"]!!.jsonArray.map { it.jsonPrimitive.content })
-            assertEquals(5, c.section("services")["offered"]!!.jsonArray.size, locale)
-            assertEquals(5, c.items("services").size, locale)
+            // No declared types: WHEN_NONE (life) → term, endowment, child plan, pension (DECISIONS #93).
+            assertEquals(4, c.section("services")["offered"]!!.jsonArray.size, locale)
+            assertEquals(4, c.items("services").size, locale)
             assertTrue(c.items("services").all { it["description"]!!.jsonPrimitive.content.isNotBlank() }, locale)
             assertEquals(4, c.items("highlights").size, locale)
             assertEquals(5, c.items("faq").size, locale)
@@ -151,8 +153,9 @@ class StarterContentTest {
 
     @Test
     fun theDraftPassesThePublishRulesForEveryTemplateAndLocale() {
-        for (locale in listOf("en", "hi")) for (t in Templates.all) {
-            assertEquals(emptyList(), publishErrors(starter(t, locale)), "$locale ${t.key}")
+        val mixes = listOf(emptyList(), listOf("life"), listOf("motor"), listOf("life", "health", "motor", "home", "travel", "business", "accident"))
+        for (locale in listOf("en", "hi")) for (t in Templates.all) for (types in mixes) {
+            assertEquals(emptyList(), publishErrors(starter(t, locale, types = types)), "$locale ${t.key} $types")
         }
         assertTrue(SiteContent.fitsSizeCap(starter()))
         // The minimum profile (name and mobile only) is still publishable.
@@ -197,5 +200,64 @@ class StarterContentTest {
         assertTrue(SiteSchema.section(StarterContent.ABOUT)!!.fields.any { it.key == StarterContent.DESIGNATION })
         assertTrue(SiteSchema.section(StarterContent.ABOUT)!!.fields.any { it.key == StarterContent.BIO })
         assertEquals(JsonPrimitive("Ramesh"), JsonPrimitive(StarterContent.placeholderValues(profile)["firstName"]))
+    }
+
+    // ---- Insurance types (DECISIONS #93) ------------------------------------------------------------------------------
+
+    private fun JsonObject.offered() = section("services")["offered"]!!.jsonArray.map { it.jsonPrimitive.content }
+    private fun JsonObject.itemInterests() = items("services").map { it["interest"]!!.jsonPrimitive.content }
+
+    @Test
+    fun servicesFollowTheAgentsInsuranceTypes() {
+        val life = starter(types = listOf("life"))
+        assertEquals(listOf("term", "endowment", "child", "pension"), life.offered())
+        assertEquals(life.offered(), life.itemInterests())
+        assertEquals(starter(), life, "no types = WHEN_NONE (life)")
+
+        val motor = starter(types = listOf("motor"))
+        assertEquals(listOf("motor"), motor.offered())
+        assertEquals(listOf("motor"), motor.itemInterests())
+        assertTrue(motor.items("services").single()["description"]!!.jsonPrimitive.content.isNotBlank())
+
+        // Several types: offered is round-robin (the hero's first quick links span every type), items are grouped by type.
+        val mixed = starter(types = listOf("motor", "life", "health"))
+        assertEquals(listOf("term", "health", "motor", "endowment", "child", "pension"), mixed.offered())
+        assertEquals(listOf("term", "endowment", "child", "pension", "health", "motor"), mixed.itemInterests())
+
+        // Every type: capped at the list's maxItems (8), each type still represented.
+        val all = starter(types = listOf("life", "health", "motor", "home", "travel", "business", "accident"))
+        assertEquals(8, all.itemInterests().size)
+        assertEquals(listOf("term", "endowment", "health", "motor", "home", "travel", "business", "accident"), all.itemInterests())
+        assertEquals(setOf("term", "health", "motor", "home", "travel", "business", "accident", "endowment"), all.offered().toSet())
+
+        assertEquals(starter(types = listOf("life")), starter(types = listOf("life", "bogus")), "unknown types are ignored")
+    }
+
+    @Test
+    fun lifeOnlyAgentsKeepTheLifeCopyOthersGetTheGeneralCopy() {
+        for (locale in listOf("en", "hi")) for (agent in (1..12).map { "a$it" }) {
+            val life = starter(locale = locale, agentId = agent, types = listOf("life"))
+            val health = starter(locale = locale, agentId = agent, types = listOf("health"))
+            val mixed = starter(locale = locale, agentId = agent, types = listOf("life", "motor"))
+            fun keys(c: JsonObject, section: String, field: String) = c.text(section, field)
+            assertNotEquals(keys(life, "hero", "subheadline"), keys(health, "hero", "subheadline"), "$locale $agent")
+            assertNotEquals(keys(life, "about", "bio"), keys(health, "about", "bio"), "$locale $agent")
+            assertEquals(keys(health, "about", "bio"), keys(mixed, "about", "bio"), "mixed agents share the general copy")
+            assertNotEquals(life.items("faq"), health.items("faq"), "the FAQ has a general set")
+            assertEquals(life.items("highlights"), health.items("highlights"), "highlights are the same for every type")
+            assertEquals(keys(life, "hero", "headline"), keys(health, "hero", "headline"), "the greeting doesn't depend on types")
+        }
+        val en = starter(types = listOf("motor"))
+        val words = listOf("life cover", "term insurance", "retirement", "children")
+        listOf(en.text("hero", "subheadline"), en.text("about", "bio")).forEach { t -> words.forEach { w -> assertFalse(t.lowercase().contains(w), "$w in $t") } }
+        assertTrue(en.items("faq").none { it["question"]!!.jsonPrimitive.content.contains("life cover") })
+    }
+
+    @Test
+    fun theGeneralBioCountsAsSeededToo() {
+        for (locale in listOf("en", "hi")) for (agent in (1..12).map { "a$it" }) {
+            val bio = starter(locale = locale, agentId = agent, types = listOf("motor")).text("about", "bio")
+            assertFalse(StarterContent.isOwnBio(bio), "$locale $agent")
+        }
     }
 }

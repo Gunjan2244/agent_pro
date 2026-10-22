@@ -20,6 +20,101 @@
       "offers": "offers"
     }
   },
+  "insuranceTypes": {
+    "comment": "DECISIONS #93: what a new site offers and which copy it uses follow the agent's insurance types (the union over their pending and approved company links). docs/SHARED_DEFINITIONS.md, site-seed.json.",
+    "whenNone": [
+      "life"
+    ],
+    "seedInterests": {
+      "life": [
+        "term",
+        "endowment",
+        "child",
+        "pension"
+      ],
+      "health": [
+        "health"
+      ],
+      "motor": [
+        "motor"
+      ],
+      "home": [
+        "home"
+      ],
+      "travel": [
+        "travel"
+      ],
+      "business": [
+        "business"
+      ],
+      "accident": [
+        "accident"
+      ]
+    },
+    "serviceDescriptions": {
+      "term": {
+        "variants": [
+          "seed.services.term"
+        ]
+      },
+      "endowment": {
+        "variants": [
+          "seed.services.endowment"
+        ]
+      },
+      "child": {
+        "variants": [
+          "seed.services.child"
+        ]
+      },
+      "pension": {
+        "variants": [
+          "seed.services.pension"
+        ]
+      },
+      "health": {
+        "variants": [
+          "seed.services.health"
+        ]
+      },
+      "motor": {
+        "variants": [
+          "seed.services.motor"
+        ]
+      },
+      "home": {
+        "variants": [
+          "seed.services.home"
+        ]
+      },
+      "travel": {
+        "variants": [
+          "seed.services.travel"
+        ]
+      },
+      "business": {
+        "variants": [
+          "seed.services.business"
+        ]
+      },
+      "accident": {
+        "variants": [
+          "seed.services.accident"
+        ]
+      }
+    },
+    "mixes": [
+      {
+        "key": "life",
+        "onlyTypes": [
+          "life"
+        ]
+      },
+      {
+        "key": "general"
+      }
+    ]
+  },
   "sections": {
     "hero": {
       "headline": {
@@ -30,35 +125,72 @@
         ]
       },
       "subheadline": {
-        "variants": [
-          {
-            "key": "seed.hero.subheadline_1",
-            "fallback": "seed.hero.subheadline_1_short"
+        "byMix": {
+          "life": {
+            "variants": [
+              {
+                "key": "seed.hero.subheadline_1",
+                "fallback": "seed.hero.subheadline_1_short"
+              },
+              {
+                "key": "seed.hero.subheadline_2",
+                "fallback": "seed.hero.subheadline_2_short"
+              },
+              "seed.hero.subheadline_3"
+            ]
           },
-          {
-            "key": "seed.hero.subheadline_2",
-            "fallback": "seed.hero.subheadline_2_short"
-          },
-          "seed.hero.subheadline_3"
-        ]
+          "general": {
+            "variants": [
+              {
+                "key": "seed.hero.subheadline_general_1",
+                "fallback": "seed.hero.subheadline_general_1_short"
+              },
+              {
+                "key": "seed.hero.subheadline_general_2",
+                "fallback": "seed.hero.subheadline_general_2_short"
+              },
+              "seed.hero.subheadline_general_3"
+            ]
+          }
+        }
       }
     },
     "about": {
       "bio": {
-        "variants": [
-          {
-            "key": "seed.about.bio_1",
-            "fallback": "seed.about.bio_1_short"
+        "byMix": {
+          "life": {
+            "variants": [
+              {
+                "key": "seed.about.bio_1",
+                "fallback": "seed.about.bio_1_short"
+              },
+              {
+                "key": "seed.about.bio_2",
+                "fallback": "seed.about.bio_2_short"
+              },
+              {
+                "key": "seed.about.bio_3",
+                "fallback": "seed.about.bio_3_short"
+              }
+            ]
           },
-          {
-            "key": "seed.about.bio_2",
-            "fallback": "seed.about.bio_2_short"
-          },
-          {
-            "key": "seed.about.bio_3",
-            "fallback": "seed.about.bio_3_short"
+          "general": {
+            "variants": [
+              {
+                "key": "seed.about.bio_general_1",
+                "fallback": "seed.about.bio_general_1_short"
+              },
+              {
+                "key": "seed.about.bio_general_2",
+                "fallback": "seed.about.bio_general_2_short"
+              },
+              {
+                "key": "seed.about.bio_general_3",
+                "fallback": "seed.about.bio_general_3_short"
+              }
+            ]
           }
-        ]
+        }
       },
       "designation": {
         "fromProfile": "designation"
@@ -76,67 +208,10 @@
     },
     "services": {
       "offered": {
-        "value": [
-          "term",
-          "endowment",
-          "child",
-          "pension",
-          "health"
-        ]
+        "fromInsuranceTypes": "interestKeys"
       },
       "items": {
-        "items": [
-          {
-            "interest": {
-              "value": "term"
-            },
-            "description": {
-              "variants": [
-                "seed.services.term"
-              ]
-            }
-          },
-          {
-            "interest": {
-              "value": "endowment"
-            },
-            "description": {
-              "variants": [
-                "seed.services.endowment"
-              ]
-            }
-          },
-          {
-            "interest": {
-              "value": "child"
-            },
-            "description": {
-              "variants": [
-                "seed.services.child"
-              ]
-            }
-          },
-          {
-            "interest": {
-              "value": "pension"
-            },
-            "description": {
-              "variants": [
-                "seed.services.pension"
-              ]
-            }
-          },
-          {
-            "interest": {
-              "value": "health"
-            },
-            "description": {
-              "variants": [
-                "seed.services.health"
-              ]
-            }
-          }
-        ]
+        "fromInsuranceTypes": "serviceItems"
       }
     },
     "highlights": {
@@ -215,78 +290,156 @@
     },
     "faq": {
       "items": {
-        "items": [
-          {
-            "question": {
-              "variants": [
-                "seed.faq.cover.question"
-              ]
-            },
-            "answer": {
-              "variants": [
-                "seed.faq.cover.answer_1",
-                "seed.faq.cover.answer_2",
-                "seed.faq.cover.answer_3"
-              ]
-            }
+        "byMix": {
+          "life": {
+            "items": [
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.cover.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.cover.answer_1",
+                    "seed.faq.cover.answer_2",
+                    "seed.faq.cover.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.term_vs_savings.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.term_vs_savings.answer_1",
+                    "seed.faq.term_vs_savings.answer_2",
+                    "seed.faq.term_vs_savings.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.documents.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.documents.answer_1",
+                    "seed.faq.documents.answer_2",
+                    "seed.faq.documents.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.premium.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.premium.answer_1",
+                    "seed.faq.premium.answer_2",
+                    "seed.faq.premium.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.claims.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.claims.answer_1",
+                    "seed.faq.claims.answer_2",
+                    "seed.faq.claims.answer_3"
+                  ]
+                }
+              }
+            ]
           },
-          {
-            "question": {
-              "variants": [
-                "seed.faq.term_vs_savings.question"
-              ]
-            },
-            "answer": {
-              "variants": [
-                "seed.faq.term_vs_savings.answer_1",
-                "seed.faq.term_vs_savings.answer_2",
-                "seed.faq.term_vs_savings.answer_3"
-              ]
-            }
-          },
-          {
-            "question": {
-              "variants": [
-                "seed.faq.documents.question"
-              ]
-            },
-            "answer": {
-              "variants": [
-                "seed.faq.documents.answer_1",
-                "seed.faq.documents.answer_2",
-                "seed.faq.documents.answer_3"
-              ]
-            }
-          },
-          {
-            "question": {
-              "variants": [
-                "seed.faq.premium.question"
-              ]
-            },
-            "answer": {
-              "variants": [
-                "seed.faq.premium.answer_1",
-                "seed.faq.premium.answer_2",
-                "seed.faq.premium.answer_3"
-              ]
-            }
-          },
-          {
-            "question": {
-              "variants": [
-                "seed.faq.claims.question"
-              ]
-            },
-            "answer": {
-              "variants": [
-                "seed.faq.claims.answer_1",
-                "seed.faq.claims.answer_2",
-                "seed.faq.claims.answer_3"
-              ]
-            }
+          "general": {
+            "items": [
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.choose.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.choose.answer_1",
+                    "seed.faq.choose.answer_2",
+                    "seed.faq.choose.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.existing.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.existing.answer_1",
+                    "seed.faq.existing.answer_2",
+                    "seed.faq.existing.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.documents.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.documents_general.answer_1",
+                    "seed.faq.documents_general.answer_2",
+                    "seed.faq.documents_general.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.premium.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.premium_general.answer_1",
+                    "seed.faq.premium_general.answer_2",
+                    "seed.faq.premium_general.answer_3"
+                  ]
+                }
+              },
+              {
+                "question": {
+                  "variants": [
+                    "seed.faq.claims.question"
+                  ]
+                },
+                "answer": {
+                  "variants": [
+                    "seed.faq.claims.answer_1",
+                    "seed.faq.claims.answer_2",
+                    "seed.faq.claims.answer_3"
+                  ]
+                }
+              }
+            ]
           }
-        ]
+        }
       }
     },
     "contact": {

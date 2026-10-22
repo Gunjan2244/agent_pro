@@ -17,6 +17,7 @@ import com.sledje.agentpro.feature.auth.data.AuthRules
 import com.sledje.agentpro.feature.auth.data.NewAccount
 import com.sledje.agentpro.feature.auth.data.SignUpOutcome
 import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.resources.auth_code
 import com.sledje.agentpro.resources.auth_confirm_password
 import com.sledje.agentpro.resources.auth_email
 import com.sledje.agentpro.resources.auth_full_name
@@ -44,12 +45,14 @@ sealed interface AuthFormError {
     data object WeakPassword : AuthFormError
     data object SamePassword : AuthFormError
     data object AccountExists : AuthFormError
+    data object WrongCode : AuthFormError
     data class Other(val error: AppError) : AuthFormError
 }
 
 fun AppError.toAuthFormError(): AuthFormError = when {
     this is AppError.Validation && field == "credentials" -> AuthFormError.Credentials
     this is AppError.Validation && field == "email" && rule == "not_confirmed" -> AuthFormError.NotConfirmed
+    this is AppError.Validation && field == "code" -> AuthFormError.WrongCode
     this is AppError.Validation && field == "password" && rule == "same" -> AuthFormError.SamePassword
     this is AppError.Validation && field == "password" -> AuthFormError.WeakPassword
     this == AppError.Conflict -> AuthFormError.AccountExists
@@ -61,7 +64,7 @@ data class AuthFormUiState(
     val error: AuthFormError? = null,
     /**
      * Set when the reset email went, or sign-up needs the email confirmed: the screen moves on to
-     * "Reset sent" / "Check your email". A sign-up that started a session needs no navigation.
+     * "Enter the code" / "Check your email". A sign-up that started a session needs no navigation.
      */
     val sentTo: String? = null,
 )
@@ -88,7 +91,7 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
         val password = values[PASSWORD] as? String
         _state.update { it.copy(submitting = true, error = null) }
         viewModelScope.launch {
-            // Ok(true): move on to "Check your email" / "Reset sent".
+            // Ok(true): move on to "Check your email" / "Enter the code".
             val result: AppResult<Boolean> = when (mode) {
                 AuthFormMode.SignIn -> auth.signIn(email, password.orEmpty()).map { false }
                 AuthFormMode.SignUp -> {
@@ -169,7 +172,7 @@ data class ResendEmailUiState(
 )
 
 /**
- * Resend on "Check your email" (the confirmation) and "Reset link sent" (the reset link), through [send].
+ * Resend on "Check your email" (the confirmation code) and "Enter the code" (the reset code), through [send].
  * Supabase sends at most one email per address per [AuthRules.EMAIL_RESEND_SECONDS] and refuses earlier
  * tries, so Resend counts down from the last send instead of failing. A refusal with a wait restarts the
  * countdown at that wait; the hourly quota shows its message and waits a minute. [sendOnOpen] sends at
@@ -225,7 +228,55 @@ class ResendEmailViewModel(
     fun onErrorShown() = _state.update { it.copy(error = null) }
 }
 
-/** Where a password-reset link leads (docs/UX.md, Set new password). */
+data class VerifyCodeUiState(
+    val submitting: Boolean = false,
+    val error: AuthFormError? = null,
+    /** The code was accepted and a session started: the screen moves on. */
+    val verified: Boolean = false,
+)
+
+/**
+ * "Check your email" and "Enter the code" (docs/UX.md): the one-time code from the email, built by
+ * FormRenderer, checked through [verify] (confirmation or reset). A wrong code stays on the screen with
+ * its message; the code is a text field because a leading zero must survive.
+ */
+class VerifyCodeViewModel(
+    private val email: String,
+    private val verify: suspend (email: String, code: String) -> AppResult<Unit>,
+) : ViewModel() {
+    val form = FormState(FIELDS)
+
+    private val _state = MutableStateFlow(VerifyCodeUiState())
+    val state: StateFlow<VerifyCodeUiState> = _state.asStateFlow()
+
+    fun submit() {
+        if (_state.value.submitting || _state.value.verified || !form.validateAll()) return
+        val code = (form.values()[CODE] as? String)?.trim() ?: return
+        _state.update { it.copy(submitting = true, error = null) }
+        viewModelScope.launch {
+            val result = verify(email, code)
+            _state.update {
+                when (result) {
+                    is Result.Ok -> it.copy(submitting = false, verified = true)
+                    is Result.Err -> it.copy(submitting = false, error = result.error.toAuthFormError())
+                }
+            }
+        }
+    }
+
+    companion object {
+        const val CODE = "code"
+
+        val FIELDS: List<FieldSpec> = listOf(
+            FieldSpec(
+                CODE, FieldType.Text, Res.string.auth_code, required = true,
+                minLength = AuthRules.CODE_MIN_LENGTH, maxLength = AuthRules.CODE_MAX_LENGTH,
+            ),
+        )
+    }
+}
+
+/** Where a password-reset flow stands (docs/UX.md, Set new password): after a reset link, or after the code is entered. */
 enum class RecoveryStep {
     /** The session in the link is being imported: Splash. */
     Verifying,

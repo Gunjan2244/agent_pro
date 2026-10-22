@@ -52,6 +52,13 @@ interface SiteRepository {
     /** Template, accent and site language. These columns are read by the live site directly (no publish needed). */
     suspend fun updateAppearance(appearance: SiteAppearance): AppResult<Site>
 
+    /**
+     * `preview_site_offers(content, template_key)` (DECISIONS #84): `{companies, company, offers}` as `get_public_site`
+     * would resolve them for that draft and template, for the in-app previews. Cached briefly in memory.
+     * Callers treat any error as "render without offers".
+     */
+    suspend fun previewOffers(content: JsonObject, templateKey: String): AppResult<JsonObject>
+
     /** Changes the free link. A slug taken meanwhile comes back as [AppError.Conflict]. */
     suspend fun changeSlug(slug: String): AppResult<Site>
 }
@@ -77,6 +84,7 @@ class SupabaseSiteRepository(
     private val supabase: SupabaseProvider,
     private val dao: SiteDao,
     private val sync: SyncEngine,
+    private val previewCache: PreviewOffersCache = PreviewOffersCache(),
 ) : SiteRepository {
     override fun observeMine(): Flow<Site?> = dao.observeMine().map { it?.toModel() }
 
@@ -139,6 +147,21 @@ class SupabaseSiteRepository(
             put("locale", appearance.locale)
         },
     )
+
+    override suspend fun previewOffers(content: JsonObject, templateKey: String): AppResult<JsonObject> {
+        previewCache.get(content, templateKey)?.let { return Result.Ok(it) }
+        val result = remoteCall {
+            supabase.require().postgrest.rpc(
+                "preview_site_offers",
+                buildJsonObject {
+                    put("content", content)
+                    put("template_key", templateKey)
+                },
+            ).decodeAs<JsonObject>()
+        }
+        if (result is Result.Ok) previewCache.put(content, templateKey, result.value)
+        return result
+    }
 
     override suspend fun changeSlug(slug: String): AppResult<Site> = updateMine(buildJsonObject { put("slug", slug) })
 

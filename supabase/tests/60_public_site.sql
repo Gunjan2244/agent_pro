@@ -9,7 +9,7 @@ select tests.ok(public.get_public_site('ramesh-sharma') is not null, '#5 publish
 select tests.ok(public.get_public_site('RAMESH-SHARMA ') is not null, '#5 slug lookup is case/space-insensitive');
 select tests.ok(
   (select array_agg(k order by k) from jsonb_object_keys(public.get_public_site('ramesh-sharma')) k)
-  = array['accent', 'canonical_host', 'company', 'locale', 'offers', 'profile', 'published_at', 'published_content', 'template_key'],
+  = array['accent', 'canonical_host', 'companies', 'company', 'locale', 'offers', 'profile', 'published_at', 'published_content', 'template_key'],
   '#5 top-level keys are exactly the documented ones',
   (select string_agg(k, ',') from jsonb_object_keys(public.get_public_site('ramesh-sharma')) k));
 select tests.ok(

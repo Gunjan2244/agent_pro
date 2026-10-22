@@ -46,11 +46,11 @@ import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.ui.LocalIsOnline
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.app_name
-import com.sledje.agentpro.resources.auth_back_to_sign_in
 import com.sledje.agentpro.resources.auth_check_email_text
 import com.sledje.agentpro.resources.auth_check_email_title
 import com.sledje.agentpro.resources.auth_check_spam
 import com.sledje.agentpro.resources.auth_create_account
+import com.sledje.agentpro.resources.auth_error_code
 import com.sledje.agentpro.resources.auth_error_credentials
 import com.sledje.agentpro.resources.auth_error_exists
 import com.sledje.agentpro.resources.auth_error_not_confirmed
@@ -65,8 +65,8 @@ import com.sledje.agentpro.resources.auth_resend
 import com.sledje.agentpro.resources.auth_resend_confirmation
 import com.sledje.agentpro.resources.auth_resend_in
 import com.sledje.agentpro.resources.auth_resent
-import com.sledje.agentpro.resources.auth_reset_sent_text
-import com.sledje.agentpro.resources.auth_reset_sent_title
+import com.sledje.agentpro.resources.auth_reset_code_text
+import com.sledje.agentpro.resources.auth_reset_code_title
 import com.sledje.agentpro.resources.auth_reset_title
 import com.sledje.agentpro.resources.auth_save_password
 import com.sledje.agentpro.resources.auth_send_new_link
@@ -74,7 +74,7 @@ import com.sledje.agentpro.resources.auth_send_reset
 import com.sledje.agentpro.resources.auth_set_password_title
 import com.sledje.agentpro.resources.auth_sign_in
 import com.sledje.agentpro.resources.auth_sign_in_instead
-import com.sledje.agentpro.resources.ic_check_circle
+import com.sledje.agentpro.resources.auth_verify
 import com.sledje.agentpro.resources.ic_language
 import com.sledje.agentpro.resources.ic_mail
 import com.sledje.agentpro.resources.ic_timer_off
@@ -92,6 +92,7 @@ fun authErrorMessage(error: AuthFormError): String = when (error) {
     AuthFormError.WeakPassword -> stringResource(Res.string.auth_error_weak_password)
     AuthFormError.SamePassword -> stringResource(Res.string.auth_error_same_password)
     AuthFormError.AccountExists -> stringResource(Res.string.auth_error_exists)
+    AuthFormError.WrongCode -> stringResource(Res.string.auth_error_code)
     is AuthFormError.Other -> stringResource(error.error.message)
 }
 
@@ -240,95 +241,119 @@ private fun MessageScreen(
 }
 
 /**
- * A message screen whose secondary button is Resend: "Resend in 42 s" (disabled) while
- * [ResendEmailViewModel] counts down, and the result as a snackbar.
+ * The code screens (docs/UX.md, Check your email / Enter the code): a title, one line saying where the
+ * code went, the code field (FormRenderer), an inline error, **Verify** in the sticky bottom bar and
+ * Resend beside it: "Resend in 42 s" (disabled) while [ResendEmailViewModel] counts down, and the
+ * result as a snackbar.
  */
 @Composable
-private fun ResendMessageScreen(
-    icon: DrawableResource,
+private fun VerifyCodeScreen(
     title: String,
     text: String,
-    primary: String,
-    onPrimary: () -> Boolean,
-    primaryFailedMessage: String?,
-    state: ResendEmailUiState,
+    form: FormState,
+    code: VerifyCodeUiState,
+    onVerify: () -> Unit,
+    resend: ResendEmailUiState,
     onResend: () -> Unit,
     onResentShown: () -> Unit,
     onErrorShown: () -> Unit,
     onBack: () -> Unit,
+    onOpenEmailApp: (() -> Boolean)? = null,
 ) {
+    val online = LocalIsOnline.current
     val snackbar = remember { SnackbarHostState() }
     val resent = stringResource(Res.string.auth_resent)
-    val error = state.error?.let { stringResource(it.message) }
-    LaunchedEffect(state.resent) { if (state.resent) { snackbar.showSnackbar(resent); onResentShown() } }
-    LaunchedEffect(error) { if (error != null) { snackbar.showSnackbar(error); onErrorShown() } }
-    var primaryFailed by remember { mutableStateOf(false) }
-    LaunchedEffect(primaryFailed) {
-        if (primaryFailed && primaryFailedMessage != null) { snackbar.showSnackbar(primaryFailedMessage); primaryFailed = false }
-    }
-    MessageScreen(
-        icon = icon,
-        title = title,
-        text = text,
-        hint = stringResource(Res.string.auth_check_spam),
-        primary = primary,
-        onPrimary = { if (!onPrimary()) primaryFailed = true },
-        onBack = onBack,
-        secondary = if (state.secondsLeft > 0) stringResource(Res.string.auth_resend_in, state.secondsLeft) else stringResource(Res.string.auth_resend),
-        onSecondary = onResend,
-        secondaryEnabled = LocalIsOnline.current && !state.sending && state.secondsLeft == 0,
+    val resendError = resend.error?.let { stringResource(it.message) }
+    val noEmailApp = stringResource(Res.string.auth_no_email_app)
+    var emailAppMissing by remember { mutableStateOf(false) }
+    LaunchedEffect(resend.resent) { if (resend.resent) { snackbar.showSnackbar(resent); onResentShown() } }
+    LaunchedEffect(resendError) { if (resendError != null) { snackbar.showSnackbar(resendError); onErrorShown() } }
+    LaunchedEffect(emailAppMissing) { if (emailAppMissing) { snackbar.showSnackbar(noEmailApp); emailAppMissing = false } }
+    AppScaffold(
+        topBar = { AppTopBar(title = "", onBack = onBack) },
+        offline = !online,
         snackbarHostState = snackbar,
-    )
+        bottomBar = {
+            BottomActionBar(
+                text = stringResource(Res.string.auth_verify),
+                onClick = onVerify,
+                enabled = online && form.isValid && !code.submitting && !code.verified,
+                helperText = if (!online) stringResource(Res.string.needs_internet) else null,
+                secondaryText = if (resend.secondsLeft > 0) stringResource(Res.string.auth_resend_in, resend.secondsLeft) else stringResource(Res.string.auth_resend),
+                onSecondary = onResend,
+                secondaryEnabled = online && !resend.sending && resend.secondsLeft == 0,
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.m),
+            verticalArrangement = Arrangement.spacedBy(Spacing.m),
+        ) {
+            Icon(painterResource(Res.drawable.ic_mail), null, Modifier.size(Dimens.icon), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = AgentProTheme.text.title, modifier = Modifier.semantics { heading() })
+            Text(text, style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FormRenderer(form, enabled = !code.submitting, onDone = { if (online && form.isValid) onVerify() })
+            code.error?.let {
+                Text(
+                    authErrorMessage(it),
+                    style = AgentProTheme.text.body,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
+            Text(stringResource(Res.string.auth_check_spam), style = AgentProTheme.text.bodyMuted)
+            onOpenEmailApp?.let { open ->
+                TertiaryButton(stringResource(Res.string.auth_open_email), { if (!open()) emailAppMissing = true })
+            }
+        }
+    }
 }
 
-/** "Check your email to confirm", with **Open email app** and Resend (docs/UX.md). */
+/** "Check your email": the sign-up confirmation code, with **Verify**, Resend and Open email app (docs/UX.md). */
 @Composable
 fun CheckEmailScreen(
     email: String,
-    state: ResendEmailUiState,
+    form: FormState,
+    code: VerifyCodeUiState,
+    onVerify: () -> Unit,
+    resend: ResendEmailUiState,
     onOpenEmailApp: () -> Boolean,
     onResend: () -> Unit,
     onResentShown: () -> Unit,
     onErrorShown: () -> Unit,
     onBack: () -> Unit,
 ) {
-    ResendMessageScreen(
-        icon = Res.drawable.ic_mail,
+    VerifyCodeScreen(
         title = stringResource(Res.string.auth_check_email_title),
         text = stringResource(Res.string.auth_check_email_text, email),
-        primary = stringResource(Res.string.auth_open_email),
-        onPrimary = onOpenEmailApp,
-        primaryFailedMessage = stringResource(Res.string.auth_no_email_app),
-        state = state,
-        onResend = onResend,
-        onResentShown = onResentShown,
-        onErrorShown = onErrorShown,
+        form = form, code = code, onVerify = onVerify,
+        resend = resend, onResend = onResend, onResentShown = onResentShown, onErrorShown = onErrorShown,
         onBack = onBack,
+        onOpenEmailApp = onOpenEmailApp,
     )
 }
 
-/** "Reset link sent", with **Back to sign in** and Resend (docs/UX.md, Forgot password). */
+/** "Enter the code": the password-reset code, with **Verify** and Resend (docs/UX.md, Forgot password). */
 @Composable
-fun ResetSentScreen(
+fun ResetCodeScreen(
     email: String,
-    state: ResendEmailUiState,
+    form: FormState,
+    code: VerifyCodeUiState,
+    onVerify: () -> Unit,
+    resend: ResendEmailUiState,
+    onOpenEmailApp: () -> Boolean,
     onResend: () -> Unit,
     onResentShown: () -> Unit,
     onErrorShown: () -> Unit,
-    onBackToSignIn: () -> Unit,
+    onBack: () -> Unit,
 ) {
-    ResendMessageScreen(
-        icon = Res.drawable.ic_check_circle,
-        title = stringResource(Res.string.auth_reset_sent_title),
-        text = stringResource(Res.string.auth_reset_sent_text, email),
-        primary = stringResource(Res.string.auth_back_to_sign_in),
-        onPrimary = { onBackToSignIn(); true },
-        primaryFailedMessage = null,
-        state = state,
-        onResend = onResend,
-        onResentShown = onResentShown,
-        onErrorShown = onErrorShown,
-        onBack = onBackToSignIn,
+    VerifyCodeScreen(
+        title = stringResource(Res.string.auth_reset_code_title),
+        text = stringResource(Res.string.auth_reset_code_text, email),
+        form = form, code = code, onVerify = onVerify,
+        resend = resend, onResend = onResend, onResentShown = onResentShown, onErrorShown = onErrorShown,
+        onBack = onBack,
+        onOpenEmailApp = onOpenEmailApp,
     )
 }
 

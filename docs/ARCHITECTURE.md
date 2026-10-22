@@ -99,14 +99,15 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
   `SetNewPasswordViewModel`, This link has expired), `AuthNavigation.kt` (`AuthRoutes`, `AuthNavHost`, `PasswordRecoveryNavHost`).
 - `feature/onboarding`: `ui/OnboardingViewModel` (one instance shared by the 3 steps, scoped to the onboarding graph;
   `SlugSuggestion`), `ui/OnboardingScreens.kt`, `OnboardingNavigation.kt` (`OnboardingRoutes`, `OnboardingNavHost`).
+- `feature/offers` (built so far: the companies part of DECISIONS #89): `data/CompanyRepository` (`SupabaseCompanyRepository`, `Company`, `Membership`, `CompanyJson`; remote only, an in-memory `StateFlow` of the memberships), `ui/CompaniesViewModel` + `CompaniesUi` (the "Your companies" block, the picker and form sheets). `AppDependencies.companies`; used by `feature/onboarding` (step 1) and `feature/settings` (Profile route).
 - `feature/settings/data`: `Profile`, `ProfileDto`/`ProfileEntity`/`ProfileDao`, `ProfileRepository` (`SupabaseProfileRepository`).
-  `feature/settings/SettingsFeature.kt`: Language and Sign out only (the rest is Phase 13).
+  `feature/settings/SettingsFeature.kt`: Profile (the companies list), Language, the privacy notice and Sign out (the rest is Phase 13).
 - `feature/website` (Phase 8, the Website hub):
   - `data/`: `Site` (+ `publishedContent`, `hasUnpublishedChanges`), `SiteDto`/`SiteEntity`/`SiteDao`, `SiteRepository`
     (`SupabaseSiteRepository`: `is_slug_available`, insert, `publish_site`, `saveDraft` (only `draft_content`; the 64 KB cap is
-    checked first, `ContentTooLarge`), `updateAppearance` (`template_key`, `accent`, `locale`), `changeSlug`; `NewSite` carries the site `locale`), `StarterContent` (`from(profile, template, locale, agentId)`: the generated `SiteSeed` resolved into the first draft, with `sectionOrder`, `hidden`, `maxLength` cuts and publish-safe list items; `isOwnBio` for Home's checklist),
+    checked first, `ContentTooLarge`), `updateAppearance` (`template_key`, `accent`, `locale`), `changeSlug`; `NewSite` carries the site `locale`), `StarterContent` (`from(profile, template, locale, agentId)`: the generated `SiteSeed` resolved into the first draft, with `sectionOrder`, `hidden`, `maxLength` cuts and publish-safe list items; `isOwnBio` for Home's checklist; services seeded from the agent's insurance types), `SiteServices` (`agentTypes`: the union of `insurance_types` over pending and approved company links; the services to add or remove when the types change; DECISIONS #93), `ServicesMatchViewModel` (the "Update your website to match?" sheet from Settings → Profile and the Website → Content hint),
     `SiteLinks`; `SiteContent` (pure: section order, `withOffersAfterHero` for the Appearance switch, `hidden`, pinned sections, schema values ⇄ `FormState`, summaries, size
-    cap) and `PublishIssues` (`publish_site` errors → schema field + `ValidationError`); `SitePreviewPayload` (the
+    cap) and `PublishIssues` (`publish_site` errors → schema field + `ValidationError`); `SitePreviewPayload` (the renderSite input, optionally with the `preview_site_offers` answer as top-level `offers`/`company`; `SiteRepository.previewOffers` caches it in memory per (draft, template) in `PreviewOffersCache`, and `rememberPreviewOffers` loads it after the preview is shown and re-renders on arrival, any failure meaning no offers; DECISIONS #84, #86) (the
     `renderSite` JSON); `SiteMedia` (`SiteMediaRepository` / `SupabaseSiteMediaRepository`: Storage upload to
     `site-media/<uid>/<name>-<millis>-<nonce>.webp` and its public URL; `ImageUploader` = `ImageProcessor` + upload;
     `MediaPaths`); `SiteStats` (`SiteDailyViewDto`/`Entity`/`Dao` + its sync table, `SiteStatsAggregator`, `StatsPeriod`

@@ -23,9 +23,18 @@ export function normalizeOffers(o) {
   return { featured: ok(o.featured), items: Array.isArray(o.items) ? o.items.map(ok).filter(Boolean) : [] };
 }
 
-// RPC row -> { content, template_key, accent, locale, canonical_host, published_at, profile, offers, company }.
-// `company` keeps only the disclaimer: a company's name or logo never reaches a site (DECISIONS #77), even if a
-// payload carried one.
+// The payload's approved companies (DECISIONS #90): [{name, insurance_types}] only, so a logo, slug or id never reaches
+// a site even if a payload carried one. Malformed entries are dropped; at most 20.
+export function normalizeCompanies(v) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((c) => c && typeof c === "object" && typeof c.name === "string" && c.name.trim()).slice(0, 20).map((c) => ({
+    name: c.name.trim().slice(0, 120),
+    insurance_types: Array.isArray(c.insurance_types) ? [...new Set(c.insurance_types.filter((k) => typeof k === "string" && /^[a-z_]{1,40}$/.test(k)))] : [],
+  }));
+}
+
+// RPC row -> { content, template_key, accent, locale, canonical_host, published_at, profile, offers, company, companies }.
+// `company` keeps only the disclaimer (the offers' fine print); the company *names* come only through `companies`.
 export function normalizeSite(row) {
   if (Array.isArray(row)) row = row[0];
   if (!row || typeof row !== "object") return null;
@@ -35,6 +44,7 @@ export function normalizeSite(row) {
   return {
     content, template_key: row.template_key, accent: row.accent, locale: row.locale, canonical_host: row.canonical_host || null,
     published_at: row.published_at || null, profile: row.profile || {}, offers: normalizeOffers(row.offers), company: disclaimer ? { disclaimer } : null,
+    companies: normalizeCompanies(row.companies),
   };
 }
 

@@ -150,6 +150,50 @@ class OffersTest {
         assertTrue(e is SharedDefinitionsException && e.problems.any { "shared/offer-schema.json is not valid JSON" in it }, "$e")
     }
 
+    // ---- insuranceTypes (DECISIONS #89) ------------------------------------------------------------
+
+    /** The offers fixture plus `insuranceTypes` (listed out of order, one deprecated), with en/hi labels. */
+    private fun withInsuranceTypes(): Fixture {
+        val fx = Fixture().addOffers()
+        fx.replace("shared/catalog.json", "  \"offers\": {", """
+          |  "insuranceTypes": [
+          |    { "key": "health", "labelKey": "insurance_type.health", "icon": "person", "tone": "neutral", "order": 2 },
+          |    { "key": "life", "labelKey": "insurance_type.life", "icon": "web", "tone": "neutral", "order": 1 },
+          |    { "key": "old", "labelKey": "insurance_type.old", "icon": "error", "tone": "neutral", "order": 3, "deprecated": true }
+          |  ],
+          |  "offers": {""".trimMargin())
+        for ((file, prefix) in listOf("shared/i18n/en.json" to "EN", "shared/i18n/hi.json" to "हिं")) {
+            fx.replace(file, "\"offer_cta_kind.enquire\":",
+                "\"insurance_type.health\": \"$prefix health\", \"insurance_type.life\": \"$prefix life\", " +
+                    "\"insurance_type.old\": \"$prefix old\", \"offer_cta_kind.enquire\":")
+        }
+        return fx
+    }
+
+    @Test fun `insuranceTypes generate an enum and catalog_insurance_types in display order, active keys only`() {
+        val fx = withInsuranceTypes()
+        assertEquals(emptyList(), fx.verifier().verify())
+        val code = CatalogKotlinGenerator(fx.defs()).generate()
+        assertTrue("enum class InsuranceType(" in code && "Life(\"life\"," in code && "deprecated = true" in code, code)
+        val sql = CatalogSyncGenerator(fx.defs()).sql()
+        assertTrue("create or replace function public.catalog_insurance_types()\nreturns text[]" in sql, sql)
+        assertTrue("select array['life', 'health']::text[]" in sql, "sorted by order; the deprecated key left out")
+        assertTrue("revoke all on function public.catalog_insurance_types() from public, anon, authenticated;" in sql)
+        assertFalse("catalog_insurance_types" in CatalogSyncGenerator(Fixture().addOffers().defs()).sql(), "only with the list")
+    }
+
+    @Test fun `insuranceTypes needs an active entry`() {
+        val fx = withInsuranceTypes()
+        fx.replace("shared/catalog.json", "\"insurance_type.health\", \"icon\": \"person\", \"tone\": \"neutral\", \"order\": 2 }",
+            "\"insurance_type.health\", \"icon\": \"person\", \"tone\": \"neutral\", \"order\": 2, \"deprecated\": true }")
+        fx.replace("shared/catalog.json", "\"key\": \"life\", \"labelKey\": \"insurance_type.life\", \"icon\": \"web\", \"tone\": \"neutral\", \"order\": 1 }",
+            "\"key\": \"life\", \"labelKey\": \"insurance_type.life\", \"icon\": \"web\", \"tone\": \"neutral\", \"order\": 1, \"deprecated\": true }")
+        assertViolation(fx.verifier().checkOffers(), "catalog.insuranceTypes: needs at least one active entry")
+        val empty = Fixture().addOffers()
+        empty.replace("shared/catalog.json", "  \"offers\": {", "  \"insuranceTypes\": [],\n  \"offers\": {")
+        assertViolation(empty.verifier().checkOffers(), "catalog.insuranceTypes: needs at least one active entry")
+    }
+
     @Test fun `the real shared offers pass the offer rules and generate`() {
         val dir = realSharedDir() ?: return
         val defs = try { SharedDefinitions.load(dir) } catch (e: SharedDefinitionsException) { return }
@@ -162,6 +206,10 @@ class OffersTest {
         assertTrue("select 'en'::text" in sql)
         listOf("offers_status_check", "offers_cta_kind_check", "admins_role_check", "company_memberships_status_check",
             "company_memberships_reject_reason_check").forEach { assertTrue("add constraint $it " in sql, it) }
+        if (defs.catalogList("insuranceTypes") != null) {
+            assertTrue("enum class InsuranceType(" in code)
+            assertTrue("select array['life', 'health', 'motor', 'home', 'travel', 'business', 'accident']::text[]" in sql, "catalog_insurance_types()")
+        }
         assertEquals(File(dir, "offer-schema.json").readText().trim().length, defs.offerSchemaText!!.trim().length)
     }
 }

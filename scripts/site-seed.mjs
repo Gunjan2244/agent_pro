@@ -29,6 +29,27 @@ export function fillVariant(variant, locale, values, dicts) {
 }
 export const resolve = (variants, seed, s, locale, values, dicts) => fillVariant(variants[pick(seed, s, variants.length)], locale, values, dicts);
 
+// DECISIONS #93: the agent's insurance types pick the copy mix and the services (SiteSeed.typesOrDefault / mixFor /
+// servicesFor in the generated Kotlin).
+const activeTypes = (catalog) => (catalog.insuranceTypes || []).filter((t) => !t.deprecated).slice().sort((a, b) => a.order - b.order).map((t) => t.key);
+export function typesOrDefault(types, seed, catalog) {
+  const t = activeTypes(catalog).filter((k) => (types || []).includes(k));
+  return t.length ? t : (seed.insuranceTypes?.whenNone || []);
+}
+export function mixFor(types, seed, catalog) {
+  const t = typesOrDefault(types, seed, catalog);
+  const mixes = seed.insuranceTypes?.mixes || [];
+  return ((mixes.find((m) => !m.onlyTypes || t.every((k) => m.onlyTypes.includes(k))) || mixes[mixes.length - 1]) || {}).key || "";
+}
+export function servicesFor(types, max, seed, catalog) {
+  const lists = typesOrDefault(types, seed, catalog).map((k) => seed.insuranceTypes?.seedInterests?.[k] || []);
+  const picked = [];
+  for (let round = 0; picked.length < max && lists.some((l) => round < l.length); round++) {
+    for (const l of lists) { if (picked.length >= max) break; const k = l[round]; if (k !== undefined && !picked.includes(k)) picked.push(k); }
+  }
+  return { offered: picked, items: [...new Set(lists.flat())].filter((k) => picked.includes(k)) };
+}
+
 export function placeholderValues(profile) {
   const name = String(profile.fullName || "").trim();
   const out = { name, firstName: name.split(/\s+/)[0] || "", city: String(profile.city || "").trim(), designation: String(profile.designation || "").trim() };
@@ -49,8 +70,12 @@ const profileValue = (profile, f) => {
 };
 
 // -> the draft content StarterContent.from(profile, template, locale, agentId) builds.
-export function starterContent({ profile, templateKey, locale, agentId, seed = R("shared/site-seed.json"), schema = R("shared/site-schema.json"), registry = R("shared/templates/index.json"), dicts }) {
+export function starterContent({ profile, templateKey, locale, agentId, types = [], seed = R("shared/site-seed.json"), schema = R("shared/site-schema.json"), registry = R("shared/templates/index.json"), catalog = R("shared/catalog.json"), dicts }) {
   const values = placeholderValues(profile);
+  const mix = mixFor(types, seed, catalog);
+  const forMix = (form) => (form && form.byMix ? form.byMix[mix] : form);
+  const svcSpec = (schema.sections.find((x) => x.key === "services")?.fields || []).find((f) => f.key === "items");
+  const services = servicesFor(types, svcSpec?.maxItems ?? Infinity, seed, catalog);
   const value = (spec, form, s) => {
     if (form.variants) { const r = resolve(form.variants, agentId, s, locale, values, dicts); return r == null ? undefined : textJson(spec, r); }
     if (form.fromProfile) { const v = profileValue(profile, form.fromProfile); return v == null ? undefined : textJson(spec, v, true); }
@@ -64,13 +89,23 @@ export function starterContent({ profile, templateKey, locale, agentId, seed = R
     if (!sec) continue;
     const out = {};
     for (const spec of sec.fields) {
-      const form = fields[spec.key];
+      const form = forMix(fields[spec.key]);
       if (!form) continue;
       let json;
-      if (form.items) {
+      if (form.fromInsuranceTypes === "interestKeys") json = services.offered.length ? services.offered.slice() : undefined;
+      else if (form.fromInsuranceTypes === "serviceItems") {
+        const desc = (spec.itemFields || []).find((f) => f.key === "description");
+        const items = services.items.slice(0, spec.maxItems ?? Infinity).map((interest, i) => {
+          const o = { interest };
+          const d = seed.insuranceTypes?.serviceDescriptions?.[interest];
+          if (d && desc) { const v = value(desc, d, salt(secKey, spec.key, i, "description")); if (v !== undefined) o.description = v; }
+          return o;
+        });
+        json = items.length ? items : undefined;
+      } else if (form.items) {
         let items = form.items.map((item, i) => {
           const o = {};
-          for (const f of spec.itemFields || []) { if (!item[f.key]) continue; const v = value(f, item[f.key], salt(secKey, spec.key, i, f.key)); if (v !== undefined) o[f.key] = v; }
+          for (const f of spec.itemFields || []) { const itemForm = forMix(item[f.key]); if (!itemForm) continue; const v = value(f, itemForm, salt(secKey, spec.key, i, f.key)); if (v !== undefined) o[f.key] = v; }
           return (spec.itemFields || []).some((f) => f.required && !(f.key in o)) ? null : o;
         }).filter(Boolean);
         if (spec.maxItems != null) items = items.slice(0, spec.maxItems);
@@ -87,9 +122,10 @@ export function starterContent({ profile, templateKey, locale, agentId, seed = R
   return content;
 }
 
-// The committed fixture: a new agent on the default "Meet me" template, EN, fixed id and profile.
+// The committed fixture: a new agent on the default "Meet me" template, EN, fixed id and profile, dealing in life
+// insurance only (the life-and-family copy; DECISIONS #93).
 export const SEEDED = {
-  agentId: "00000000-0000-0000-0000-000000000001", templateKey: "classic", locale: "en",
+  agentId: "00000000-0000-0000-0000-000000000001", templateKey: "classic", locale: "en", types: ["life"],
   profile: { fullName: "Priya Nair", city: "Kochi", designation: "", phone: "9847012345", email: "priya.nair@example.com" },
 };
 export function seededFixture() {

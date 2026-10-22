@@ -1,5 +1,6 @@
 // WP3b checks (DECISIONS #76/#77/#79/#81): offers and the disguise, CTA kinds, the plan-card fallback, the
-// conversational layer, the sticky call bar, bundled images and the hero scene, and the seeded fixture.
+// absence of the chat-style layer (DECISIONS #87), the sticky call bar, bundled images and the hero scene, and the
+// seeded fixture.
 // Run by scripts/test-web.mjs.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -35,7 +36,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(!h.includes("Last season"), "ended offer (ends_on < today IST) is hidden");
       assert.equal(h.split(site.company.disclaimer).length - 1, 1, "company disclaimer once");
       assert.ok(sec.includes("Ends 31 Mar 2027") && sec.includes('<details class="more"><summary>' + dicts.en["offer_field.details"]));
-      assert.ok(!/<img/.test(sec.replace(/<img class="av"[^>]*>/g, "")), "no images on personal offer cards (DECISIONS #76)");
+      assert.ok(!/<img/.test(sec), "no images on personal offer cards (DECISIONS #76)");
     });
     ok("hero banner (personal): the featured offer, not a heading, a text-link CTA (the hero keeps its one button), never an image", () => {
       assert.ok(hero.includes(`<p class="ttl">${site.offers.featured.title}</p>`) && !/<h[23][ >]/.test(hero));
@@ -65,12 +66,15 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(heroOf(html(s2, "spotlight")).includes(`<p class="ttl">${so.offers.items[0].title}</p>`));
       assert.ok(!heroOf(html(s2, "guide")).includes('class="offer feat"'));
     });
-    ok("guide: 'What would you like to protect?' chips jump to #need-<interest> groups, each opening with an agent bubble; 'other' last", () => {
+    ok("guide: 'What would you like to protect?' chips jump to #need-<interest> groups, each opening with its <h3> (no bubble); 'other' last", () => {
       const g = html(so, "guide", "en", { images: MANIFEST }), hero = heroOf(g), sec = section(g, "offers");
       assert.ok(hero.includes(dicts.en["site.guide_question"]));
       const chips = [...hero.matchAll(/<a class="chip" href="#need-([a-z_]+)">/g)].map((m) => m[1]);
       assert.ok(chips.length >= 4 && chips.at(-1) === "other", chips.join());
-      for (const k of chips) assert.ok(new RegExp(`<div class="need" id="need-${k}"><div class="say">`).test(sec), k);
+      for (const k of chips) assert.ok(new RegExp(`<div class="need" id="need-${k}"><h3>`).test(sec), k);
+      // the agent's own service description is a plain paragraph under the group heading
+      const term = (so.content.services.items || []).find((i) => i.interest === "term");
+      if (term && term.description) assert.ok(sec.includes(`<p class="need-d">${esc(term.description)}</p>`));
       assert.ok(!/class="btn" href="#contact">/.test(hero), "no generic hero button on the guide");
     });
     ok("offers family, no offers: plan-type cards from services under 'Plans I can help you with'; personal: no offers section", () => {
@@ -143,29 +147,37 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     ok("blocked terms: no fixture renders a blocked term in any template or locale", () => {
       for (const n of ["sample-en", "sample-hi", "sample-offers", "sample-seeded"]) for (const k of TEMPLATE_KEYS) {
         const s = fx(n);
-        assert.deepEqual(hits(textOf(html(s, k, s.locale, { images: MANIFEST }))), [], n + "/" + k);
+        // The companies section shows the insurers' names on purpose (DECISIONS #90); everything else must stay clean.
+        const page = html(s, k, s.locale, { images: MANIFEST }), cs = section(page, "companies");
+        assert.deepEqual(hits(textOf(cs ? page.replace(cs, "") : page)), [], n + "/" + k);
       }
     });
   }
-  // ---- conversational layer ----
+  // ---- no chat-style layer (DECISIONS #87) ----
   for (const k of TEMPLATE_KEYS) for (const l of LOCALE_KEYS) {
     const s = fx("sample-" + l), t = makeT(dicts[l]), h = html(s, k, l);
-    ok(`${k}/${l}: greeting bubble, a bubble above each section's <h2>, quick replies, FAQ as visitor/agent bubbles`, () => {
-      assert.ok(heroOf(h).includes(`<p class="bubble hi">${esc(t("site.say_greeting", { firstName: s.profile.full_name.split(" ")[0] }))}</p>`));
-      for (const sec of ["about", "faq", "contact"]) assert.ok(new RegExp(`<div class="say">[\\s\\S]{0,300}<p class="bubble">${esc(t("site.say_" + sec)).replace(/[?.()]/g, "\\$&")}</p></div><h2>`).test(section(h, sec)), sec);
+    ok(`${k}/${l}: no speech bubbles, avatars or greeting; quick-interest chips stay; FAQ ${k === "modern" ? "as open Q&A" : k === "minimal" ? "under one disclosure" : "as an accordion"}`, () => {
+      assert.ok(!/class="(say|bubble|you|av)[ "]/.test(h), "no chat markup");
+      for (const key of Object.keys(dicts[l]).filter((x) => x.startsWith("site.say_"))) assert.ok(!h.includes(esc(t(key, { firstName: s.profile.full_name.split(" ")[0] }))), key);
       const chips = [...heroOf(h).matchAll(/<a class="chip" href="#(contact|need-[a-z_]+)"/g)];
       assert.ok(chips.length >= 1 && chips.length <= (k === "guide" ? 9 : 4));
       if (k !== "guide") assert.ok(heroOf(h).includes(`<a class="chip" href="#contact" data-interest="term">${t("interest.term")}</a>`));
-      assert.ok(/<details><summary><span class="you">[^<]+<\/span><\/summary><div class="say"><img class="av"[^>]*alt=""[^>]*loading="lazy"/.test(section(h, "faq")));
+      const f = section(h, "faq");
+      if (k === "modern") assert.ok(/<dl class="qa"><div><dt>[^<]+<\/dt><dd class="prose">/.test(f) && !f.includes("<details"));
+      else if (k === "minimal") assert.ok(/^id="faq"><details class="qs"><summary><h2>/.test(f) && (f.match(/<details/g) || []).length === 1);
+      else {
+        assert.ok(/<div class="faq"><details><summary>[^<]+<\/summary><p class="prose">[^<]+<\/p><\/details>/.test(f), "accordion rows");
+        assert.equal((f.match(/<details>/g) || []).length, s.content.faq.items.length);
+      }
     });
   }
-  ok("no photo: a CSS initials monogram (hero and bubbles), never a stock face", () => {
+  ok("no photo: a CSS initials monogram in the hero, never a stock face", () => {
     const s = fx("sample-en"); s.content = { ...s.content, hero: { ...s.content.hero, photo: "" } }; s.profile = { ...s.profile, photo_url: "" };
     const h = html(s, "classic");
-    assert.ok(h.includes('<span class="hero-photo mono" aria-hidden="true">AV</span>') && h.includes('<span class="av mono" aria-hidden="true">AV</span>'));
-    assert.ok(!/<img class="(hero-photo|av)"/.test(h));
+    assert.ok(h.includes('<span class="hero-photo mono" aria-hidden="true">AV</span>'));
+    assert.ok(!/<img class="hero-photo"/.test(h));
   });
-  ok("xss: bubbles, chips, monogram and offers are escaped; hostile offer URLs, images and interests dropped", () => {
+  ok("xss: chips, monogram, companies and offers are escaped; hostile offer URLs, images and interests dropped", () => {
     for (const k of TEMPLATE_KEYS) {
       const h = html(fx("sample-xss"), k, "en", { images: MANIFEST });
       assert.ok(h.includes("&lt;script&gt;alert(7)&lt;/script&gt;") && h.includes("&lt;script&gt;alert(15)&lt;/script&gt;"), k);
@@ -189,7 +201,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.ok(/\.callbar\{position:fixed/.test(css) && /\.tpl\.has-bar\{padding-bottom:/.test(css) && /min-width:720px\)\{\.callbar\{display:none\}/.test(css));
   });
   // ---- bundled images (docs/IMAGES.md) ----
-  ok("images: none when the manifest is empty (only the agent's photo and the 32px avatars)", () => {
+  ok("images: none when the manifest is empty (only the agent's photo)", () => {
     for (const k of TEMPLATE_KEYS) {
       const h = html(fx("sample-offers"), k, "en", { images: {} });
       assert.ok(!h.includes("/images/"), k);
@@ -198,7 +210,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   ok("images: listed ones get srcset/sizes, explicit size, lazy + async, translated alt (decorative ones alt=\"\")", () => {
     const h = html(fx("sample-en"), "classic", "en", { images: MANIFEST });
     const label = dicts.en["interest.term"];
-    assert.ok(section(h, "services").includes(`<img class="pic" src="/images/interest-term-800.webp" srcset="/images/interest-term-400.webp 400w, /images/interest-term-800.webp 800w" sizes="128px" width="${MANIFEST["interest-term"].w}" height="${MANIFEST["interest-term"].h}" alt="${dicts.en["site.image_alt_interest"].replace("{interest}", label)}" loading="lazy" decoding="async">`));
+    assert.ok(section(h, "services").includes(`<img class="pic" src="/images/interest-term-800.webp" srcset="/images/interest-term-400.webp 400w, /images/interest-term-800.webp 800w" sizes="96px" width="${MANIFEST["interest-term"].w}" height="${MANIFEST["interest-term"].h}" alt="${dicts.en["site.image_alt_interest"].replace("{interest}", label)}" loading="lazy" decoding="async">`));
     assert.ok(/<img class="pic talk" src="\/images\/contact-talk-800\.webp"[^>]*width="800" height="600" alt="" loading="lazy" decoding="async">/.test(section(h, "contact")));
     const hi = html(fx("sample-hi"), "classic", "hi", { images: MANIFEST });
     assert.ok(hi.includes(`alt="${dicts.hi["site.image_alt_interest"].replace("{interest}", dicts.hi["interest.term"])}"`));
@@ -233,7 +245,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.equal(headData(np, { origin: "https://x.test", images: MANIFEST, family: "offers" }).og["og:image"], "https://x.test/images/og-offers-1200.webp");
     assert.equal(headData(np, { origin: "https://x.test" }).og["og:image"], undefined);
   });
-  // ---- thank-you bubble ----
+  // ---- thank-you message ----
   {
     const { wireForm } = await import("../web/form.js");
     const vals = { name: "Ravi", phone: "9876543210", email: "", interest: "", message: "" };
@@ -241,15 +253,14 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     const box = { ...el(), checked: true };
     const btn = { ...el(), textContent: "Send" };
     const form = { outerHTML: null, addEventListener(e, f) { this.l = f; }, querySelector: (q) => (q === "#f-consent" ? box : q === "button[type=submit]" ? btn : el()) };
-    const av = { outerHTML: '<span class="av mono" aria-hidden="true">AV</span>' };
-    const root = { querySelector: (q) => (q === "#enq" ? form : q === "#contact .say .av" ? av : null) };
+    const root = { querySelector: (q) => (q === "#enq" ? form : null) };
     const real = globalThis.FormData; globalThis.FormData = function () { return Object.entries(vals); };
     wireForm(root, { t: en, profile: { full_name: "Asha <b>Verma", phone: "9876543210" }, site: { content: {} }, catalog, slug: "d", submit: async () => ({ status: "ok" }) });
     await form.l({ preventDefault() {} });
     globalThis.FormData = real;
-    ok("thank-you: an agent bubble with site.say_thanks and the page's avatar; the name is escaped", () => {
-      assert.ok(form.outerHTML.startsWith('<div class="enq done" role="status"><div class="say"><span class="av mono" aria-hidden="true">AV</span><p class="bubble">'));
-      assert.ok(form.outerHTML.includes(en("site.say_thanks", { firstName: "Asha" }).replace(/'/g, "&#39;")) && form.outerHTML.includes('href="tel:+919876543210"'));
+    ok("thank-you: a normal success message (site.form_thank_you with the first name, no bubble) and a Call button", () => {
+      assert.ok(form.outerHTML.startsWith(`<div class="enq done" role="status"><p class="done-t">${esc(en("site.form_thank_you", { name: "Asha" }))}</p>`));
+      assert.ok(!/say|bubble|class="av/.test(form.outerHTML) && form.outerHTML.includes('href="tel:+919876543210"'));
     });
   }
   // ---- seeded fixture ----
@@ -270,7 +281,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.ok(/<header [^>]*id="hero"/.test(h) && !h.includes('id="testimonials"') && !h.includes('id="achievements"'));
     assert.ok(!/\{[a-zA-Z]+\}/.test(textOf(h)), "no unfilled placeholder");
     assert.ok(h.includes("Hello, I&#39;m Priya Nair") && h.includes('<span class="hero-photo mono" aria-hidden="true">PN</span>'));
-    assert.ok(!h.includes('class="bubble hi"'), "no greeting bubble when the headline already introduces the agent");
+    assert.ok(!/class="(say|bubble)/.test(h), "no bubbles");
   });
 }
 import * as fs from "node:fs";

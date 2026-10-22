@@ -35,11 +35,15 @@ import com.sledje.agentpro.core.ui.UiState
 import com.sledje.agentpro.feature.website.data.SiteContent
 import com.sledje.agentpro.feature.website.data.SiteLinks
 import com.sledje.agentpro.feature.website.data.SitePreviewPayload
+import com.sledje.agentpro.feature.website.data.rememberPreviewOffers
 import com.sledje.agentpro.feature.website.ui.AppearanceScreen
 import com.sledje.agentpro.feature.website.ui.AppearanceViewModel
 import com.sledje.agentpro.feature.website.ui.ChangeLinkDialog
 import com.sledje.agentpro.feature.website.ui.ContentScreen
 import com.sledje.agentpro.feature.website.ui.ContentViewModel
+import com.sledje.agentpro.feature.website.ui.ServicesMatchSheet
+import com.sledje.agentpro.feature.website.ui.ServicesMatchViewModel
+import com.sledje.agentpro.resources.website_match_done
 import com.sledje.agentpro.feature.website.ui.HubRow
 import com.sledje.agentpro.feature.website.ui.LinkScreen
 import com.sledje.agentpro.feature.website.ui.LinkViewModel
@@ -268,14 +272,22 @@ private fun HubRoute(host: FeatureHost) {
 private fun ContentRoute(host: FeatureHost) {
     val hub = host.websiteHub()
     val vm = viewModel { ContentViewModel(host.deps.sites) }
+    val match = viewModel { ServicesMatchViewModel(host.deps.sites, host.deps.companies, host.deps.profiles, refreshCompanies = true) }
     val state by vm.state.collectAsState()
+    val matchState by match.state.collectAsState()
     val issues by hub.issues.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.error) {
         state.error?.let { snackbar.showSnackbar(getString(websiteErrorTextRes(it))); vm.consumeError() }
     }
+    LaunchedEffect(matchState.applied) {
+        if (matchState.applied) { match.consumeApplied(); snackbar.showSnackbar(getString(Res.string.website_match_done)) }
+    }
+    ServicesMatchSheet(matchState, onApply = match::apply, onDismiss = match::dismiss)
     ContentScreen(
         state = state,
+        servicesMismatch = matchState.mismatch,
+        onUpdateServices = match::open,
         issueSections = issues.map { it.section.key }.toSet(),
         snackbar = snackbar,
         onBack = { host.nav.popBackStack() },
@@ -366,7 +378,14 @@ private fun TemplatesRoute(host: FeatureHost) {
         onBack = { host.nav.popBackStack() },
         onUse = vm::selectTemplate,
         preview = { template ->
-            val json = remember(site, profile, template.key) { SitePreviewPayload.json(site, profile, templateKey = template.key) }
+            // The page as it would be after switching (DECISIONS #86); nothing is saved until the agent chooses.
+            val content = remember(site, template.key) {
+                SiteContent.afterSwitch(site.draftContent, Templates.fromKey(site.templateKey), template)
+            }
+            val offers = rememberPreviewOffers(host.deps.sites, content, template.key)
+            val json = remember(site, profile, template.key, content, offers) {
+                SitePreviewPayload.json(site, profile, content, template.key, offers)
+            }
             host.deps.website.sitePreview.Render(json, Modifier.fillMaxSize())
         },
     )
@@ -431,7 +450,8 @@ private fun PreviewRoute(host: FeatureHost) {
         preview = { modifier ->
             val current = (site as? UiState.Content)?.data
             if (current != null) {
-                val json = remember(current, profile) { SitePreviewPayload.json(current, profile) }
+                val offers = rememberPreviewOffers(host.deps.sites, current.draftContent, current.templateKey)
+                val json = remember(current, profile, offers) { SitePreviewPayload.json(current, profile, previewOffers = offers) }
                 host.deps.website.sitePreview.Render(json, modifier)
             }
         },
