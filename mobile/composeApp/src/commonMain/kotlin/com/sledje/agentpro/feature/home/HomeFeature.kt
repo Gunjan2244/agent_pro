@@ -1,6 +1,7 @@
 package com.sledje.agentpro.feature.home
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.sledje.agentpro.app.AppDependencies
+import com.sledje.agentpro.core.catalog.FeatureId
+import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.data.StoreKeys
 import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.Dimens
@@ -33,6 +36,11 @@ import com.sledje.agentpro.core.designsystem.components.NavRow
 import com.sledje.agentpro.core.features.AppFeature
 import com.sledje.agentpro.core.features.BottomNavItem
 import com.sledje.agentpro.core.features.FeatureHost
+import com.sledje.agentpro.feature.customers.CustomerFormRoute
+import com.sledje.agentpro.feature.settings.ProfileRoute
+import com.sledje.agentpro.feature.website.WebsiteContentRoute
+import com.sledje.agentpro.feature.website.WebsiteLinkRoute
+import com.sledje.agentpro.feature.website.WebsiteSectionRoute
 import com.sledje.agentpro.feature.website.data.Site
 import com.sledje.agentpro.feature.website.data.StarterContent
 import kotlinx.serialization.json.JsonObject
@@ -46,18 +54,25 @@ import com.sledje.agentpro.resources.ic_check_circle
 import com.sledje.agentpro.resources.ic_home
 import com.sledje.agentpro.resources.ic_radio_button_unchecked
 import com.sledje.agentpro.resources.setup_about
+import com.sledje.agentpro.resources.setup_companies
+import com.sledje.agentpro.resources.setup_portal
+import com.sledje.agentpro.resources.whats_new_title
 import com.sledje.agentpro.resources.setup_customer
 import com.sledje.agentpro.resources.setup_done
+import com.sledje.agentpro.resources.setup_next
 import com.sledje.agentpro.resources.setup_profile
 import com.sledje.agentpro.resources.setup_publish
 import com.sledje.agentpro.resources.setup_share
 import com.sledje.agentpro.resources.setup_title
 import com.sledje.agentpro.resources.setup_todo
 import com.sledje.agentpro.resources.tab_home
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -74,64 +89,159 @@ object HomeFeature : AppFeature {
         composable<HomeRoute> {
             val vm = viewModel { HomeViewModel(host.deps) }
             val state by vm.state.collectAsState()
-            HomeScreen(state, onOpenSettings = host::openSettings)
+            HomeScreen(
+                state,
+                onOpenSettings = host::openSettings,
+                onSetupItem = { host.openSetupItem(it) },
+                onWhatsNewItem = { item ->
+                    vm.markWhatsNewSeen()
+                    host.openWhatsNewItem(item)
+                },
+                onWhatsNewSeen = vm::markWhatsNewSeen,
+            )
         }
     }
 }
 
+/** Opens the screen where [item] gets done (docs/UX.md, Home: each checklist row is a shortcut). */
+internal fun FeatureHost.openSetupItem(item: SetupItem) {
+    when (item) {
+        SetupItem.Profile, SetupItem.Companies -> nav.navigate(ProfileRoute)
+        SetupItem.Publish -> openTab("website")
+        SetupItem.About -> if (openTab("website")) nav.navigate(WebsiteSectionRoute(StarterContent.ABOUT, fromSetup = true))
+        SetupItem.Share -> if (openTab("website")) nav.navigate(WebsiteLinkRoute)
+        SetupItem.FirstCustomer -> if (openTab("customers")) nav.navigate(CustomerFormRoute())
+        SetupItem.CustomerLogin -> openTab("customers") // then: open a customer, Website login → Send login link
+    }
+}
+
+/** Opens the screen a "What's new" row leads to. */
+internal fun FeatureHost.openWhatsNewItem(item: WhatsNewItem) {
+    when (item) {
+        WhatsNewItem.Companies -> nav.navigate(ProfileRoute)
+        WhatsNewItem.CustomerLogin -> openTab("customers")
+        WhatsNewItem.ForMyCustomers -> if (openTab("website")) nav.navigate(WebsiteContentRoute)
+    }
+}
+
 /** One item of the setup checklist (docs/UX.md, Home: profile, publish, own About text, share the link, first customer). */
-enum class SetupItem(val label: StringResource) {
+enum class SetupItem(val label: StringResource, val feature: FeatureId? = null) {
     Profile(Res.string.setup_profile),
+    Companies(Res.string.setup_companies, FeatureId.Offers),
     Publish(Res.string.setup_publish),
     About(Res.string.setup_about),
     Share(Res.string.setup_share),
     FirstCustomer(Res.string.setup_customer),
-}
-
-data class HomeUiState(val firstName: String? = null, val done: Set<SetupItem> = emptySet()) {
-    val setupComplete: Boolean get() = done.size == SetupItem.entries.size
+    CustomerLogin(Res.string.setup_portal, FeatureId.CustomerPortal),
 }
 
 /**
- * Home's state. The checklist is a stub until its features exist: "Share your link" is a local mark
- * (set by the Website share action in Phase 8) and "Add your first customer" is never done until Phase 7.
+ * [items] are the checklist rows whose feature flag is on (all of them by default); [whatsNew] holds the rows of the
+ * one-time "What's new" sheet, empty when it shouldn't show.
  */
-class HomeViewModel(deps: AppDependencies) : ViewModel() {
+data class HomeUiState(
+    val firstName: String? = null,
+    val photoUrl: String? = null,
+    val done: Set<SetupItem> = emptySet(),
+    val items: List<SetupItem> = SetupItem.entries.toList(),
+    val whatsNew: List<WhatsNewItem> = emptyList(),
+) {
+    val doneCount: Int get() = items.count { it in done }
+    val setupComplete: Boolean get() = items.all { it in done }
+
+    /** The first visible item, in checklist order, that isn't done; null when all are. */
+    val next: SetupItem? get() = items.firstOrNull { it !in done }
+
+    /** Every visible row opens its screen, so no step can block the others; [next] is only the suggested one. */
+    fun isTappable(item: SetupItem): Boolean = item in items
+}
+
+/**
+ * Home's state. "Share your link" and "Give a customer their login" are local marks; "Add your first customer" is
+ * done once any live customer exists; "Add your companies" is checked online once when Home starts (`my_company_offers`,
+ * stays undone offline or on failure, no error UI). Items of a disabled feature are hidden and not counted. The avatar
+ * shows the site's hero photo, else the profile photo, as the site does.
+ */
+class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
+    private val companiesLinked = MutableStateFlow(false)
+
+    init {
+        viewModelScope.launch {
+            try {
+                if (deps.companies.refresh() is Result.Ok) companiesLinked.value = deps.companies.memberships.value.any { it.isActive }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Offline or failing: the item just stays undone.
+            }
+        }
+    }
+
+    private val marks = combine(
+        deps.store.observe(StoreKeys.SITE_SHARED),
+        deps.store.observe(StoreKeys.PORTAL_INVITED),
+        deps.store.observe(StoreKeys.WHATS_NEW_SEEN),
+    ) { shared, invited, seen -> Triple(shared != null, invited != null, seen) }
+
     val state: StateFlow<HomeUiState> = combine(
         deps.profiles.observeMine(),
         deps.sites.observeMine(),
-        deps.store.observe(StoreKeys.SITE_SHARED),
-    ) { profile, site, shared ->
+        deps.featureFlags,
+        marks,
+        combine(deps.customers.observeAll(), companiesLinked) { customers, linked -> customers.isNotEmpty() to linked },
+    ) { profile, site, flags, (shared, invited, seen), (hasCustomers, linked) ->
         HomeUiState(
             firstName = profile?.firstName,
+            photoUrl = site?.heroPhoto() ?: profile?.photoUrl?.takeIf { it.isNotBlank() },
+            items = SetupItem.entries.filter { it.feature?.let(flags::isEnabled) ?: true },
             done = buildSet {
                 if (profile?.isComplete == true) add(SetupItem.Profile)
+                if (linked) add(SetupItem.Companies)
                 if (site?.isPublished == true) add(SetupItem.Publish)
                 // The seeded bio is shared text; the agent's own words rank better (docs/UX.md, Home).
                 if (StarterContent.isOwnBio(site?.aboutBio())) add(SetupItem.About)
-                if (shared != null) add(SetupItem.Share)
+                if (shared) add(SetupItem.Share)
+                if (hasCustomers) add(SetupItem.FirstCustomer)
+                if (invited) add(SetupItem.CustomerLogin)
             },
+            whatsNew = if (WhatsNew.shouldShow(seen, hasSite = site != null)) WhatsNew.rows(flags::isEnabled) else emptyList(),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
+
+    /** Closing the sheet, tapping a row or "Got it": this version won't show again. */
+    fun markWhatsNewSeen() {
+        viewModelScope.launch { deps.store.put(StoreKeys.WHATS_NEW_SEEN, WhatsNew.VERSION.toString()) }
+    }
 }
+
+/** The draft's `hero.photo` URL, null when unset. */
+internal fun Site.heroPhoto(): String? =
+    ((draftContent[StarterContent.HERO] as? JsonObject)?.get(StarterContent.PHOTO) as? kotlinx.serialization.json.JsonPrimitive)
+        ?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
 
 /** The draft's `about.bio` text, null when unset. */
 internal fun Site.aboutBio(): String? =
     ((draftContent[StarterContent.ABOUT] as? JsonObject)?.get(StarterContent.BIO) as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
 
 @Composable
-fun HomeScreen(state: HomeUiState, onOpenSettings: () -> Unit) {
+fun HomeScreen(
+    state: HomeUiState,
+    onOpenSettings: () -> Unit,
+    onSetupItem: (SetupItem) -> Unit = {},
+    onWhatsNewItem: (WhatsNewItem) -> Unit = {},
+    onWhatsNewSeen: () -> Unit = {},
+) {
     var sheet by remember { mutableStateOf(false) }
     val title = state.firstName?.let { stringResource(Res.string.home_greeting, it) } ?: stringResource(Res.string.home_greeting_plain)
     TabScreen(
         Res.string.tab_home,
         titleText = title,
-        trailing = { AvatarButton(state.firstName.orEmpty(), stringResource(Res.string.action_settings), onOpenSettings) },
+        trailing = { AvatarButton(state.firstName.orEmpty(), stringResource(Res.string.action_settings), onOpenSettings, photoUrl = state.photoUrl) },
     ) {
         Column(Modifier.fillMaxWidth()) {
             if (!state.setupComplete) {
                 NavRow(
-                    title = stringResource(Res.string.home_setup_row, state.done.size, SetupItem.entries.size),
+                    title = stringResource(Res.string.home_setup_row, state.doneCount, state.items.size),
                     onClick = { sheet = true },
                 )
                 HairlineDivider()
@@ -146,14 +256,40 @@ fun HomeScreen(state: HomeUiState, onOpenSettings: () -> Unit) {
     }
     if (sheet) {
         AppBottomSheet(stringResource(Res.string.setup_title), onDismiss = { sheet = false }) {
-            SetupItem.entries.forEach { item ->
-                val done = item in state.done
-                ListRow(
-                    title = stringResource(item.label),
-                    supporting = stringResource(if (done) Res.string.setup_done else Res.string.setup_todo),
-                    leading = ListLeading.Icon(if (done) Res.drawable.ic_check_circle else Res.drawable.ic_radio_button_unchecked),
-                )
-            }
+            SetupChecklistContent(state, onItem = { item ->
+                sheet = false
+                onSetupItem(item)
+            })
         }
+    }
+    // Never on top of the checklist: it waits until that sheet is closed.
+    if (state.whatsNew.isNotEmpty() && !sheet) {
+        AppBottomSheet(stringResource(Res.string.whats_new_title), onDismiss = onWhatsNewSeen) {
+            WhatsNewContent(state.whatsNew, onItem = onWhatsNewItem, onGotIt = onWhatsNewSeen)
+        }
+    }
+}
+
+/** The checklist sheet's rows: every row opens its screen and the next one is marked. */
+@Composable
+fun ColumnScope.SetupChecklistContent(state: HomeUiState, onItem: (SetupItem) -> Unit) {
+    state.items.forEach { item ->
+        val done = item in state.done
+        val tappable = state.isTappable(item)
+        val isNext = item == state.next
+        ListRow(
+            title = stringResource(item.label),
+            supporting = stringResource(
+                when {
+                    done -> Res.string.setup_done
+                    isNext -> Res.string.setup_next
+                    else -> Res.string.setup_todo
+                },
+            ),
+            leading = ListLeading.Icon(if (done) Res.drawable.ic_check_circle else Res.drawable.ic_radio_button_unchecked),
+            onClick = if (tappable) ({ onItem(item) }) else null,
+            current = isNext,
+            muted = !tappable,
+        )
     }
 }

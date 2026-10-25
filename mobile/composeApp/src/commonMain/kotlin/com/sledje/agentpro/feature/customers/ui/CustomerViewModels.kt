@@ -9,6 +9,7 @@ import com.sledje.agentpro.core.catalog.Interest
 import com.sledje.agentpro.core.catalog.PolicyStatus
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.KeyValueStore
+import com.sledje.agentpro.core.data.parseDateOrNull
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.format.Dates
 import com.sledje.agentpro.core.format.Phone
@@ -20,6 +21,9 @@ import com.sledje.agentpro.domain.Age
 import com.sledje.agentpro.domain.DueBuckets
 import com.sledje.agentpro.feature.privacy.data.ConsentRepository
 import com.sledje.agentpro.feature.customers.data.Customer
+import com.sledje.agentpro.feature.customers.data.CustomerDraftRepository
+import com.sledje.agentpro.feature.customers.data.DraftSource
+import com.sledje.agentpro.feature.customers.data.NoCustomerDraftRepository
 import com.sledje.agentpro.feature.customers.data.CustomerInput
 import com.sledje.agentpro.feature.customers.data.CustomerRepository
 import com.sledje.agentpro.feature.enquiries.data.Enquiry
@@ -40,6 +44,12 @@ import com.sledje.agentpro.resources.customers_filter_due_month
 import com.sledje.agentpro.resources.customers_filter_no_policy
 import com.sledje.agentpro.resources.profile_mobile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +58,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -85,7 +96,12 @@ class CustomerListViewModel(
     policies: PolicyRepository,
     private val store: KeyValueStore,
     private val today: () -> LocalDate,
+    drafts: CustomerDraftRepository = NoCustomerDraftRepository,
 ) : ViewModel() {
+    /** How many unfinished forms there are (the "Incomplete forms · N" row; DECISIONS #108). */
+    val incompleteCount: StateFlow<Int> = drafts.observeIncomplete().map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     private val _filter = MutableStateFlow<CustomerFilter?>(null)
     val filter: StateFlow<CustomerFilter?> = _filter.asStateFlow()
     private val query = MutableStateFlow("")
@@ -231,10 +247,16 @@ class CustomerDetailViewModel(
     }
 }
 
+/** The note near the customer form's top bar while it autosaves into a draft. */
+enum class AutosaveStatus { Idle, Saved, NotSaved, NotSavedOffline }
+
 /** How the customer form was opened. */
 sealed interface CustomerFormMode {
-    /** "Add manually" or "Pick from contacts" (prefilled [name] / [phone]). */
-    data class Add(val name: String? = null, val phone: String? = null) : CustomerFormMode
+    /**
+     * "Fill it in myself" or "Pick from contacts" (prefilled [name] / [phone]); it autosaves into a draft.
+     * [draftId] resumes an unfinished form from Incomplete forms.
+     */
+    data class Add(val name: String? = null, val phone: String? = null, val draftId: String? = null) : CustomerFormMode
     data class Edit(val id: String) : CustomerFormMode
 
     /** Enquiry detail → Convert to customer. */
@@ -251,6 +273,8 @@ class CustomerFormViewModel(
     private val enquiries: EnquiryRepository,
     private val consents: ConsentRepository,
     private val today: () -> LocalDate = { Dates.today() },
+    private val drafts: CustomerDraftRepository = NoCustomerDraftRepository,
+    private val autosaveDelayMs: Long = AUTOSAVE_DELAY_MS,
 ) : ViewModel() {
     private val _form = MutableStateFlow<FormState?>(null)
     val form: StateFlow<FormState?> = _form.asStateFlow()
@@ -267,6 +291,25 @@ class CustomerFormViewModel(
 
     /** Save was tapped for a customer under 18 without the toggle: the form shows it as required. */
     val guardianMissing: StateFlow<Boolean> = _guardianMissing.asStateFlow()
+
+    private val _autosave = MutableStateFlow(AutosaveStatus.Idle)
+
+    /** The small "Saved" / "Not saved (offline)" note near the top bar (Add mode only). */
+    val autosave: StateFlow<AutosaveStatus> = _autosave.asStateFlow()
+
+    /** The draft this form saves into: the one being resumed, or the one the first autosave inserts. */
+    private var draftId: String? = null
+
+    /** What the server draft holds (or, before the first save, the prefill); only a different value is worth saving. */
+    private var lastSaved: Map<String, String> = emptyMap()
+    private var latestFields: Map<String, String> = emptyMap()
+    private var autosaveReady = false
+    private var autosaveJob: Job? = null
+    private val flushLock = Mutex()
+
+    /** Set once the customer was created; the draft is completed (or about to be) and nothing more is autosaved. */
+    private var finished = false
+    private var draftCompleted = false
 
     /** Whether the loaded customer was already under 18 (editing them again doesn't ask again). */
     private var initialMinor = false
@@ -292,7 +335,16 @@ class CustomerFormViewModel(
     init {
         viewModelScope.launch {
             val initial: Map<String, Any?> = when (mode) {
-                is CustomerFormMode.Add -> mapOf(NAME to mode.name, PHONE to mode.phone?.let { Phone.normalize(it) ?: it })
+                is CustomerFormMode.Add -> {
+                    val draft = mode.draftId?.let { drafts.observe(it).first() }
+                        ?.takeIf { it.source == DraftSource.Agent && !it.isCompleted }
+                    if (draft != null) {
+                        draftId = draft.id
+                        draftValues(draft.fields)
+                    } else {
+                        mapOf(NAME to mode.name, PHONE to mode.phone?.let { Phone.normalize(it) ?: it })
+                    }
+                }
                 is CustomerFormMode.Edit -> customers.observe(mode.id).first()?.let { c ->
                     mapOf(
                         NAME to c.name, PHONE to c.phone, EMAIL to c.email, DOB to c.dob, ADDRESS to c.address,
@@ -304,7 +356,54 @@ class CustomerFormViewModel(
                 }.orEmpty()
             }
             initialMinor = (initial[DOB] as? LocalDate)?.let { Age.isUnder18(it, today()) } == true
-            _form.value = FormState(FIELDS, initial.filterValues { it != null })
+            val state = FormState(FIELDS, initial.filterValues { it != null })
+            if (mode is CustomerFormMode.Add) {
+                lastSaved = draftFields(state.values())
+                latestFields = lastSaved
+                autosaveReady = true
+            }
+            _form.value = state
+        }
+    }
+
+    /**
+     * The form's values changed (the screen calls this from a snapshot flow). In Add mode, after the first
+     * non-empty change and a short pause, the typed values are saved into a `source = agent` draft: inserted
+     * once, then updated. A failed save shows "Not saved" and is retried by the next change (docs/UX.md, Customer form).
+     */
+    fun onValuesChanged(values: Map<String, Any?>) {
+        if (mode !is CustomerFormMode.Add || !autosaveReady || finished) return
+        val fields = draftFields(values)
+        latestFields = fields
+        autosaveJob?.cancel()
+        if (fields == lastSaved || (draftId == null && fields.isEmpty())) return
+        autosaveJob = viewModelScope.launch {
+            delay(autosaveDelayMs)
+            flush(fields)
+        }
+    }
+
+    /** Saves a pending change now (the screen is being left). Survives the ViewModel being cleared. */
+    fun flushNow() {
+        if (mode !is CustomerFormMode.Add || !autosaveReady || finished) return
+        autosaveJob?.cancel()
+        val fields = latestFields
+        if (fields == lastSaved || (draftId == null && fields.isEmpty())) return
+        viewModelScope.launch { flush(fields) }
+    }
+
+    private suspend fun flush(fields: Map<String, String>) = withContext(NonCancellable) {
+        flushLock.withLock {
+            if (finished) return@withLock
+            val id = draftId
+            when (val r = if (id == null) drafts.createAgentDraft(fields) else drafts.updateAgentDraft(id, fields)) {
+                is Result.Ok -> {
+                    draftId = r.value.id
+                    lastSaved = fields
+                    _autosave.value = AutosaveStatus.Saved
+                }
+                is Result.Err -> _autosave.value = if (r.error == AppError.Offline) AutosaveStatus.NotSavedOffline else AutosaveStatus.NotSaved
+            }
         }
     }
 
@@ -348,7 +447,27 @@ class CustomerFormViewModel(
                     return@launch
                 }
             }
+            if (mode is CustomerFormMode.Add) completeDraft(customer.id)
             _state.value = SaveState(savedId = customer.id)
+        }
+    }
+
+    /**
+     * Marks the autosaved draft completed once the customer exists, trying twice. The customer is already saved, so a
+     * failure never holds the agent on the form: the draft just stays under Incomplete forms, where it can be deleted.
+     */
+    private suspend fun completeDraft(customerId: String) {
+        autosaveJob?.cancel()
+        finished = true
+        // Wait for an autosave that is already in flight, so its draft id is known.
+        flushLock.withLock { }
+        val id = draftId
+        if (id == null || draftCompleted) return
+        repeat(COMPLETE_ATTEMPTS) {
+            if (drafts.complete(id, customerId) is Result.Ok) {
+                draftCompleted = true
+                return
+            }
         }
     }
 
@@ -361,6 +480,28 @@ class CustomerFormViewModel(
         const val CITY = "city"
         const val NOMINEE = "nominee"
         const val NOTES = "notes"
+
+        /** The autosave pause after the last change (docs/UX.md, Customer form). */
+        const val AUTOSAVE_DELAY_MS = 1_500L
+
+        /** Tries to mark the draft completed after Save before leaving it under Incomplete forms. */
+        const val COMPLETE_ATTEMPTS = 2
+
+        /** The form's typed values as the draft's string fields (blank and empty ones left out). */
+        fun draftFields(values: Map<String, Any?>): Map<String, String> = buildMap {
+            for (key in listOf(NAME, PHONE, EMAIL, DOB, ADDRESS, CITY, NOMINEE, NOTES)) {
+                val text = when (val v = values[key]) {
+                    is String -> v.trim()
+                    is LocalDate -> v.toString()
+                    else -> null
+                }
+                if (!text.isNullOrEmpty()) put(key, text)
+            }
+        }
+
+        /** A draft's string fields as form values (the date of birth parsed). */
+        fun draftValues(fields: Map<String, String>): Map<String, Any?> =
+            fields.mapValues { (k, v) -> if (k == DOB) parseDateOrNull(v) else v }
 
         val FIELDS: List<FieldSpec> = listOf(
             FieldSpec(NAME, FieldType.Text, Res.string.cat_field_name, required = true, maxLength = 80),

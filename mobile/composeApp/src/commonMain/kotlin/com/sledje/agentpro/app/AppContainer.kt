@@ -23,7 +23,12 @@ import com.sledje.agentpro.core.platform.StoredLocaleController
 import com.sledje.agentpro.core.platform.UrlLauncher
 import com.sledje.agentpro.feature.auth.data.AuthRepository
 import com.sledje.agentpro.feature.auth.data.SupabaseAuthRepository
+import com.sledje.agentpro.feature.customers.data.CustomerDraftLive
+import com.sledje.agentpro.feature.customers.data.CustomerDraftRepository
 import com.sledje.agentpro.feature.customers.data.CustomerRepository
+import com.sledje.agentpro.feature.customers.data.SupabaseCustomerDraftRealtime
+import com.sledje.agentpro.feature.customers.data.SupabaseCustomerDraftRepository
+import com.sledje.agentpro.feature.customers.data.customerDraftsSyncTable
 import com.sledje.agentpro.feature.customers.data.SupabaseCustomerRepository
 import com.sledje.agentpro.feature.customers.data.customersSyncTable
 import com.sledje.agentpro.feature.enquiries.data.EnquiryLive
@@ -47,6 +52,8 @@ import com.sledje.agentpro.core.platform.SitePreview
 import com.sledje.agentpro.feature.website.WebsiteServices
 import com.sledje.agentpro.feature.website.data.ImageUploader
 import com.sledje.agentpro.feature.offers.data.CompanyRepository
+import com.sledje.agentpro.feature.portal.data.PortalRepository
+import com.sledje.agentpro.feature.portal.data.SupabasePortalRepository
 import com.sledje.agentpro.feature.offers.data.SupabaseCompanyRepository
 import com.sledje.agentpro.feature.website.data.SiteRepository
 import com.sledje.agentpro.feature.website.data.SiteStatsRepository
@@ -119,6 +126,7 @@ class AppContainer(platform: PlatformServices) : AppDependencies {
             siteDailyViewsSyncTable(database.siteDailyViewDao()),
             enquiriesSyncTable(database.enquiryDao()),
             customersSyncTable(database.customerDao()),
+            customerDraftsSyncTable(database.customerDraftDao()),
             policiesSyncTable(database.policyDao()),
             premiumPaymentsSyncTable(database.premiumPaymentDao()),
         ),
@@ -137,8 +145,10 @@ class AppContainer(platform: PlatformServices) : AppDependencies {
     override val profiles: ProfileRepository = SupabaseProfileRepository(supabase, database.profileDao(), syncEngine)
     override val sites: SiteRepository = SupabaseSiteRepository(supabase, database.siteDao(), syncEngine)
     override val companies: CompanyRepository = SupabaseCompanyRepository(supabase)
+    override val portal: PortalRepository = SupabasePortalRepository(supabase)
     override val enquiries: EnquiryRepository = SupabaseEnquiryRepository(supabase, database.enquiryDao(), syncEngine)
     override val customers: CustomerRepository = SupabaseCustomerRepository(supabase, database.customerDao(), syncEngine)
+    override val customerDrafts: CustomerDraftRepository = SupabaseCustomerDraftRepository(supabase, database.customerDraftDao(), syncEngine)
     override val policies: PolicyRepository =
         SupabasePolicyRepository(supabase, database.policyDao(), database.premiumPaymentDao(), syncEngine)
     override val consents: ConsentRepository = SupabaseConsentRepository(
@@ -147,6 +157,7 @@ class AppContainer(platform: PlatformServices) : AppDependencies {
         userIds = auth.state.map { (it as? AuthState.SignedIn)?.userId },
     )
     override val enquiryLive: EnquiryLive = SupabaseEnquiryRealtime(supabase, syncEngine, scope)
+    override val customerDraftLive: CustomerDraftLive = SupabaseCustomerDraftRealtime(supabase, syncEngine, scope)
     override val website = WebsiteServices(
         mediaPicker = platform.mediaPicker,
         imageUploader = ImageUploader(platform.imageProcessor, SupabaseSiteMediaRepository(supabase)),

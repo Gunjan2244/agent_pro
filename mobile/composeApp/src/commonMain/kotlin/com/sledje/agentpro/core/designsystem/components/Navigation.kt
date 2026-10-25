@@ -145,10 +145,10 @@ fun StepProgressBar(step: Int, total: Int, modifier: Modifier = Modifier) {
     )
 }
 
-/** The Home avatar that opens Settings: a 48dp touch target around a 40dp [Avatar]. */
+/** The Home avatar that opens Settings: a 48dp touch target around a 40dp [Avatar] (the agent's photo when set). */
 @Composable
-fun AvatarButton(name: String, contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun AvatarButton(name: String, contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier, photoUrl: String? = null) {
     IconButton(onClick = onClick, modifier = modifier.semantics { this.contentDescription = contentDescription }) {
-        Avatar(name)
+        Avatar(name, photoUrl = photoUrl)
     }
 }

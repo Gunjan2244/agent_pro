@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.platform.testTag
 import com.sledje.agentpro.core.designsystem.components.AppScaffold
 import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
@@ -108,10 +109,15 @@ fun CrmFormScreen(
     visibleKeys: Set<String>? = null,
     saveLabel: String = stringResource(Res.string.crm_save),
     aboveSave: (@Composable () -> Unit)? = null,
+    /** A small status line at the top of the form (the customer form's "Saved" / "Not saved (offline)"). */
+    topNote: String? = null,
+    /** False when leaving keeps the work (an autosaved draft), so there is nothing to discard. */
+    promptDiscard: Boolean = true,
 ) {
     var confirmDiscard by remember { mutableStateOf(false) }
-    val leave = { if (form.isDirty && !saving) confirmDiscard = true else onBack() }
-    BackHandler(enabled = form.isDirty && !saving) { confirmDiscard = true }
+    val dirty = promptDiscard && form.isDirty && !saving
+    val leave = { if (dirty) confirmDiscard = true else onBack() }
+    BackHandler(enabled = dirty) { confirmDiscard = true }
     val online = LocalIsOnline.current
     AppScaffold(
         topBar = { AppTopBar(title = title, onBack = leave) },
@@ -131,6 +137,9 @@ fun CrmFormScreen(
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.m),
         ) {
+            if (topNote != null) {
+                Text(topNote, style = AgentProTheme.text.bodyMuted, modifier = Modifier.fillMaxWidth().testTag("form_autosave"))
+            }
             FormRenderer(form, visibleKeys = visibleKeys, enabled = !saving, onDone = { if (online) onSave() })
         }
     }

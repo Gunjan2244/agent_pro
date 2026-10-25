@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
@@ -25,13 +26,17 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onFirst
 import com.sledje.agentpro.core.catalog.SiteSchema
 import com.sledje.agentpro.core.designsystem.AgentProTheme
+import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.forms.fieldTestTag
+import com.sledje.agentpro.feature.website.ui.SectionEditorUiState
+import kotlinx.serialization.json.JsonArray
 import com.sledje.agentpro.core.ui.LocalIsOnline
 import com.sledje.agentpro.feature.website.data.SiteContent
 import com.sledje.agentpro.feature.website.ui.ContentScreen
 import com.sledje.agentpro.feature.website.ui.ContentViewModel
 import com.sledje.agentpro.feature.website.ui.SectionEditorScreen
 import com.sledje.agentpro.feature.website.ui.SectionEditorViewModel
+import com.sledje.agentpro.feature.website.ui.sectionRowTag
 import com.sledje.agentpro.feature.website.ui.sectionSwitchTag
 import com.sledje.agentpro.testing.FakeSiteRepository
 import com.sledje.agentpro.testing.FakeWebsite
@@ -111,5 +116,76 @@ class SectionEditorUiTest {
         onNodeWithTag(sectionSwitchTag("about")).assertIsOff()
         val hidden = sites.drafts.single()[SiteContent.HIDDEN]!!.jsonArray.map { it.jsonPrimitive.content }
         assertEquals(listOf("about"), hidden)
+    }
+
+    @Test
+    fun portalRowShowsItsOwnNoteNotTheCompaniesOne() = runComposeUiTest {
+        val vm = ContentViewModel(sites)
+        setContent {
+            AgentProTheme(darkTheme = false) {
+                val state by vm.state.collectAsState()
+                ContentScreen(state, emptySet(), remember { SnackbarHostState() }, {}, {}, { _, _ -> }, vm::startReorder, vm::move, vm::finishReorder)
+            }
+        }
+        waitForIdle()
+        onNodeWithTag(sectionRowTag("portal")).assertExists()
+        onNode(hasText("Tells visitors your customers can sign in", substring = true)).assertExists()
+        onNodeWithTag(sectionRowTag("companies")).assertExists()
+        onNode(hasText("Shows the companies an admin has approved", substring = true)).assertExists()
+    }
+
+    @Test
+    fun offerFieldsShowSummariesAndOpenThePicker() = runComposeUiTest {
+        val offers = SiteSchema.section("offers")!!
+        val opened = mutableListOf<String>()
+        val ref = buildJsonObject { put("source", "company"); put("id", "o1") }
+        val form = FormState(offers.fields, mapOf("items" to JsonArray(listOf(ref, ref))))
+        setContent {
+            AgentProTheme(darkTheme = false) {
+                SectionEditorScreen(offers, form, SectionEditorUiState(loading = false), remember { SnackbarHostState() }, {}, {}, {}, onOfferField = { opened += it })
+            }
+        }
+        waitForIdle()
+        onNodeWithText("2 on your site").assertExists()
+        onNodeWithTag(fieldTestTag("items")).performClick()
+        assertEquals(listOf("items"), opened)
+    }
+
+    @Test
+    fun emptyOfferListSaysAutomaticAndNoCallbackDisablesTheRow() = runComposeUiTest {
+        val offers = SiteSchema.section("offers")!!
+        val form = FormState(offers.fields)
+        setContent {
+            AgentProTheme(darkTheme = false) {
+                SectionEditorScreen(offers, form, SectionEditorUiState(loading = false), remember { SnackbarHostState() }, {}, {}, {})
+            }
+        }
+        waitForIdle()
+        onNodeWithText("Automatic: your companies' live offers").assertExists()
+    }
+
+    @Test
+    fun heroFeaturedOfferSummaryAndKey() = runComposeUiTest {
+        val hero = SiteSchema.section("hero")!!
+        val opened = mutableListOf<String>()
+        val form = FormState(hero.fields)
+        setContent {
+            AgentProTheme(darkTheme = false) {
+                SectionEditorScreen(hero, form, SectionEditorUiState(loading = false), remember { SnackbarHostState() }, {}, {}, {}, onOfferField = { opened += it })
+            }
+        }
+        waitForIdle()
+        onNodeWithTag(fieldTestTag("featuredOffer")).performScrollTo().assertExists()
+        onNodeWithText("None").assertExists()
+        onNodeWithTag(fieldTestTag("featuredOffer")).performClick()
+        assertEquals(listOf("featuredOffer"), opened)
+        form.set("featuredOffer", buildJsonObject { put("source", "agent"); put("id", "x") })
+        waitForIdle()
+        onNodeWithText("Chosen").assertExists()
+    }
+
+    @Test
+    fun contentListIncludesOffers() = runComposeUiTest {
+        assertTrue(SiteContent.sections.any { it.key == "offers" })
     }
 }

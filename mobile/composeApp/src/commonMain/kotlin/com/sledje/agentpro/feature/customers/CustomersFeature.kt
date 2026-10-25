@@ -1,11 +1,15 @@
 package com.sledje.agentpro.feature.customers
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +29,7 @@ import com.sledje.agentpro.core.designsystem.components.SegmentedControl
 import com.sledje.agentpro.core.features.AppFeature
 import com.sledje.agentpro.core.features.BottomNavItem
 import com.sledje.agentpro.core.features.FeatureHost
+import com.sledje.agentpro.core.features.FeatureRegistry
 import com.sledje.agentpro.core.features.TabSegment
 import com.sledje.agentpro.core.format.Dates
 import com.sledje.agentpro.domain.DueBuckets
@@ -36,7 +41,18 @@ import com.sledje.agentpro.feature.customers.ui.CustomerFormViewModel
 import com.sledje.agentpro.feature.customers.ui.CustomerListScreen
 import com.sledje.agentpro.feature.customers.ui.CustomerListViewModel
 import com.sledje.agentpro.feature.home.TabScreen
+import com.sledje.agentpro.feature.customers.data.DraftSource
+import com.sledje.agentpro.feature.customers.ui.IncompleteFormsScreen
+import com.sledje.agentpro.feature.customers.ui.IncompleteFormsViewModel
+import com.sledje.agentpro.feature.customers.ui.SignupLiveScreen
+import com.sledje.agentpro.feature.customers.ui.SignupLiveViewModel
+import com.sledje.agentpro.feature.customers.ui.SignupStartContent
+import com.sledje.agentpro.feature.customers.ui.SignupStartState
+import com.sledje.agentpro.feature.customers.ui.SignupStartViewModel
+import com.sledje.agentpro.feature.privacy.data.PrivacyLinks
+import com.sledje.agentpro.feature.privacy.ui.CustomerDutyGate
 import com.sledje.agentpro.feature.privacy.ui.CustomerDutyGateHost
+import com.sledje.agentpro.feature.privacy.ui.CustomerDutyViewModel
 import com.sledje.agentpro.feature.policies.PolicyDetailRoute
 import com.sledje.agentpro.feature.policies.PolicyFormRoute
 import com.sledje.agentpro.resources.Res
@@ -61,7 +77,18 @@ data class CustomerFormRoute(
     val fromEnquiryId: String? = null,
     val name: String? = null,
     val phone: String? = null,
+    /** Resumes an unfinished form from Incomplete forms (DECISIONS #108). */
+    val draftId: String? = null,
 )
+
+/** Incomplete forms: the agent's unfinished customer forms and the open sign-up links. */
+@Serializable data object IncompleteFormsRoute
+
+/** "Send the customer a link" was chosen: makes the link, then replaces itself with [CustomerSignupLiveRoute]. */
+@Serializable data object CustomerSignupStartRoute
+
+/** One sign-up link, live. [token] is only known right after it was made (it is never stored). */
+@Serializable data class CustomerSignupLiveRoute(val draftId: String, val token: String? = null)
 
 /** The argument a tab passes to its segments (the Dues bucket from a deep link). */
 val LocalSegmentArgument = compositionLocalOf<String?> { null }
@@ -98,6 +125,7 @@ object CustomersFeature : AppFeature {
                 CustomerDetailViewModel(id, deps.customers, deps.policies, deps.enquiries, dateOf = Dates::dateOf)
             }
             val flags by deps.featureFlags.collectAsState()
+            val items = remember(flags) { FeatureRegistry.enabled(flags).flatMap { it.customerDetailItems }.sortedBy { it.order } }
             CustomerDetailScreen(
                 vm = vm,
                 showPolicies = flags.isEnabled(FeatureId.Policies),
@@ -107,16 +135,27 @@ object CustomersFeature : AppFeature {
                 onOpenPolicy = { host.nav.navigate(PolicyDetailRoute(it)) },
                 onCall = deps.urlLauncher::call,
                 onSms = deps.urlLauncher::sms,
+                detailExtras = { customerId ->
+                    items.forEach { item ->
+                        key(item.key) {
+                            item.content(host, customerId)
+                            Spacer(Modifier.height(Spacing.s))
+                        }
+                    }
+                },
             )
         }
+        signupRoutes(host)
         composable<CustomerFormRoute> { entry ->
             val route = entry.toRoute<CustomerFormRoute>()
             val mode = when {
                 route.id != null -> CustomerFormMode.Edit(route.id)
                 route.fromEnquiryId != null -> CustomerFormMode.Convert(route.fromEnquiryId)
-                else -> CustomerFormMode.Add(route.name, route.phone)
+                else -> CustomerFormMode.Add(route.name, route.phone, route.draftId)
             }
-            val vm = viewModel(key = "customer_form_$mode") { CustomerFormViewModel(mode, deps.customers, deps.enquiries, deps.consents) }
+            val vm = viewModel(key = "customer_form_$mode") {
+                CustomerFormViewModel(mode, deps.customers, deps.enquiries, deps.consents, drafts = deps.customerDrafts)
+            }
             CustomerFormScreen(
                 vm = vm,
                 onBack = { host.nav.popBackStack() },
@@ -130,6 +169,50 @@ object CustomersFeature : AppFeature {
                     host.nav.popBackStack()
                     // Edit returns to the detail screen it came from; add and convert open the new customer.
                     if (mode !is CustomerFormMode.Edit) host.nav.navigate(CustomerDetailRoute(id))
+                },
+            )
+        }
+    }
+
+    private fun NavGraphBuilder.signupRoutes(host: FeatureHost) {
+        val deps = host.deps
+        composable<IncompleteFormsRoute> {
+            val vm = viewModel { IncompleteFormsViewModel(deps.customerDrafts) }
+            IncompleteFormsScreen(
+                vm = vm,
+                onBack = { host.nav.popBackStack() },
+                onOpen = { draft ->
+                    if (draft.source == DraftSource.Agent) {
+                        host.nav.navigate(CustomerFormRoute(draftId = draft.id))
+                    } else {
+                        host.nav.navigate(CustomerSignupLiveRoute(draft.id))
+                    }
+                },
+            )
+        }
+        composable<CustomerSignupStartRoute> {
+            val vm = viewModel { SignupStartViewModel(deps.customerDrafts) }
+            val state by vm.state.collectAsState()
+            (state as? SignupStartState.Created)?.let { created ->
+                LaunchedEffect(created) {
+                    host.nav.navigate(CustomerSignupLiveRoute(created.draftId, created.token)) {
+                        popUpTo<CustomerSignupStartRoute> { inclusive = true }
+                    }
+                }
+            }
+            SignupStartContent(state, onBack = { host.nav.popBackStack() }, onRetry = vm::create)
+        }
+        composable<CustomerSignupLiveRoute> { entry ->
+            val route = entry.toRoute<CustomerSignupLiveRoute>()
+            val vm = viewModel(key = "signup_live_${route.draftId}") {
+                SignupLiveViewModel(route.draftId, route.token, deps.customerDrafts, deps.sites.observeMine())
+            }
+            SignupLiveScreen(
+                vm = vm,
+                onBack = { host.nav.popBackStack() },
+                onShare = deps.urlLauncher::share,
+                onOpenCustomer = { id ->
+                    host.nav.navigate(CustomerDetailRoute(id)) { popUpTo<CustomerSignupLiveRoute> { inclusive = true } }
                 },
             )
         }
@@ -164,15 +247,37 @@ object CustomersFeature : AppFeature {
 @Composable
 private fun CustomersSegment(host: FeatureHost) {
     val deps = host.deps
-    val vm = viewModel { CustomerListViewModel(deps.customers, deps.policies, deps.store, today = { Dates.today() }) }
+    val vm = viewModel { CustomerListViewModel(deps.customers, deps.policies, deps.store, today = { Dates.today() }, drafts = deps.customerDrafts) }
     val pick = deps.contactPicker.rememberContactPicker { contact ->
         if (contact != null) host.nav.navigate(CustomerFormRoute(name = contact.name, phone = contact.phone))
+    }
+    val flags by deps.featureFlags.collectAsState()
+    // "Send the customer a link" first needs the one-time customer-data attestation (docs/PRIVACY.md, section 3).
+    val duty = viewModel { CustomerDutyViewModel(deps.consents) }
+    val dutyState by duty.state.collectAsState()
+    val site by deps.sites.observeMine().collectAsState(null)
+    var linkRequested by remember { mutableStateOf(false) }
+    LaunchedEffect(linkRequested, dutyState.accepted) {
+        if (linkRequested && dutyState.accepted == true) {
+            linkRequested = false
+            host.nav.navigate(CustomerSignupStartRoute)
+        }
+    }
+    if (linkRequested) {
+        CustomerDutyGate(
+            vm = duty,
+            privacyUrl = site?.slug?.let { PrivacyLinks.sitePrivacy(it) },
+            onShare = deps.urlLauncher::share,
+            onDeclined = { linkRequested = false },
+        )
     }
     CustomerListScreen(
         vm = vm,
         onOpen = { host.nav.navigate(CustomerDetailRoute(it)) },
         onAddManually = { host.nav.navigate(CustomerFormRoute()) },
         onPickContact = pick,
+        onSendLink = if (flags.isEnabled(FeatureId.CustomerSignup)) ({ linkRequested = true }) else null,
+        onOpenIncomplete = { host.nav.navigate(IncompleteFormsRoute) },
     )
 }
 

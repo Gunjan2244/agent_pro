@@ -74,6 +74,7 @@ class AppDataSync(
         engine.clearAll()
         store.put(StoreKeys.LAST_USER_ID, null)
         store.put(StoreKeys.SITE_SHARED, null)
+        store.put(StoreKeys.PORTAL_INVITED, null)
         _status.value = SyncStatus.Idle
     }
 }

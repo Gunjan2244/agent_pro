@@ -36,6 +36,12 @@ object StoreKeys {
     const val APP_LOCALE = "app_locale"
     const val LAST_USER_ID = "last_user_id"
     const val SITE_SHARED = "setup_site_shared"
+
+    /** Set once a customer-login invite succeeded on this device (Home checklist: "Give a customer their login"); cleared on sign-out. */
+    const val PORTAL_INVITED = "setup_portal_invited"
+
+    /** The highest "What's new" version the agent has seen (`WhatsNew.VERSION`); kept across sign-outs. */
+    const val WHATS_NEW_SEEN = "whats_new_seen"
 }
 
 /** Creates the app's DataStore at [path] (a platform file path; see each platform's AppContainer factory). */

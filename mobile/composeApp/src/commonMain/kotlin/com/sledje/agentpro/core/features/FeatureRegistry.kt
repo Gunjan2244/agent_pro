@@ -4,7 +4,9 @@ import com.sledje.agentpro.feature.customers.CustomersFeature
 import com.sledje.agentpro.feature.dues.DuesFeature
 import com.sledje.agentpro.feature.enquiries.EnquiriesFeature
 import com.sledje.agentpro.feature.home.HomeFeature
+import com.sledje.agentpro.feature.offers.OffersFeature
 import com.sledje.agentpro.feature.policies.PoliciesFeature
+import com.sledje.agentpro.feature.portal.PortalFeature
 import com.sledje.agentpro.feature.settings.SettingsFeature
 import com.sledje.agentpro.feature.website.WebsiteFeature
 
@@ -21,6 +23,8 @@ object FeatureRegistry {
         DuesFeature,
         PoliciesFeature,
         WebsiteFeature,
+        OffersFeature,
+        PortalFeature,
         SettingsFeature,
     )
 

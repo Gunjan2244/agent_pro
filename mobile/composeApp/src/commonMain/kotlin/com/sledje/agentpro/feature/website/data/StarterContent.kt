@@ -34,6 +34,7 @@ import kotlinx.serialization.json.JsonPrimitive
 object StarterContent {
     const val HERO = "hero"
     const val HEADLINE = "headline"
+    const val PHOTO = "photo"
     const val ABOUT = "about"
     const val BIO = "bio"
     const val DESIGNATION = "designation"

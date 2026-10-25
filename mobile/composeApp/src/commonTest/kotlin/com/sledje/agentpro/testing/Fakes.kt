@@ -324,6 +324,8 @@ class FakeAppDependencies(
     override val customers: FakeCustomerRepository = FakeCustomerRepository(enquiries = enquiries, policies = policies),
     override val consents: FakeConsentRepository = FakeConsentRepository(accepted = true),
     override val enquiryLive: FakeEnquiryLive = FakeEnquiryLive(),
+    override val customerDrafts: FakeCustomerDraftRepository = FakeCustomerDraftRepository(),
+    override val customerDraftLive: FakeCustomerDraftLive = FakeCustomerDraftLive(),
     override val contactPicker: FakeContactPicker = FakeContactPicker(),
     val fakeWebsite: FakeWebsite = FakeWebsite(),
     flags: FeatureFlags = FeatureFlags.Defaults,

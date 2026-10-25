@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add customer sheet: the link option (DECISIONS #108) -->
+    <string name="signup_option_link">ग्राहक को लिंक भेजें</string>
+    <string name="signup_option_link_hint">वे अपनी जानकारी खुद भरते हैं और आप उसे लाइव देखते हैं</string>
+    <string name="signup_option_manual_hint">जानकारी खुद टाइप करें</string>
+
+    <!-- Autosave note on the customer form -->
+    <string name="form_autosave_saved">सेव हो गया</string>
+    <string name="form_autosave_not_saved">सेव नहीं हुआ</string>
+    <string name="form_autosave_not_saved_offline">सेव नहीं हुआ (ऑफ़लाइन)</string>
+
+    <!-- Incomplete forms -->
+    <string name="incomplete_forms_title">अधूरे फ़ॉर्म</string>
+    <string name="incomplete_forms_row">अधूरे फ़ॉर्म · %1$d</string>
+    <string name="incomplete_forms_empty">कोई अधूरा फ़ॉर्म नहीं</string>
+    <string name="incomplete_no_name">अभी नाम नहीं</string>
+    <string name="incomplete_by_you">आपने भरा · %1$s</string>
+    <string name="incomplete_link_on_form">ग्राहक लिंक · अभी फ़ॉर्म पर हैं</string>
+    <string name="incomplete_link_opened">ग्राहक लिंक · %1$s खोला</string>
+    <string name="incomplete_link_not_opened">ग्राहक लिंक · अभी खोला नहीं</string>
+    <string name="incomplete_link_expired">ग्राहक लिंक · लिंक की अवधि खत्म</string>
+    <string name="incomplete_deleted">फ़ॉर्म हटाया गया</string>
+    <string name="incomplete_delete">फ़ॉर्म हटाएँ</string>
+
+    <!-- Live sign-up screen -->
+    <string name="signup_live_title">ग्राहक लिंक</string>
+    <string name="signup_link_until">लिंक %1$s तक चलेगा</string>
+    <string name="signup_share">लिंक शेयर करें</string>
+    <string name="signup_copy">लिंक कॉपी करें</string>
+    <string name="signup_copied">लिंक कॉपी हो गया</string>
+    <string name="signup_send_new">नया लिंक भेजें</string>
+    <string name="signup_share_message">नमस्ते! मुझे आपको ग्राहक के रूप में जोड़ना है, कृपया यहाँ अपनी जानकारी भरें: %1$s</string>
+    <string name="signup_presence_now">अभी फ़ॉर्म पर हैं</string>
+    <string name="signup_presence_seen">आखिरी बार देखा %1$s</string>
+    <string name="signup_presence_not_opened">अभी खोला नहीं</string>
+    <string name="signup_presence_expired">लिंक %1$s को खत्म हो गया</string>
+    <string name="signup_waiting_consent">ग्राहक के गोपनीयता सूचना से सहमत होने का इंतज़ार है</string>
+    <string name="signup_typing">टाइप कर रहे हैं…</string>
+    <string name="signup_added">ग्राहक के रूप में जुड़ गया</string>
+    <string name="signup_open_customer">ग्राहक खोलें</string>
+    <string name="signup_gone">यह फ़ॉर्म हटा दिया गया है</string>
+    <string name="signup_creating">लिंक बन रहा है…</string>
+    <string name="signup_err_no_site">पहले अपनी वेबसाइट प्रकाशित करें, फिर लिंक भेजें</string>
+    <string name="signup_err_too_many">बहुत सारे खुले लिंक हैं। अधूरे फ़ॉर्म से कुछ हटाएँ</string>
+    <string name="signup_err_unavailable">ग्राहक लिंक अभी उपलब्ध नहीं हैं</string>
+</resources>

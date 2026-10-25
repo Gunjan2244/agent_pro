@@ -30,6 +30,7 @@
     <string name="website_section_empty">अभी भरा नहीं गया</string>
     <string name="website_section_items">%1$d जोड़े गए</string>
     <string name="website_section_companies_note">यह वे कंपनियाँ दिखाता है जिन्हें एडमिन ने मंज़ूर किया है। इन्हें सेटिंग्स → प्रोफ़ाइल में सँभालें।</string>
+    <string name="website_section_portal_note">यह आपके ग्राहकों को बताता है कि वे साइन इन करके अपनी पॉलिसियाँ देख सकते हैं। यह तभी दिखता है जब ग्राहक लॉगिन चालू हो। किसी ग्राहक को एक्सेस देने के लिए ग्राहक में उसका पेज खोलें।</string>
     <string name="website_section_always_on">हमेशा दिखता है</string>
     <string name="website_section_show">%1$s दिखाएँ</string>
     <string name="website_section_needs_fix">प्रकाशित करने से पहले ठीक करें</string>

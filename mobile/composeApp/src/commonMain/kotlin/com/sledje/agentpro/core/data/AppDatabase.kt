@@ -6,6 +6,8 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.sledje.agentpro.feature.customers.data.CustomerDao
+import com.sledje.agentpro.feature.customers.data.CustomerDraftDao
+import com.sledje.agentpro.feature.customers.data.CustomerDraftEntity
 import com.sledje.agentpro.feature.customers.data.CustomerEntity
 import com.sledje.agentpro.feature.enquiries.data.EnquiryDao
 import com.sledje.agentpro.feature.enquiries.data.EnquiryEntity
@@ -36,6 +38,7 @@ import kotlinx.coroutines.IO
         SiteDailyViewEntity::class,
         EnquiryEntity::class,
         CustomerEntity::class,
+        CustomerDraftEntity::class,
         PolicyEntity::class,
         PremiumPaymentEntity::class,
     ],
@@ -48,13 +51,14 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun siteDao(): SiteDao
     abstract fun enquiryDao(): EnquiryDao
     abstract fun customerDao(): CustomerDao
+    abstract fun customerDraftDao(): CustomerDraftDao
     abstract fun policyDao(): PolicyDao
     abstract fun premiumPaymentDao(): PremiumPaymentDao
     abstract fun siteDailyViewDao(): SiteDailyViewDao
 
     companion object {
-        /** 2: site_daily_views (Phase 8); enquiries, customers, policies, premium_payments (Phases 6–7). */
-        const val VERSION = 2
+        /** 2: site_daily_views (Phase 8); enquiries, customers, policies, premium_payments (Phases 6–7). 3: customer_drafts. */
+        const val VERSION = 3
         const val FILE_NAME = "agentpro.db"
     }
 }

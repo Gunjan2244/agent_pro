@@ -8,11 +8,17 @@ import com.sledje.agentpro.core.platform.LocaleController
 import com.sledje.agentpro.core.platform.NetworkMonitor
 import com.sledje.agentpro.core.platform.UrlLauncher
 import com.sledje.agentpro.feature.auth.data.AuthRepository
+import com.sledje.agentpro.feature.customers.data.CustomerDraftLive
+import com.sledje.agentpro.feature.customers.data.CustomerDraftRepository
 import com.sledje.agentpro.feature.customers.data.CustomerRepository
+import com.sledje.agentpro.feature.customers.data.NoCustomerDraftLive
+import com.sledje.agentpro.feature.customers.data.NoCustomerDraftRepository
 import com.sledje.agentpro.feature.enquiries.data.EnquiryLive
 import com.sledje.agentpro.feature.enquiries.data.EnquiryRepository
 import com.sledje.agentpro.feature.offers.data.CompanyRepository
 import com.sledje.agentpro.feature.policies.data.PolicyRepository
+import com.sledje.agentpro.feature.portal.data.NoPortalRepository
+import com.sledje.agentpro.feature.portal.data.PortalRepository
 import com.sledje.agentpro.feature.privacy.data.ConsentRepository
 import com.sledje.agentpro.feature.settings.data.ProfileRepository
 import com.sledje.agentpro.feature.website.WebsiteServices
@@ -39,6 +45,15 @@ interface AppDependencies {
     val enquiries: EnquiryRepository
     val customers: CustomerRepository
     val policies: PolicyRepository
+
+    /** Unfinished customer forms and customer sign-up links (DECISIONS #108). Tests that don't care get the offline stub. */
+    val customerDrafts: CustomerDraftRepository get() = NoCustomerDraftRepository
+
+    /** Realtime on `customer_drafts` while the app is in the foreground and `customerSignup` is on (started and stopped by MainShell). */
+    val customerDraftLive: CustomerDraftLive get() = NoCustomerDraftLive
+
+    /** Customer portal invites (online only; DECISIONS: customer portal). Tests that don't care get the offline stub. */
+    val portal: PortalRepository get() = NoPortalRepository
 
     /** In-app consents recorded through `record_consent` (docs/PRIVACY.md; P1-4). */
     val consents: ConsentRepository

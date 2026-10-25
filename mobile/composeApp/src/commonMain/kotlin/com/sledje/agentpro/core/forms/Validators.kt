@@ -1,7 +1,11 @@
 package com.sledje.agentpro.core.forms
 
 import com.sledje.agentpro.core.catalog.ReservedSlugs
+import com.sledje.agentpro.core.format.Dates
 import com.sledje.agentpro.core.format.Phone
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
+import kotlinx.datetime.DatePeriod
 
 /** Why a value is invalid. Mapped to translated copy by `ValidationError.message()` (ValidationMessages.kt). */
 sealed interface ValidationError {
@@ -17,6 +21,12 @@ sealed interface ValidationError {
     data object SlugReserved : ValidationError
     data class MaxItems(val max: Int) : ValidationError
     data object Option : ValidationError
+
+    /** An `equals: true` toggle that isn't on (the custom-offer confirmation). */
+    data object MustBeTrue : ValidationError
+
+    /** A date later than today (Asia/Kolkata) + [max] days. */
+    data class TooFarAhead(val max: Int) : ValidationError
 
     /** A [FieldSpec.mustMatch] field differs from its pair ("Passwords don't match"). */
     data object Mismatch : ValidationError
@@ -76,6 +86,13 @@ object Validators {
         else -> null
     }
 
+    /** `equals: true`: the value must be exactly true, also when missing (`publish_site`'s `equals`). */
+    fun mustBeTrue(value: Any?): ValidationError? = if (value == true) null else ValidationError.MustBeTrue
+
+    /** `maxDaysAhead`: no later than [today] (Asia/Kolkata) + [max] days (`publish_site`'s `max_days_ahead`); past dates pass. */
+    fun maxDaysAhead(value: LocalDate, max: Int, today: LocalDate = Dates.today()): ValidationError? =
+        if (value > today.plus(DatePeriod(days = max))) ValidationError.TooFarAhead(max) else null
+
     /**
      * The first failure of [value] against [spec], or null when it's valid. Optional blank values are
      * valid. Value types: String for text-like, number, select, swatch, image (URL) and phone fields;
@@ -84,10 +101,12 @@ object Validators {
     fun validate(spec: FieldSpec, value: Any?): ValidationError? {
         // A required consent is valid only when ticked.
         if (spec.type == FieldType.Consent) return if (spec.required && value != true) ValidationError.Required else null
+        if (spec.mustBeTrue) return mustBeTrue(value)
         if (isBlank(value)) return if (spec.required) ValidationError.Required else null
         val text = value as? String
         spec.maxLength?.let { max -> if (text != null) maxLength(text, max)?.let { return it } }
         spec.minLength?.let { min -> if (text != null && text.length < min) return ValidationError.MinLength(min) }
+        spec.maxDaysAhead?.let { max -> (value as? LocalDate)?.let { maxDaysAhead(it, max) }?.let { return it } }
         when (spec.type) {
             FieldType.Number -> text?.let { number(it, spec.min, spec.max) }?.let { return it }
             FieldType.Money -> text?.let { money(it, spec.min, spec.max) }?.let { return it }

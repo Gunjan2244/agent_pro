@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Offer picker: Website → Content → Offers, and the hero's Featured offer (DECISIONS #104, docs/OFFERS.md). Every key also exists in values-hi/. -->
+<resources>
+    <string name="offer_picker_title_items">Offers on your site</string>
+    <string name="offer_picker_title_featured">Featured offer</string>
+    <string name="offer_picker_on_site">On your site</string>
+    <string name="offer_picker_from_companies">From your companies</string>
+    <string name="offer_picker_empty">Nothing added: your site shows your companies\' live offers automatically</string>
+    <string name="offer_picker_add">Add</string>
+    <string name="offer_picker_cap_hint">Remove one to add another (max %1$d)</string>
+    <string name="offer_picker_add_own">Add your own offer</string>
+    <string name="offer_picker_featured_chip">Featured</string>
+    <string name="offer_picker_ended">Ended</string>
+    <string name="offer_picker_unavailable">No longer available</string>
+    <string name="offer_picker_unavailable_title">This offer is not available</string>
+    <string name="offer_picker_ends">Ends %1$s</string>
+    <string name="offer_picker_set_featured">Set as featured</string>
+    <string name="offer_picker_unfeature">Not featured</string>
+    <string name="offer_picker_edit">Edit</string>
+    <string name="offer_picker_move_up">Move up</string>
+    <string name="offer_picker_move_down">Move down</string>
+    <string name="offer_picker_none">None</string>
+    <string name="offer_picker_no_company">Offers come from the companies you\'re approved with</string>
+    <string name="offer_picker_open_profile">Open Settings → Profile</string>
+    <string name="offer_picker_no_live">No offers from your companies right now</string>
+    <string name="offer_picker_copy_title">Make your own copy?</string>
+    <string name="offer_picker_copy_message">Editing makes this your own copy. It won\'t update when the company changes it, and your site will show \'Details provided by the agent\'.</string>
+    <string name="offer_picker_copy_confirm">Make a copy</string>
+    <string name="offer_picker_copy_full">You already have the most own offers allowed. Remove one first.</string>
+</resources>

@@ -35,6 +35,9 @@ import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.SlugStatus
 import com.sledje.agentpro.feature.website.data.SiteLinks
 import com.sledje.agentpro.testing.FakeAppDependencies
+import com.sledje.agentpro.core.data.StoreKeys
+import com.sledje.agentpro.feature.home.WhatsNew
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -111,7 +114,10 @@ class FoundationScreenshotTest {
                 linkDisplay = { SiteLinks.display(it, base = "https://agentpro.site") },
             )
         },
-        "TabShell" to { MainShell(remember { FakeAppDependencies.ready() }) },
+        // The "What's new" sheet is marked seen, so this stays the plain Home baseline (the sheet has its own in feature/home).
+        "TabShell" to {
+            MainShell(remember { FakeAppDependencies.ready().also { runBlocking { it.store.put(StoreKeys.WHATS_NEW_SEEN, WhatsNew.VERSION.toString()) } } })
+        },
     )
 
     private fun capture(variant: String, dark: Boolean, hindi: Boolean) = runComposeUiTest {

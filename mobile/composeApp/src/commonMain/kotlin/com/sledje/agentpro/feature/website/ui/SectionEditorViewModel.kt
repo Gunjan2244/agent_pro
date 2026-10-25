@@ -1,11 +1,14 @@
 package com.sledje.agentpro.feature.website.ui
 
+import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.resources.setup_hint_about
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sledje.agentpro.core.catalog.SiteSchema
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.FieldSpec
+import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.forms.SectionSpec
 import com.sledje.agentpro.core.platform.ImageAspect
@@ -66,6 +69,12 @@ class SectionEditorViewModel(
                 if (issues.isNotEmpty()) it.validateAll()
             }
             _state.update { it.copy(loading = false) }
+            // The offer picker writes its choice straight into the draft; show it here, and keep it on Save.
+            sites.observeMine().filterNotNull().collect { latest ->
+                val fresh = SiteContent.sectionValues(latest.draftContent, section)
+                section.fields.filter { it.type == FieldType.OfferRef || it.type == FieldType.OfferList }
+                    .forEach { spec -> form?.takeIf { it.value(spec.key) != fresh[spec.key] }?.set(spec.key, fresh[spec.key]) }
+            }
         }
     }
 
@@ -129,3 +138,7 @@ class SectionEditorViewModel(
 
 /** The schema section for a route key (null for an unknown key). */
 fun sectionFor(key: String): SectionSpec? = SiteSchema.section(key)
+
+/** The prompt shown when a section is opened from the Finish setup list; null when that section has none. */
+fun setupHintFor(key: String): org.jetbrains.compose.resources.StringResource? =
+    if (key == com.sledje.agentpro.feature.website.data.StarterContent.ABOUT) Res.string.setup_hint_about else null

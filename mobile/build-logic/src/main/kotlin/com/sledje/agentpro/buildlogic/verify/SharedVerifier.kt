@@ -65,6 +65,8 @@ class SharedVerifier(private val inputs: VerifyInputs) {
             checkSchemaAndTemplates() +
             checkHandWrittenStrings() +
             checkPrivacy() +
+            checkPortal() +
+            checkCustomerSignup() +
             checkOffers() +
             checkTemplateFamilies() +
             checkPublicText() +
@@ -127,6 +129,73 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         defs.catalog["retention"]?.let { r ->
             if (r !is JsonObject) v += "catalog.json: \"retention\" must be an object"
             else retentionLeaves(r, "catalog.retention", v)
+        }
+        return v
+    }
+
+    /**
+     * Customer sign-up link limits (`catalog.customerSignup`, optional; DECISIONS #108): exactly the known keys, each a
+     * positive whole number.
+     */
+    fun checkCustomerSignup(): List<String> {
+        val signup = defs.catalog["customerSignup"] ?: return emptyList()
+        if (signup !is JsonObject) return listOf("catalog.json: \"customerSignup\" must be an object")
+        val v = mutableListOf<String>()
+        (signup.keys - SIGNUP_INT_KEYS.toSet()).sorted().forEach { v += "catalog.customerSignup.$it: unknown key" }
+        for (k in SIGNUP_INT_KEYS) {
+            val e = signup[k]
+            val n = (e as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toLongOrNull()?.takeIf { it > 0 }
+            if (e == null) v += "catalog.customerSignup.$k: missing" else if (n == null) v += "catalog.customerSignup.$k: must be a whole number > 0"
+        }
+        return v
+    }
+
+    /**
+     * Customer portal limits (`catalog.portal`, optional): exactly the known keys, each a positive whole number,
+     * `hardLockAfter` > `maxFailedAttempts`, `remindDaysBefore` a non-empty list of distinct positive whole numbers, and
+     * `blockedPins` a non-empty list of distinct strings of exactly `pinLength` digits.
+     */
+    fun checkPortal(): List<String> {
+        val v = mutableListOf<String>()
+        val portal = defs.catalog["portal"] ?: return v
+        if (portal !is JsonObject) return listOf("catalog.json: \"portal\" must be an object")
+        val ints = PORTAL_INT_KEYS
+        (portal.keys - ints - PORTAL_LIST_KEY - PORTAL_PINS_KEY).sorted().forEach { v += "catalog.portal.$it: unknown key" }
+        fun positive(e: kotlinx.serialization.json.JsonElement?): Long? =
+            (e as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toLongOrNull()?.takeIf { it > 0 }
+        val values = HashMap<String, Long>()
+        for (k in ints) {
+            val e = portal[k]
+            if (e == null) { v += "catalog.portal.$k: missing"; continue }
+            val n = positive(e)
+            if (n == null) v += "catalog.portal.$k: must be a whole number > 0" else values[k] = n
+        }
+        val hard = values["hardLockAfter"]
+        val failed = values["maxFailedAttempts"]
+        if (hard != null && failed != null && hard <= failed) v += "catalog.portal.hardLockAfter: must be greater than maxFailedAttempts"
+        when (val r = portal[PORTAL_LIST_KEY]) {
+            null -> v += "catalog.portal.$PORTAL_LIST_KEY: missing"
+            !is JsonArray -> v += "catalog.portal.$PORTAL_LIST_KEY: must be a non-empty list of distinct whole numbers > 0"
+            else -> {
+                val nums = r.map { positive(it) }
+                if (nums.isEmpty() || nums.any { it == null } || nums.toSet().size != nums.size)
+                    v += "catalog.portal.$PORTAL_LIST_KEY: must be a non-empty list of distinct whole numbers > 0"
+            }
+        }
+        val pinLen = values["pinLength"]
+        when (val pins = portal[PORTAL_PINS_KEY]) {
+            null -> v += "catalog.portal.$PORTAL_PINS_KEY: missing"
+            !is JsonArray -> v += "catalog.portal.$PORTAL_PINS_KEY: must be a non-empty list of distinct digit strings"
+            else -> {
+                val strs = pins.map { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
+                if (strs.isEmpty()) v += "catalog.portal.$PORTAL_PINS_KEY: must not be empty"
+                val shape = pinLen?.let { Regex("^[0-9]{$it}$") }
+                strs.forEachIndexed { i, p ->
+                    if (p == null || (shape != null && !shape.matches(p)) || (shape == null && !Regex("^[0-9]+$").matches(p)))
+                        v += "catalog.portal.$PORTAL_PINS_KEY[$i]: must be a string of exactly pinLength digits"
+                }
+                dupes(strs.filterNotNull()).forEach { v += "catalog.portal.$PORTAL_PINS_KEY: duplicated PIN \"$it\"" }
+            }
         }
         return v
     }
@@ -874,6 +943,12 @@ class SharedVerifier(private val inputs: VerifyInputs) {
     private fun fmt(d: Double) = if (d == d.toLong().toDouble()) d.toLong().toString() else d.toString()
 
     companion object {
+        private val PORTAL_INT_KEYS = listOf("pinLength", "inviteDays", "inviteMaxPhoneTries", "sessionDays", "maxFailedAttempts",
+            "lockMinutes", "hardLockAfter", "enquiriesPerHour", "paymentsShown", "failureWindowDays", "hardLockHours",
+            "siteFailedLoginsPerMinute")
+        private const val PORTAL_LIST_KEY = "remindDaysBefore"
+        private const val PORTAL_PINS_KEY = "blockedPins"
+        private val SIGNUP_INT_KEYS = listOf("linkDays", "savesPerMinute", "openLinksPerAgent", "presenceSeconds")
         /** `catalog.interests[].insuranceType` (DECISIONS #93). */
         const val INSURANCE_TYPE = "insuranceType"
         val REQUIRED_LISTS = listOf(

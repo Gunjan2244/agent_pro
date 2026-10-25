@@ -27,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.filterNotNull
+import com.sledje.agentpro.core.catalog.FeatureId
 import com.sledje.agentpro.core.designsystem.Motion
 import com.sledje.agentpro.core.designsystem.components.AppNavigationBar
 import com.sledje.agentpro.core.designsystem.components.AppSnackbarHost
@@ -68,6 +69,12 @@ fun MainShell(deps: AppDependencies) {
     LifecycleStartEffect(deps.enquiryLive) {
         deps.enquiryLive.start()
         onStopOrDispose { deps.enquiryLive.stop() }
+    }
+    // The same for customer sign-up links, only while the feature is on.
+    val signupOn = flags.isEnabled(FeatureId.CustomerSignup)
+    LifecycleStartEffect(deps.customerDraftLive, signupOn) {
+        if (signupOn) deps.customerDraftLive.start()
+        onStopOrDispose { deps.customerDraftLive.stop() }
     }
 
     val entry by nav.currentBackStackEntryAsState()
@@ -112,6 +119,12 @@ private class ShellHost(
         features.flatMap { it.segments }.filter { it.tabKey == tabKey }.sortedBy { it.order }
 
     override fun openSettings() = nav.navigate(SettingsRoute)
+
+    override fun openTab(tabKey: String): Boolean {
+        val tab = features.mapNotNull { it.bottomNavItem }.firstOrNull { it.key == tabKey } ?: return false
+        nav.openTab(tab)
+        return true
+    }
 }
 
 private fun NavDestination.tab(tabs: List<BottomNavItem>): BottomNavItem? =

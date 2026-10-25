@@ -8,6 +8,7 @@ import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.SectionSpec
 import com.sledje.agentpro.core.forms.ValidationError
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -39,8 +40,8 @@ object SiteContent {
 
     // ---- Order and visibility -----------------------------------------------------------------
 
-    /** Sections whose editor isn't built yet; the web ignores them too until it renders them (OFFERS.md, 8b-3/8b-4). */
-    val pendingSections: Set<String> = setOf("offers")
+    /** Sections whose editor isn't built yet (none now: `offers` has its editor, DECISIONS #104); the web ignores them too until it renders them. */
+    val pendingSections: Set<String> = emptySet()
 
     /** The sections the agent edits: the schema's, minus [pendingSections]. */
     val sections: List<SectionSpec> get() = SiteSchema.sections.filterNot { it.key in pendingSections }
@@ -145,6 +146,7 @@ object SiteContent {
                     (item as? JsonObject)?.let { fieldValues(it, spec.itemFields) }
                 }
                 FieldType.OfferRef, FieldType.OfferList -> element
+                FieldType.Date -> (element as? JsonPrimitive)?.contentOrNull?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 FieldType.Number -> (element as? JsonPrimitive)?.let { p ->
                     p.longOrNull?.toString() ?: p.doubleOrNull?.let { d -> if (d % 1.0 == 0.0) d.toLong().toString() else d.toString() } ?: p.contentOrNull
                 }
@@ -181,6 +183,7 @@ object SiteContent {
             is String -> value.trim().takeIf { it.isNotEmpty() }?.let { s -> s.toLongOrNull()?.let(::JsonPrimitive) ?: s.toDoubleOrNull()?.let(::JsonPrimitive) }
             else -> null
         }
+        FieldType.Date -> (value as? LocalDate)?.let { JsonPrimitive(it.toString()) }
         FieldType.OfferRef -> value as? JsonObject
         FieldType.OfferList -> (value as? JsonArray)?.takeIf { it.isNotEmpty() }
         FieldType.MultiSelect -> (value as? List<*>)?.filterIsInstance<String>()?.takeIf { it.isNotEmpty() }?.let { keys -> JsonArray(keys.map(::JsonPrimitive)) }
@@ -256,6 +259,8 @@ object PublishIssues {
         "range" -> ValidationError.Range(field?.min, field?.max)
         "maxItems" -> field?.maxItems?.let { ValidationError.MaxItems(it) } ?: ValidationError.Option
         "option" -> ValidationError.Option
+        "equals" -> ValidationError.MustBeTrue
+        "max_days_ahead" -> field?.maxDaysAhead?.let { ValidationError.TooFarAhead(it) } ?: ValidationError.Option
         "format" -> when (field?.type) {
             FieldType.Phone -> ValidationError.Phone
             FieldType.Email -> ValidationError.Email

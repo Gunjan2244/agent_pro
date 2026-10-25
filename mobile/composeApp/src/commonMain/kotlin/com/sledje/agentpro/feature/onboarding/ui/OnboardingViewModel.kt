@@ -9,6 +9,9 @@ import com.sledje.agentpro.core.catalog.SiteSeed
 import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.data.AppError
+import com.sledje.agentpro.core.data.KeyValueStore
+import com.sledje.agentpro.core.data.StoreKeys
+import com.sledje.agentpro.feature.home.WhatsNew
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
@@ -38,7 +41,10 @@ import com.sledje.agentpro.resources.onboarding_photo_tips
 import com.sledje.agentpro.resources.profile_agency_code
 import com.sledje.agentpro.resources.profile_branch
 import com.sledje.agentpro.resources.profile_mobile
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -115,6 +121,8 @@ class OnboardingViewModel(
     private val slugDebounceMillis: Long = SLUG_DEBOUNCE_MILLIS,
     /** Step 1's photo pipeline (ImageProcessor 1:1 WebP → Storage); null in tests that never pick one. */
     private val photoUploader: ImageUploader? = null,
+    /** Finishing onboarding marks the current "What's new" as seen, so new sign-ups never get it (DECISIONS #103). */
+    private val store: KeyValueStore? = null,
 ) : ViewModel() {
     val profileForm = FormState(PROFILE_FIELDS)
 
@@ -324,6 +332,11 @@ class OnboardingViewModel(
     }
 
     private fun finish() {
+        store?.let { kv ->
+            viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                withContext(NonCancellable) { kv.put(StoreKeys.WHATS_NEW_SEEN, WhatsNew.VERSION.toString()) }
+            }
+        }
         events.post(AppMessage.TrialStarted())
         _state.update { it.copy(saving = false, finished = true) }
         session.finish()

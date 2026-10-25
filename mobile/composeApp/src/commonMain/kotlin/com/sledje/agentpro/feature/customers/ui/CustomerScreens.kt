@@ -80,12 +80,9 @@ import com.sledje.agentpro.resources.customer_tab_activity
 import com.sledje.agentpro.resources.customer_tab_details
 import com.sledje.agentpro.resources.customer_tab_policies
 import com.sledje.agentpro.resources.customers_add
-import com.sledje.agentpro.resources.customers_add_manually
 import com.sledje.agentpro.resources.customers_no_results
-import com.sledje.agentpro.resources.customers_pick_contact
 import com.sledje.agentpro.resources.ic_add
 import com.sledje.agentpro.resources.ic_call
-import com.sledje.agentpro.resources.ic_contacts
 import com.sledje.agentpro.resources.ic_edit
 import com.sledje.agentpro.resources.ic_payments
 import com.sledje.agentpro.resources.ic_person_add
@@ -107,14 +104,18 @@ fun CustomerListScreen(
     onOpen: (String) -> Unit,
     onAddManually: () -> Unit,
     onPickContact: () -> Unit,
+    /** Null hides the sheet's "Send the customer a link" option (flag off). */
+    onSendLink: (() -> Unit)? = null,
+    onOpenIncomplete: () -> Unit = {},
     today: LocalDate = Dates.today(),
 ) {
     val state by vm.state.collectAsState()
     val filter by vm.filter.collectAsState()
-    CustomerListContent(state, filter, vm::setFilter, vm::setQuery, onOpen, onAddManually, onPickContact, today)
+    val incomplete by vm.incompleteCount.collectAsState()
+    CustomerListContent(state, filter, vm::setFilter, vm::setQuery, onOpen, onAddManually, onPickContact, onSendLink, incomplete, onOpenIncomplete, today)
 }
 
-/** Stateless Customers segment (search, chips, rows, FAB with Add manually · Pick from contacts). */
+/** Stateless Customers segment (Incomplete forms row, search, chips, rows, FAB with the Add customer sheet). */
 @Composable
 fun CustomerListContent(
     state: UiState<CustomerListData>,
@@ -124,12 +125,16 @@ fun CustomerListContent(
     onOpen: (String) -> Unit,
     onAddManually: () -> Unit,
     onPickContact: () -> Unit,
+    onSendLink: (() -> Unit)? = null,
+    incompleteCount: Int = 0,
+    onOpenIncomplete: () -> Unit = {},
     today: LocalDate = Dates.today(),
 ) {
     var addSheet by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
+            if (incompleteCount > 0) IncompleteFormsRow(incompleteCount, onOpenIncomplete)
             if (state is UiState.Content) {
                 SearchField(query, { query = it }, onSearch, Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s))
                 FilterChipRow(
@@ -178,15 +183,10 @@ fun CustomerListContent(
     }
     if (addSheet) {
         AppBottomSheet(title = stringResource(Res.string.customers_add), onDismiss = { addSheet = false }) {
-            ListRow(
-                title = stringResource(Res.string.customers_add_manually),
-                leading = ListLeading.Icon(Res.drawable.ic_person_add),
-                onClick = { addSheet = false; onAddManually() },
-            )
-            ListRow(
-                title = stringResource(Res.string.customers_pick_contact),
-                leading = ListLeading.Icon(Res.drawable.ic_contacts),
-                onClick = { addSheet = false; onPickContact() },
+            AddCustomerSheetContent(
+                onFillMyself = { addSheet = false; onAddManually() },
+                onPickContact = { addSheet = false; onPickContact() },
+                onSendLink = onSendLink?.let { send -> { addSheet = false; send() } },
             )
         }
     }
@@ -225,6 +225,8 @@ fun CustomerDetailScreen(
     onOpenPolicy: (String) -> Unit,
     onCall: (String) -> Boolean,
     onSms: (String) -> Boolean,
+    /** Extra blocks for the Details tab, e.g. the portal's "Website login" card (`AppFeature.customerDetailItems`). */
+    detailExtras: @Composable (customerId: String) -> Unit = {},
 ) {
     val state by vm.state.collectAsState()
     val deleting by vm.deleting.collectAsState()
@@ -245,6 +247,7 @@ fun CustomerDetailScreen(
         onOpenPolicy = onOpenPolicy,
         onCall = { onCall(it) },
         onSms = { onSms(it) },
+        detailExtras = { detailExtras(vm.id) },
     )
 }
 
@@ -264,6 +267,7 @@ fun CustomerDetailContent(
     onSms: (String) -> Unit,
     today: LocalDate = Dates.today(),
     initialTab: CustomerTab? = null,
+    detailExtras: @Composable () -> Unit = {},
 ) {
     val online = LocalIsOnline.current
     val tabs = CustomerTab.entries.filter { showPolicies || it != CustomerTab.Policies }
@@ -315,7 +319,7 @@ fun CustomerDetailContent(
                         StateCrossfade(tab, Modifier.fillMaxSize(), key = { it }) { shownTab ->
                             when (shownTab) {
                                 CustomerTab.Policies.key -> PoliciesTab(d.policies, today, onOpenPolicy)
-                                CustomerTab.Details.key -> DetailsTab(d)
+                                CustomerTab.Details.key -> DetailsTab(d, detailExtras)
                                 else -> ActivityTab(d.activity)
                             }
                         }
@@ -385,7 +389,7 @@ fun PolicyListRow(p: Policy, today: LocalDate, onOpen: (String) -> Unit) {
 }
 
 @Composable
-private fun DetailsTab(d: CustomerDetail) {
+private fun DetailsTab(d: CustomerDetail, extras: @Composable () -> Unit) {
     val c = d.customer
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         LabelValue(stringResource(Res.string.profile_mobile), c.phone?.let { Phone.display(it) })
@@ -395,6 +399,8 @@ private fun DetailsTab(d: CustomerDetail) {
         LabelValue(stringResource(Res.string.cat_field_city), c.city)
         LabelValue(stringResource(Res.string.customer_nominee), c.nominee)
         LabelValue(stringResource(Res.string.crm_notes), c.notes)
+        Spacer(Modifier.height(Spacing.m))
+        Column(Modifier.padding(horizontal = Spacing.m)) { extras() }
         Spacer(Modifier.height(Spacing.l))
     }
 }

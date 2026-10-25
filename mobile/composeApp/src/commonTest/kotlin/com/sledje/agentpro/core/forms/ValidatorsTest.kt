@@ -3,7 +3,17 @@ package com.sledje.agentpro.core.forms
 import com.sledje.agentpro.core.catalog.SiteSchema
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.validation_required
+import com.sledje.agentpro.core.format.Dates
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
+import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -81,5 +91,62 @@ class ValidatorsTest {
         assertEquals(ValidationError.Required, Validators.validate(headline, ""))
         assertEquals(ValidationError.MaxLength(70), Validators.validate(headline, "x".repeat(71)))
         assertNull(Validators.validate(headline, "Your trusted LIC advisor"))
+    }
+
+    private val today = LocalDate(2026, 10, 24)
+
+    @Test
+    fun maxDaysAheadAllowsPastAndTheLimitButNotBeyond() {
+        assertNull(Validators.maxDaysAhead(LocalDate(2026, 1, 1), 366, today), "a past date is not this rule's business")
+        assertNull(Validators.maxDaysAhead(LocalDate(2026, 12, 31), 366, today))
+        assertNull(Validators.maxDaysAhead(today.plus(DatePeriod(days = 366)), 366, today))
+        assertEquals(ValidationError.TooFarAhead(366), Validators.maxDaysAhead(today.plus(DatePeriod(days = 367)), 366, today))
+    }
+
+    @Test
+    fun mustBeTrueFailsWhenOffOrMissing() {
+        assertNull(Validators.mustBeTrue(true))
+        assertEquals(ValidationError.MustBeTrue, Validators.mustBeTrue(false))
+        assertEquals(ValidationError.MustBeTrue, Validators.mustBeTrue(null))
+    }
+
+    @Test
+    fun customOfferItemFieldsFollowTheSchema() {
+        val custom = SiteSchema.section("offers")!!.fields.first { it.key == "custom" }
+        val confirmed = custom.itemFields.first { it.key == "confirmed" }
+        val endsOn = custom.itemFields.first { it.key == "endsOn" }
+        assertTrue(confirmed.mustBeTrue)
+        assertEquals(ValidationError.MustBeTrue, Validators.validate(confirmed, false))
+        assertEquals(ValidationError.MustBeTrue, Validators.validate(confirmed, null))
+        assertNull(Validators.validate(confirmed, true))
+        assertEquals(366, endsOn.maxDaysAhead)
+        val far = Dates.today().plus(DatePeriod(days = 400))
+        assertEquals(ValidationError.TooFarAhead(366), Validators.validate(endsOn, far))
+        assertNull(Validators.validate(endsOn, Dates.today().plus(DatePeriod(days = 30))))
+        assertNull(Validators.validate(endsOn, Dates.today().minus(DatePeriod(days = 3))))
+    }
+
+    @Test
+    fun addingACustomOfferGeneratesAnIdAndStartsUnconfirmed() {
+        val custom = SiteSchema.section("offers")!!.fields.first { it.key == "custom" }
+        val form = FormState(listOf(custom))
+        form.addItem("custom")
+        form.addItem("custom")
+        val ids = form.items("custom").map { it.text("id") }
+        assertTrue(ids.all { it.isNotBlank() } && ids.toSet().size == 2, "each new offer gets its own uuid")
+        assertEquals("uuid", custom.itemFields.first { it.key == "id" }.generated)
+        assertEquals(false, form.items("custom").first().value("confirmed"))
+        assertTrue(!form.validateAll())
+    }
+
+    @Test
+    fun offerFieldSummariesCountTheRawJson() {
+        val ref = buildJsonObject { put("source", "company"); put("id", "o1") }
+        assertEquals(0, offerFieldCount(FieldType.OfferList, null))
+        assertEquals(0, offerFieldCount(FieldType.OfferList, JsonArray(emptyList())))
+        assertEquals(2, offerFieldCount(FieldType.OfferList, JsonArray(listOf(ref, ref))))
+        assertEquals(0, offerFieldCount(FieldType.OfferRef, null))
+        assertEquals(0, offerFieldCount(FieldType.OfferRef, JsonObject(emptyMap())))
+        assertEquals(1, offerFieldCount(FieldType.OfferRef, ref))
     }
 }

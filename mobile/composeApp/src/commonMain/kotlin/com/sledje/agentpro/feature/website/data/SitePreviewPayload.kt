@@ -25,11 +25,15 @@ object SitePreviewPayload {
         offers: JsonObject? = null,
         company: JsonObject? = null,
         companies: JsonArray? = null,
+        portalEnabled: Boolean = false,
     ): JsonObject {
         val accent = site.accent?.key ?: Templates.fromKey(templateKey)?.defaultAccent?.key
         val showAgencyCode = ((content["about"] as? JsonObject)?.get("showAgencyCode") as? JsonPrimitive)?.booleanOrNull == true
+        // Customer accounts on the site (portal contract F7): the `customerPortal` flag AND the agent's own switch (default on).
+        val showLogin = ((content["contact"] as? JsonObject)?.get("showCustomerLogin") as? JsonPrimitive)?.booleanOrNull != false
         return buildJsonObject {
             put("content", content)
+            put("portal", portalEnabled && showLogin)
             put("template_key", templateKey)
             put("accent", accent)
             put("locale", site.locale)
@@ -53,12 +57,13 @@ object SitePreviewPayload {
     }
 
     /** The payload with the `preview_site_offers` answer ([previewOffers] = `{companies, company, offers}`) merged in; null = none. */
-    fun buildWithPreviewOffers(site: Site, profile: Profile?, content: JsonObject, templateKey: String, previewOffers: JsonObject?): JsonObject =
+    fun buildWithPreviewOffers(site: Site, profile: Profile?, content: JsonObject, templateKey: String, previewOffers: JsonObject?, portalEnabled: Boolean = false): JsonObject =
         build(
             site, profile, content, templateKey,
             offers = previewOffers?.get("offers") as? JsonObject,
             company = previewOffers?.get("company") as? JsonObject,
             companies = previewOffers?.get("companies") as? JsonArray,
+            portalEnabled = portalEnabled,
         )
 
     fun json(
@@ -67,5 +72,6 @@ object SitePreviewPayload {
         content: JsonObject = site.draftContent,
         templateKey: String = site.templateKey,
         previewOffers: JsonObject? = null,
-    ): String = RowJson.encodeToString(JsonObject.serializer(), buildWithPreviewOffers(site, profile, content, templateKey, previewOffers))
+        portalEnabled: Boolean = false,
+    ): String = RowJson.encodeToString(JsonObject.serializer(), buildWithPreviewOffers(site, profile, content, templateKey, previewOffers, portalEnabled))
 }

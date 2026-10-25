@@ -19,6 +19,9 @@ interface FeatureHost {
 
     /** Opens Settings (the Home avatar). */
     fun openSettings()
+
+    /** Switches to the bottom-bar tab [tabKey] as the bar does (its saved state restored); false when that tab isn't enabled. */
+    fun openTab(tabKey: String): Boolean = false
 }
 
 /**
@@ -46,6 +49,12 @@ data class TabSegment(
 
 /** A block on Home (at most 3 above the fold; docs/DESIGN_SYSTEM.md, calm-screen rule 3). Phase 11. */
 data class HomeCard(val key: String, val order: Int, val content: @Composable (FeatureHost) -> Unit)
+
+/**
+ * A block on the customer detail's Details tab (docs/UX.md, Customer detail), e.g. the portal's "Website
+ * login" card. Items of the enabled features are drawn in [order]; [content] gets the customer's id.
+ */
+data class CustomerDetailItem(val key: String, val order: Int, val content: @Composable (FeatureHost, customerId: String) -> Unit)
 
 /** A row in Settings (docs/UX.md, Settings). Phase 13. */
 data class SettingsEntry(val key: String, val group: String, val label: StringResource, val icon: DrawableResource?, val order: Int, val onClick: (FeatureHost) -> Unit)
@@ -82,6 +91,7 @@ interface AppFeature {
     val segments: List<TabSegment> get() = emptyList()
     val homeCards: List<HomeCard> get() = emptyList()
     val settingsEntries: List<SettingsEntry> get() = emptyList()
+    val customerDetailItems: List<CustomerDetailItem> get() = emptyList()
     val websiteHubEntries: List<HubEntry> get() = emptyList()
 
     /**

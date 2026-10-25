@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Add customer sheet: the link option (DECISIONS #108) -->
+    <string name="signup_option_link">Send the customer a link</string>
+    <string name="signup_option_link_hint">They fill in their own details and you watch it live</string>
+    <string name="signup_option_manual_hint">Type the details yourself</string>
+
+    <!-- Autosave note on the customer form -->
+    <string name="form_autosave_saved">Saved</string>
+    <string name="form_autosave_not_saved">Not saved</string>
+    <string name="form_autosave_not_saved_offline">Not saved (offline)</string>
+
+    <!-- Incomplete forms -->
+    <string name="incomplete_forms_title">Incomplete forms</string>
+    <string name="incomplete_forms_row">Incomplete forms · %1$d</string>
+    <string name="incomplete_forms_empty">No unfinished forms</string>
+    <string name="incomplete_no_name">No name yet</string>
+    <string name="incomplete_by_you">Filled in by you · %1$s</string>
+    <string name="incomplete_link_on_form">Customer link · On the form now</string>
+    <string name="incomplete_link_opened">Customer link · Opened %1$s</string>
+    <string name="incomplete_link_not_opened">Customer link · Not opened yet</string>
+    <string name="incomplete_link_expired">Customer link · Link expired</string>
+    <string name="incomplete_deleted">Form deleted</string>
+    <string name="incomplete_delete">Delete form</string>
+
+    <!-- Live sign-up screen -->
+    <string name="signup_live_title">Customer link</string>
+    <string name="signup_link_until">The link works until %1$s</string>
+    <string name="signup_share">Share link</string>
+    <string name="signup_copy">Copy link</string>
+    <string name="signup_copied">Link copied</string>
+    <string name="signup_send_new">Send a new link</string>
+    <string name="signup_share_message">Hello! Please fill in your details here so I can add you as a customer: %1$s</string>
+    <string name="signup_presence_now">On the form now</string>
+    <string name="signup_presence_seen">Last seen %1$s</string>
+    <string name="signup_presence_not_opened">Not opened yet</string>
+    <string name="signup_presence_expired">Link expired %1$s</string>
+    <string name="signup_waiting_consent">Waiting for the customer to agree to the privacy notice</string>
+    <string name="signup_typing">Typing…</string>
+    <string name="signup_added">Added as a customer</string>
+    <string name="signup_open_customer">Open customer</string>
+    <string name="signup_gone">This form was deleted</string>
+    <string name="signup_creating">Making the link…</string>
+    <string name="signup_err_no_site">Publish your website first, then send a link</string>
+    <string name="signup_err_too_many">Too many open links. Delete some from Incomplete forms</string>
+    <string name="signup_err_unavailable">Customer links are not available right now</string>
+</resources>

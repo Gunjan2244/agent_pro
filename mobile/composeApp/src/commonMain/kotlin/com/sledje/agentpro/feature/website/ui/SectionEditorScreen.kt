@@ -35,6 +35,7 @@ import com.sledje.agentpro.resources.website_issue_item
 import com.sledje.agentpro.resources.website_issues_title
 import com.sledje.agentpro.resources.website_photo_uploading
 import com.sledje.agentpro.resources.website_save
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Test tag of the section editor's Save bar. */
@@ -54,6 +55,9 @@ fun SectionEditorScreen(
     onBack: () -> Unit,
     onPickImage: (fieldPath: String) -> Unit,
     onSave: () -> Unit,
+    onOfferField: ((fieldKey: String) -> Unit)? = null,
+    /** A soft prompt for what to do here, shown when the screen was opened from the Finish setup list. */
+    hint: StringResource? = null,
 ) {
     val online = isOnline()
     AppScaffold(
@@ -79,12 +83,14 @@ fun SectionEditorScreen(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.m),
                 verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
+                hint?.let { AppCard(Modifier.fillMaxWidth()) { Text(stringResource(it), style = AgentProTheme.text.body) } }
                 if (state.issues.isNotEmpty()) IssuesCard(state.issues)
                 FormRenderer(
                     state = form,
                     enabled = !state.saving,
                     onPickImage = { path -> if (online && state.uploadingField == null) onPickImage(path) },
                     imagePreview = { url -> NetworkImage(url) },
+                    onOfferField = onOfferField,
                 )
                 if (state.uploadingField != null) Text(stringResource(Res.string.website_photo_uploading), style = AgentProTheme.text.bodyMuted)
                 state.error?.let { ErrorText(websiteErrorText(it)) }

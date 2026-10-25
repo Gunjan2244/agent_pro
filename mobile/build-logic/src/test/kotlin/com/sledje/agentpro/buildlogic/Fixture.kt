@@ -115,6 +115,24 @@ class Fixture {
         return this
     }
 
+    /** Adds a valid `portal` limits object to the fixture's catalog (customer portal). */
+    fun addPortal(): Fixture {
+        replace("shared/catalog.json", "  \"pricing\": {", """
+          |  "portal": { "pinLength": 6, "inviteDays": 7, "inviteMaxPhoneTries": 5, "sessionDays": 90, "maxFailedAttempts": 5,
+          |    "lockMinutes": 15, "hardLockAfter": 20, "enquiriesPerHour": 5, "paymentsShown": 12, "remindDaysBefore": [7, 1],
+          |    "failureWindowDays": 30, "hardLockHours": 24, "siteFailedLoginsPerMinute": 30, "blockedPins": ["123456", "000000"] },
+          |  "pricing": {""".trimMargin())
+        return this
+    }
+
+    /** Adds `catalog.customerSignup` (DECISIONS #108), valid. */
+    fun addCustomerSignup(): Fixture {
+        replace("shared/catalog.json", "  \"pricing\": {", """
+          |  "customerSignup": { "linkDays": 7, "savesPerMinute": 60, "openLinksPerAgent": 25, "presenceSeconds": 30 },
+          |  "pricing": {""".trimMargin())
+        return this
+    }
+
     /**
      * Adds a small offers set (docs/OFFERS.md): offerCtaKinds (one admin-only kind), membershipRejectReasons, the
      * `offers` limits, offer-schema.json, and an `offers` section with an offerList and custom offers, plus a

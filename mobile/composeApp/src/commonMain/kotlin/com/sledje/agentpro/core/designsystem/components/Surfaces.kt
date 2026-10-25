@@ -15,8 +15,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
+import coil3.compose.AsyncImage
 import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.AppShapes
 import com.sledje.agentpro.core.designsystem.Dimens
@@ -53,9 +56,12 @@ fun HairlineDivider(modifier: Modifier = Modifier) {
     )
 }
 
-/** A round avatar with the person's initials (agent data, never translated). */
+/**
+ * A round avatar with the person's initials (agent data, never translated). With [photoUrl] the photo covers the
+ * initials once it has loaded; while it loads, offline or if it fails, the initials show.
+ */
 @Composable
-fun Avatar(name: String, modifier: Modifier = Modifier) {
+fun Avatar(name: String, modifier: Modifier = Modifier, photoUrl: String? = null) {
     val initials = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2)
         .joinToString("") { it.first().uppercase() }
     Box(
@@ -72,5 +78,13 @@ fun Avatar(name: String, modifier: Modifier = Modifier) {
             maxLines = 1,
             overflow = TextOverflow.Clip,
         )
+        if (!photoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize().clip(AppShapes.full),
+            )
+        }
     }
 }

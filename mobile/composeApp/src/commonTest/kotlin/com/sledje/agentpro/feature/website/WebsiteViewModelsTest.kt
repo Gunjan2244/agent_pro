@@ -199,15 +199,15 @@ class WebsiteViewModelsTest {
         val vm = ContentViewModel(sites)
         runCurrent()
         vm.startReorder()
-        vm.move(0, 3) // about → after highlights (about, companies, services, highlights)
+        vm.move(0, 4) // about → after highlights (about, companies, services, offers, highlights)
         assertTrue(sites.drafts.isEmpty(), "nothing saved while dragging")
-        assertEquals(listOf("hero", "companies", "services", "highlights", "about"), vm.state.value.rows.take(5).map { it.section.key })
+        assertEquals(listOf("hero", "companies", "services", "offers", "highlights"), vm.state.value.rows.take(5).map { it.section.key })
         vm.finishReorder()
         runCurrent()
         val order = sites.drafts.single()[SiteContent.SECTION_ORDER]!!.jsonArray.map { it.jsonPrimitive.content }
         assertEquals("hero", order.first())
         assertEquals("contact", order.last())
-        assertEquals("about", order[4])
+        assertEquals("about", order[5])
         assertFalse(vm.state.value.reordering)
     }
 

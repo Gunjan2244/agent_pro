@@ -58,6 +58,40 @@ data class Membership(
     val types: List<InsuranceType> get() = InsuranceType.active.filter { it.key in insuranceTypes }
 }
 
+/**
+ * One live company offer from `my_company_offers().offers` (docs/BACKEND.md). [title] and [summary] are the public
+ * texts per locale (`content.<locale>.title` / `.summary`); the company's own name is never in them (DECISIONS #77).
+ */
+data class CompanyOffer(
+    val id: String,
+    val companyId: String,
+    val title: Map<String, String>,
+    val summary: Map<String, String>,
+    /** ISO timestamp of the end (23:59:59 Asia/Kolkata on the last day). */
+    val endsAt: String?,
+    /** A `catalog.interests` key. */
+    val interest: String?,
+    /** A `catalog.offerPhases` key (`upcoming`, `running`; `ended` only if the clock moved since the answer). */
+    val phase: String?,
+) {
+    fun title(locale: String): String = pick(title, locale)
+
+    fun summary(locale: String): String = pick(summary, locale)
+
+    private fun pick(texts: Map<String, String>, locale: String): String =
+        texts[locale]?.takeIf { it.isNotBlank() } ?: texts["en"]?.takeIf { it.isNotBlank() } ?: texts.values.firstOrNull { it.isNotBlank() }.orEmpty()
+}
+
+/** The whole `my_company_offers()` answer: the agent's company links and the live offers of the approved ones. */
+data class LiveOffers(val memberships: List<Membership>, val offers: List<CompanyOffer>) {
+    /** Companies the agent is approved with (the only ones whose offers can be placed). */
+    val approved: List<Membership> get() = memberships.filter { it.status == MembershipStatus.Approved.key }
+
+    /** The name of the company that owns [offer], in [locale] (shown only inside the app, never sent to the site). */
+    fun companyName(offer: CompanyOffer, locale: String): String? =
+        memberships.firstOrNull { it.company?.id == offer.companyId }?.company?.name(locale)?.takeIf { it.isNotBlank() }
+}
+
 /** Where `my_company_offers` and `list_companies` JSON becomes models (pure, unit-tested). */
 object CompanyJson {
     fun company(e: JsonElement?): Company? {
@@ -90,6 +124,20 @@ object CompanyJson {
     fun memberships(answer: JsonObject): List<Membership> =
         (answer["memberships"] as? JsonArray).orEmpty().mapNotNull(::membership).filter { it.status != MembershipStatus.Withdrawn.key }
 
+    fun offer(e: JsonElement?): CompanyOffer? {
+        val o = e as? JsonObject ?: return null
+        val id = o.str("id") ?: return null
+        val companyId = o.str("company_id") ?: return null
+        val content = o["content"] as? JsonObject
+        fun texts(key: String): Map<String, String> =
+            content?.mapNotNull { (locale, v) -> ((v as? JsonObject)?.str(key))?.let { locale to it } }?.toMap().orEmpty()
+        return CompanyOffer(id, companyId, texts("title"), texts("summary"), o.str("ends_at"), o.str("interest"), o.str("phase"))
+    }
+
+    /** The whole answer: memberships (withdrawn skipped) and offers (rows without an id or company skipped). */
+    fun liveOffers(answer: JsonObject): LiveOffers =
+        LiveOffers(memberships(answer), (answer["offers"] as? JsonArray).orEmpty().mapNotNull(::offer))
+
     private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.contentOrNull
 }
 
@@ -107,6 +155,12 @@ interface CompanyRepository {
 
     /** `my_company_offers()`; updates [memberships]. Works on a lapsed plan. */
     suspend fun refresh(): AppResult<Unit>
+
+    /**
+     * `my_company_offers()` in full, for the offer picker (OFFERS.md, Place offers); also updates [memberships]. Online
+     * only: nothing is cached. The default (for test fakes) is an unknown error.
+     */
+    suspend fun liveOffers(): AppResult<LiveOffers> = Result.Err(AppError.Unknown("liveOffers"))
 
     /** `list_companies()`: every active company, in the server's order. */
     suspend fun listCompanies(): AppResult<List<Company>>
@@ -131,6 +185,18 @@ class SupabaseCompanyRepository(private val supabase: SupabaseProvider) : Compan
         val result = remoteCall { supabase.require().postgrest.rpc("my_company_offers").decodeAs<JsonObject>() }
         return when (result) {
             is Result.Ok -> { _memberships.value = CompanyJson.memberships(result.value); Result.Ok(Unit) }
+            is Result.Err -> result
+        }
+    }
+
+    override suspend fun liveOffers(): AppResult<LiveOffers> {
+        val result = remoteCall { supabase.require().postgrest.rpc("my_company_offers").decodeAs<JsonObject>() }
+        return when (result) {
+            is Result.Ok -> {
+                val live = CompanyJson.liveOffers(result.value)
+                _memberships.value = live.memberships
+                Result.Ok(live)
+            }
             is Result.Err -> result
         }
     }

@@ -5,6 +5,8 @@ import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.feature.offers.data.Company
 import com.sledje.agentpro.feature.offers.data.CompanyRepository
+import com.sledje.agentpro.feature.offers.data.CompanyOffer
+import com.sledje.agentpro.feature.offers.data.LiveOffers
 import com.sledje.agentpro.feature.offers.data.Membership
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +45,17 @@ class FakeCompanyRepository(
     var cleared = 0
     private var nextId = 100
 
+    /** The `my_company_offers` answer: the live offers (default none), or [liveError]. */
+    var liveOffers: List<CompanyOffer> = emptyList()
+    var liveError: AppError? = null
+    var liveCalls = 0
+
+    override suspend fun liveOffers(): AppResult<LiveOffers> {
+        liveCalls++
+        liveError?.let { return Result.Err(it) }
+        return Result.Ok(LiveOffers(state.value, liveOffers))
+    }
+
     override fun clear() { cleared++; state.value = emptyList() }
 
     override suspend fun refresh(): AppResult<Unit> {
@@ -80,3 +93,12 @@ class FakeCompanyRepository(
         return Result.Ok(updated)
     }
 }
+
+fun testOffer(
+    id: String,
+    companyId: String = "c1",
+    title: String = "Title $id",
+    summary: String = "Summary $id",
+    endsAt: String = "2026-12-31T18:29:59Z",
+    interest: String? = "term",
+) = CompanyOffer(id, companyId, mapOf("en" to title, "hi" to "शीर्षक $id"), mapOf("en" to summary, "hi" to "सारांश $id"), endsAt, interest, "running")

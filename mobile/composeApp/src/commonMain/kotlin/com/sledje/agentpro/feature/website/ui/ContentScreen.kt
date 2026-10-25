@@ -54,6 +54,7 @@ import com.sledje.agentpro.resources.website_move_up
 import com.sledje.agentpro.resources.website_reorder
 import com.sledje.agentpro.resources.website_section_always_on
 import com.sledje.agentpro.resources.website_section_companies_note
+import com.sledje.agentpro.resources.website_section_portal_note
 import com.sledje.agentpro.resources.website_section_empty
 import com.sledje.agentpro.resources.website_section_hidden
 import com.sledje.agentpro.resources.website_section_items
@@ -157,8 +158,12 @@ private fun SectionListRow(
     val title = stringResource(row.section.label)
     val supporting = when {
         hasIssue -> stringResource(Res.string.website_section_needs_fix)
-        // No fields to edit (`companies`): say where the content comes from instead of opening an empty form.
-        row.section.fields.isEmpty() && !row.hidden -> stringResource(Res.string.website_section_companies_note)
+        // No fields to edit (`companies`, `portal`): say where the content comes from instead of opening an empty form.
+        row.section.fields.isEmpty() && !row.hidden -> when (row.section.key) {
+            "companies" -> stringResource(Res.string.website_section_companies_note)
+            "portal" -> stringResource(Res.string.website_section_portal_note)
+            else -> null
+        }
         row.hidden -> stringResource(Res.string.website_section_hidden)
         else -> when (val s = row.summary) {
             is SiteContent.Summary.Text -> s.value

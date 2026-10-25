@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Customer portal, agent side: the "Website login" card on Customer detail. Every key must also exist in the other locale (verifyShared). Compose resources format: apostrophes literal, placeholders %1$s / %1$d. -->
+<resources>
+    <string name="portal_title">Website login</string>
+    <string name="portal_none_message">Let %1$s see their policies on your website</string>
+    <string name="portal_send_link">Send login link</string>
+    <string name="portal_send_again">Send again</string>
+    <string name="portal_send_new">Send new link (resets PIN)</string>
+    <string name="portal_send_new_short">Send new link</string>
+    <string name="portal_turn_off">Turn off</string>
+    <string name="portal_turn_off_title">Turn off website login?</string>
+    <string name="portal_turn_off_message">%1$s will no longer be able to sign in. You can send a new link any time.</string>
+    <string name="portal_invited_until">Link valid until %1$s</string>
+    <string name="portal_signed_in">Signed in %1$s</string>
+    <string name="portal_not_signed_in">Not signed in yet</string>
+    <string name="portal_shared_with">Also shows: %1$s</string>
+    <string name="portal_locked">Locked after too many wrong PINs</string>
+    <string name="portal_needs_phone">Add a mobile number first</string>
+    <string name="portal_add_phone">Edit customer</string>
+    <string name="portal_needs_site">Publish your website first</string>
+    <string name="portal_invalid_phone">This mobile number doesn't look right. Edit the customer and check it.</string>
+    <string name="portal_unavailable">Website login isn't available right now</string>
+    <string name="portal_share_message">Namaste %1$s, you can now see your policies and premium dates on my website: %2$s. Open the link and set a %3$d-digit PIN. — %4$s</string>
+    <string name="portal_login_off">Customer login is off on your website. Turn on “Show ‘My policies’ login link” in Website → Content.</string>
+    <string name="portal_open_content">Open Website content</string>
+</resources>

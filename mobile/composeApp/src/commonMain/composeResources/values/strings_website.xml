@@ -30,6 +30,7 @@
     <string name="website_section_empty">Not filled in yet</string>
     <string name="website_section_items">%1$d added</string>
     <string name="website_section_companies_note">Shows the companies an admin has approved. Manage them in Settings → Profile.</string>
+    <string name="website_section_portal_note">Tells visitors your customers can sign in to see their policies. Shown only when customer login is on. Give a customer access from their page in Customers.</string>
     <string name="website_section_always_on">Always shown</string>
     <string name="website_section_show">Show %1$s</string>
     <string name="website_section_needs_fix">Needs a fix before publishing</string>

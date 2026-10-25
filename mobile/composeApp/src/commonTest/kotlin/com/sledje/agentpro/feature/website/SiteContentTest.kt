@@ -47,10 +47,25 @@ class SiteContentTest {
     }
 
     @Test
+    fun portalIsAFieldlessMovableHideableSectionRightBeforeContact() {
+        val portal = section("portal")
+        assertTrue(portal.fields.isEmpty() && !portal.pinned)
+        val keys = SiteContent.orderedSections(empty).map { it.key }
+        assertEquals(keys.indexOf("contact") - 1, keys.indexOf("portal"))
+        // a saved order that predates the section: the row goes right before contact, not last
+        val old = buildJsonObject { put(SiteContent.SECTION_ORDER, buildJsonArray { listOf("hero", "about", "faq", "contact").forEach { add(it) } }) }
+        val oldKeys = SiteContent.orderedSections(old).map { it.key }
+        assertEquals(oldKeys.indexOf("contact") - 1, oldKeys.indexOf("portal"))
+        assertTrue(SiteContent.isHidden(SiteContent.withHidden(empty, portal, true), portal))
+        assertEquals(SiteContent.Summary.Empty, SiteContent.summary(empty, portal))
+    }
+
+    @Test
     fun defaultOrderIsTheSchemaOrderWithPinnedHeroFirstAndContactLast() {
         val keys = SiteContent.orderedSections(empty).map { it.key }
         assertEquals(SiteContent.sections.map { it.key }, keys)
-        assertTrue("offers" !in keys, "the offers section stays hidden until its editor exists")
+        assertTrue("offers" in keys, "offers has its editor now, so it is listed")
+        assertTrue(SiteContent.pendingSections.isEmpty())
         assertEquals("hero", keys.first())
         assertEquals("contact", keys.last())
     }
@@ -61,7 +76,7 @@ class SiteContentTest {
             put(SiteContent.SECTION_ORDER, buildJsonArray { add("faq"); add("contact"); add("nope"); add("about"); add("hero"); add("faq") })
         }
         val keys = SiteContent.orderedSections(content).map { it.key }
-        assertEquals(listOf("hero", "faq", "about", "companies", "services", "highlights", "achievements", "testimonials", "contact"), keys)
+        assertEquals(listOf("hero", "faq", "portal", "about", "companies", "services", "offers", "highlights", "achievements", "testimonials", "contact"), keys) // portal follows the schema section before it (faq)
     }
 
     @Test
@@ -77,11 +92,11 @@ class SiteContentTest {
     @Test
     fun movingASectionWritesTheFullOrderWithPinnedSectionsFixed() {
         val movable = SiteContent.movableSections(empty).map { it.key }
-        assertEquals(listOf("about", "companies", "services", "highlights", "achievements", "testimonials", "faq"), movable)
-        val moved = SiteContent.move(empty, from = 6, to = 0)
+        assertEquals(listOf("about", "companies", "services", "offers", "highlights", "achievements", "testimonials", "faq", "portal"), movable)
+        val moved = SiteContent.move(empty, from = 7, to = 0)
         val order = moved[SiteContent.SECTION_ORDER]!!.jsonArray.map { it.jsonPrimitive.content }
-        assertEquals(listOf("hero", "faq", "about", "companies", "services", "highlights", "achievements", "testimonials", "contact"), order)
-        assertEquals(moved, SiteContent.move(moved, 9, 0), "out-of-range moves change nothing")
+        assertEquals(listOf("hero", "faq", "about", "companies", "services", "offers", "highlights", "achievements", "testimonials", "portal", "contact"), order)
+        assertEquals(moved, SiteContent.move(moved, 10, 0), "out-of-range moves change nothing")
     }
 
     @Test
@@ -177,7 +192,6 @@ class SiteContentTest {
         val order = moved["sectionOrder"]!!.jsonArray.map { it.jsonPrimitive.content }
         assertEquals("hero", order.first())
         assertTrue("offers" in order, "offers isn't stripped by a move")
-        assertEquals(order.indexOf("hero") + 1, order.indexOf("offers"), "still right after hero")
     }
 
     @Test

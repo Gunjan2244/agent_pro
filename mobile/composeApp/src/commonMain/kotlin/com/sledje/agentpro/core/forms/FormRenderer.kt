@@ -65,6 +65,15 @@ import com.sledje.agentpro.resources.form_character_count
 import com.sledje.agentpro.resources.form_item_title
 import com.sledje.agentpro.resources.ic_add
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import com.sledje.agentpro.core.designsystem.components.ListRow
+import com.sledje.agentpro.core.designsystem.components.NavRow
+import com.sledje.agentpro.resources.form_item_needs_confirmation
+import com.sledje.agentpro.resources.form_offer_chosen
+import com.sledje.agentpro.resources.form_offer_none
+import com.sledje.agentpro.resources.form_offers_automatic
+import com.sledje.agentpro.resources.form_offers_chosen
 import androidx.compose.material3.Text
 import org.jetbrains.compose.resources.stringResource
 
@@ -102,6 +111,8 @@ fun splitVisibleFields(fields: List<FieldSpec>, visibleKeys: Set<String>? = null
  *
  * @param onPickImage called with the field key when the agent taps an image slot. The MediaPicker seam
  *   (core/platform) is wired by the screen, which then calls `state.set(key, url)`.
+ * @param onOfferField called with the field key when the agent taps an `offerRef` / `offerList` row. The screen
+ *   opens the offer picker (feature/offers). Null renders those rows disabled.
  * @param imagePreview renders a picked image (URL) once an image loader is added.
  * @param hiddenKeys fields shown elsewhere on the screen (e.g. a summary card with Edit) and not rendered,
  *   even when required. Their values and validation still count, so the screen must offer a way back to them.
@@ -117,6 +128,7 @@ fun FormRenderer(
     imagePreview: (@Composable (url: String) -> Unit)? = null,
     onDone: () -> Unit = {},
     onLink: (fieldKey: String, linkKey: String) -> Unit = { _, _ -> },
+    onOfferField: ((fieldKey: String) -> Unit)? = null,
 ) {
     val (visible, more) = splitVisibleFields(state.fields.filter { it.key !in hiddenKeys && it.generated == null }, visibleKeys)
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -127,11 +139,11 @@ fun FormRenderer(
     val lastTextKey = textOrder.lastOrNull()
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-        visible.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone, onLink) }
+        visible.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone, onLink, onOfferField) }
         if (more.isNotEmpty()) {
             MoreDetails(expanded = showMore, onToggle = { expanded = !showMore }) {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-                    more.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone, onLink) }
+                    more.forEach { Field(state, it, it.key == lastTextKey, enabled, onPickImage, imagePreview, onDone, onLink, onOfferField) }
                 }
             }
         }
@@ -161,6 +173,7 @@ private fun Field(
     imagePreview: (@Composable (String) -> Unit)?,
     onDone: () -> Unit,
     onLink: (String, String) -> Unit,
+    onOfferField: ((String) -> Unit)?,
 ) {
     val label = stringResource(spec.label)
     val error = state.visibleError(spec.key)?.message()
@@ -271,8 +284,9 @@ private fun Field(
         FieldType.Toggle -> ToggleRow(
             label = label,
             checked = state.value(spec.key) as? Boolean ?: false,
-            onCheckedChange = { state.set(spec.key, it) },
+            onCheckedChange = { state.set(spec.key, it); if (spec.mustBeTrue) state.onFocusLost(spec.key) },
             modifier = tag,
+            supporting = error,
             enabled = enabled,
         )
         FieldType.Consent -> ConsentCheckbox(
@@ -300,9 +314,30 @@ private fun Field(
             enabled = enabled,
         )
         FieldType.ItemList -> ItemListField(state, spec, label, error, enabled, onPickImage, imagePreview, tag)
-        // Offer pickers arrive with feature/offers (OFFERS.md, 8b-4); until then the value is kept but not shown.
-        FieldType.OfferRef, FieldType.OfferList -> Unit
+        FieldType.OfferRef, FieldType.OfferList -> {
+            val n = offerFieldCount(spec.type, state.value(spec.key))
+            val summary = when {
+                spec.type == FieldType.OfferList && n == 0 -> stringResource(Res.string.form_offers_automatic)
+                spec.type == FieldType.OfferList -> stringResource(Res.string.form_offers_chosen, n)
+                n == 0 -> stringResource(Res.string.form_offer_none)
+                else -> stringResource(Res.string.form_offer_chosen)
+            }
+            if (onOfferField != null && enabled) {
+                NavRow(label, onClick = { onOfferField(spec.key) }, modifier = tag, supporting = summary)
+            } else {
+                ListRow(label, modifier = tag, supporting = summary, muted = true)
+            }
+        }
     }
+}
+
+/**
+ * How many offers an `offerRef` / `offerList` value holds: the array size for a list, 1 for a non-empty
+ * ref object, else 0 (missing, null or empty).
+ */
+fun offerFieldCount(type: FieldType, value: Any?): Int = when {
+    type == FieldType.OfferList -> (value as? JsonArray)?.size ?: 0
+    else -> if ((value as? JsonObject)?.isNotEmpty() == true) 1 else 0
 }
 
 @Composable
@@ -328,6 +363,10 @@ private fun ItemListField(
                         modifier = Modifier.weight(1f),
                     )
                     TertiaryButton(stringResource(Res.string.action_remove), onClick = { state.removeItem(spec.key, index) }, enabled = enabled)
+                }
+                // An item whose `equals: true` confirmation is off (e.g. a copied company offer) says so up front.
+                if (item.fields.any { it.mustBeTrue && item.value(it.key) != true }) {
+                    Text(stringResource(Res.string.form_item_needs_confirmation), style = AgentProTheme.text.bodyMuted)
                 }
                 FormRenderer(
                     state = item,

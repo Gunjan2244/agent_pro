@@ -348,4 +348,68 @@ class PrivacyNoticesTest {
         pn.notices.forEach { n -> assertEquals(pn.locales.toSet(), pn.hashes(n).keys, n.key) }
         assertNull(pn.notices.firstOrNull { it.textKeys.isEmpty() })
     }
+
+    // ---- customer portal limits -------------------------------------------------------------------
+
+    @Test fun `portal is optional, valid portal passes, and it joins the app_config upsert`() {
+        assertEquals(emptyList(), Fixture().addPrivacy().verifier().checkPortal())
+        assertFalse("('portal'," in CatalogSyncGenerator(Fixture().addPrivacy().defs()) { now }.sql())
+        val fx = Fixture().addPrivacy().addPortal()
+        assertEquals(emptyList(), fx.verifier().checkPortal())
+        val sql = CatalogSyncGenerator(fx.defs()) { now }.sql()
+        assertTrue(
+            ",\n  ('portal', '{\"pinLength\":6,\"inviteDays\":7,\"inviteMaxPhoneTries\":5,\"sessionDays\":90,\"maxFailedAttempts\":5," +
+                "\"lockMinutes\":15,\"hardLockAfter\":20,\"enquiriesPerHour\":5,\"paymentsShown\":12,\"remindDaysBefore\":[7,1],\"failureWindowDays\":30," +
+                "\"hardLockHours\":24,\"siteFailedLoginsPerMinute\":30,\"blockedPins\":[\"123456\",\"000000\"]}'::jsonb)\non conflict" in sql, sql
+        )
+        val kotlin = CatalogKotlinGenerator(fx.defs()).generate()
+        assertTrue("object Portal {" in kotlin && "val remindDaysBefore: List<Int> = listOf(7, 1)" in kotlin, kotlin)
+    }
+
+    @Test fun `a bad portal object fails`() {
+        fun violations(edit: (Fixture) -> Unit): List<String> = Fixture().addPrivacy().addPortal().also(edit).verifier().checkPortal()
+        fun has(v: List<String>, vararg f: String) = assertTrue(v.any { m -> f.all { it in m } }, v.joinToString("\n"))
+        has(violations { it.replace("shared/catalog.json", "\"pinLength\": 6", "\"pinLength\": 0") }, "pinLength", "> 0")
+        has(violations { it.replace("shared/catalog.json", "\"lockMinutes\": 15", "\"lockMinutes\": \"15\"") }, "lockMinutes")
+        has(violations { it.replace("shared/catalog.json", "\"paymentsShown\": 12,", "") }, "paymentsShown", "missing")
+        has(violations { it.replace("shared/catalog.json", "\"hardLockAfter\": 20", "\"hardLockAfter\": 5") }, "hardLockAfter", "greater")
+        has(violations { it.replace("shared/catalog.json", "[7, 1]", "[7, 7]") }, "remindDaysBefore", "distinct")
+        has(violations { it.replace("shared/catalog.json", "[7, 1]", "[]") }, "remindDaysBefore")
+        has(violations { it.replace("shared/catalog.json", "\"pinLength\": 6,", "\"pinLength\": 6, \"extra\": 1,") }, "catalog.portal.extra", "unknown")
+        has(violations { it.replace("shared/catalog.json", "\"hardLockHours\": 24", "\"hardLockHours\": 0") }, "hardLockHours", "> 0")
+        has(violations { it.replace("shared/catalog.json", "\"failureWindowDays\": 30, ", "") }, "failureWindowDays", "missing")
+        has(violations { it.replace("shared/catalog.json", "\"siteFailedLoginsPerMinute\": 30", "\"siteFailedLoginsPerMinute\": \"x\"") }, "siteFailedLoginsPerMinute")
+        has(violations { it.replace("shared/catalog.json", "\"000000\"", "\"12ab56\"") }, "blockedPins[1]", "pinLength")
+        has(violations { it.replace("shared/catalog.json", "\"000000\"", "\"123456\"") }, "blockedPins", "duplicated")
+        has(violations { it.replace("shared/catalog.json", "\"000000\"", "\"12345\"") }, "blockedPins[1]", "pinLength")
+        has(violations { it.replace("shared/catalog.json", "[\"123456\", \"000000\"]", "[]") }, "blockedPins", "empty")
+    }
+
+    // ---- customer sign-up link limits (DECISIONS #108) ---------------------------------------------
+
+    @Test fun `customerSignup is optional, valid passes, and it joins the app_config upsert`() {
+        assertEquals(emptyList(), Fixture().addPrivacy().verifier().checkCustomerSignup())
+        assertFalse("('customer_signup'," in CatalogSyncGenerator(Fixture().addPrivacy().defs()) { now }.sql())
+        val fx = Fixture().addPrivacy().addCustomerSignup()
+        assertEquals(emptyList(), fx.verifier().checkCustomerSignup())
+        val sql = CatalogSyncGenerator(fx.defs()) { now }.sql()
+        assertTrue(
+            ",\n  ('customer_signup', '{\"linkDays\":7,\"savesPerMinute\":60,\"openLinksPerAgent\":25,\"presenceSeconds\":30}'::jsonb)" in sql, sql,
+        )
+    }
+
+    @Test fun `a bad customerSignup object fails`() {
+        fun violations(edit: (Fixture) -> Unit): List<String> =
+            Fixture().addPrivacy().addCustomerSignup().also(edit).verifier().checkCustomerSignup()
+        fun has(v: List<String>, vararg f: String) = assertTrue(v.any { m -> f.all { it in m } }, v.joinToString("\n"))
+        has(violations { it.replace("shared/catalog.json", "\"linkDays\": 7", "\"linkDays\": 0") }, "linkDays", "> 0")
+        has(violations { it.replace("shared/catalog.json", "\"savesPerMinute\": 60, ", "") }, "savesPerMinute", "missing")
+        has(violations { it.replace("shared/catalog.json", "\"presenceSeconds\": 30", "\"presenceSeconds\": \"30\"") }, "presenceSeconds")
+        has(violations { it.replace("shared/catalog.json", "\"linkDays\": 7,", "\"linkDays\": 7, \"extra\": 1,") }, "catalog.customerSignup.extra", "unknown")
+        has(
+            Fixture().addPrivacy().also { it.replace("shared/catalog.json", "  \"pricing\": {", "  \"customerSignup\": [],\n  \"pricing\": {") }
+                .verifier().checkCustomerSignup(),
+            "must be an object",
+        )
+    }
 }

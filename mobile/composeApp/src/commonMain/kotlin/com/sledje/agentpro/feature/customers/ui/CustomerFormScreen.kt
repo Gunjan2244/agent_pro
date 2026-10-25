@@ -2,7 +2,9 @@ package com.sledje.agentpro.feature.customers.ui
 
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -22,6 +24,9 @@ import com.sledje.agentpro.core.designsystem.components.ListSkeleton
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.customer_form_add
 import com.sledje.agentpro.resources.customer_form_edit
+import com.sledje.agentpro.resources.form_autosave_not_saved
+import com.sledje.agentpro.resources.form_autosave_not_saved_offline
+import com.sledje.agentpro.resources.form_autosave_saved
 import org.jetbrains.compose.resources.stringResource
 
 /** The customer form (add, edit, or convert an enquiry). [onSaved] gets the customer's id. */
@@ -42,7 +47,13 @@ fun CustomerFormScreen(
     LaunchedEffect(state.savedId) { state.savedId?.let(onSaved) }
     LaunchedEffect(state.error) { state.error?.let { snackbar.showError(it) } }
     val title = stringResource(if (vm.mode is CustomerFormMode.Edit) Res.string.customer_form_edit else Res.string.customer_form_add)
+    val autosave by vm.autosave.collectAsState()
     val f = form
+    if (f != null && vm.mode is CustomerFormMode.Add) {
+        // Typed values go to the draft (docs/UX.md, Customer form); leaving saves what is pending.
+        LaunchedEffect(f) { snapshotFlow { f.values() }.collect { vm.onValuesChanged(it) } }
+        DisposableEffect(vm) { onDispose { vm.flushNow() } }
+    }
     if (f == null) {
         AppScaffold(topBar = { AppTopBar(title = title, onBack = onBack) }) { ListSkeleton() }
         return
@@ -55,6 +66,8 @@ fun CustomerFormScreen(
         onBack = onBack,
         snackbar = snackbar,
         visibleKeys = CustomerFormViewModel.VISIBLE,
+        topNote = autosaveNote(autosave),
+        promptDiscard = vm.mode !is CustomerFormMode.Add,
         aboveSave = if (vm.requiresGuardian()) {
             { GuardianConsentToggle(guardianAgreed, guardianMissing, vm::setGuardianAgreed, enabled = !state.saving) }
         } else {
@@ -82,4 +95,13 @@ fun GuardianConsentToggle(agreed: Boolean, missing: Boolean, onChange: (Boolean)
             Text(stringResource(Res.string.validation_required), style = AgentProTheme.text.bodyMuted, color = MaterialTheme.colorScheme.error)
         }
     }
+}
+
+/** The small autosave note ("Saved" / "Not saved (offline)"); null while there is nothing to say. */
+@Composable
+private fun autosaveNote(status: AutosaveStatus): String? = when (status) {
+    AutosaveStatus.Idle -> null
+    AutosaveStatus.Saved -> stringResource(Res.string.form_autosave_saved)
+    AutosaveStatus.NotSaved -> stringResource(Res.string.form_autosave_not_saved)
+    AutosaveStatus.NotSavedOffline -> stringResource(Res.string.form_autosave_not_saved_offline)
 }

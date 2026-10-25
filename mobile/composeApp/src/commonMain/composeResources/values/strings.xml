@@ -203,11 +203,27 @@
     <string name="setup_about">Make your About section your own</string>
     <string name="setup_share">Share your link</string>
     <string name="setup_customer">Add your first customer</string>
+    <string name="setup_companies">Add your companies</string>
+    <string name="setup_portal">Give a customer their login</string>
+    <string name="setup_hint_about">Replace this text with a few lines in your own words about you and how you help families, then tap Save.</string>
     <string name="setup_done">Done</string>
+    <string name="whats_new_title">What's new</string>
+    <string name="whats_new_companies">Add your companies and the insurance you sell</string>
+    <string name="whats_new_customers">Let customers see their policies online</string>
+    <string name="whats_new_website">‘For my customers’ is now on your website</string>
+    <string name="whats_new_got_it">Got it</string>
+    <string name="setup_next">Next step</string>
     <string name="setup_todo">To do</string>
     <string name="enquiries_empty">Share your website to get enquiries</string>
     <string name="dues_empty">All caught up</string>
     <string name="website_none">No website yet</string>
     <string name="settings_language">Language</string>
     <string name="settings_sign_out">Sign out</string>
+    <string name="form_offers_automatic">Automatic: your companies' live offers</string>
+    <string name="form_offers_chosen">%1$d on your site</string>
+    <string name="form_offer_none">None</string>
+    <string name="form_offer_chosen">Chosen</string>
+    <string name="validation_must_be_true">Please confirm to continue</string>
+    <string name="validation_too_far_ahead">Choose a date within %1$d days from today</string>
+    <string name="form_item_needs_confirmation">Confirm the details before publishing</string>
 </resources>

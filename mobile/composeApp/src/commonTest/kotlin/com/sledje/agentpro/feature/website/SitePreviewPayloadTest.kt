@@ -33,11 +33,25 @@ class SitePreviewPayloadTest {
     @Test
     fun payloadHasTheRenderSiteShapeWithTheDraftAsContent() {
         val json = SitePreviewPayload.build(site, profile)
-        assertEquals(setOf("content", "template_key", "accent", "locale", "profile"), json.keys)
+        assertEquals(setOf("content", "portal", "template_key", "accent", "locale", "profile"), json.keys)
         assertEquals(draft, json["content"])
         assertEquals("classic", json["template_key"]!!.jsonPrimitive.content)
         assertEquals("teal", json["accent"]!!.jsonPrimitive.content, "the swatch key, never the hex")
         assertEquals("hi", json["locale"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun portalIsTrueOnlyWhenTheFlagIsOnAndTheAgentHasNotSwitchedTheLoginOff() {
+        fun portal(content: JsonObject, enabled: Boolean) =
+            SitePreviewPayload.build(site, profile, content, portalEnabled = enabled)["portal"]!!.jsonPrimitive.content
+        fun contact(show: Boolean) = buildJsonObject { put("contact", buildJsonObject { put("showCustomerLogin", show) }) }
+        assertEquals("false", portal(draft, enabled = false), "flag off")
+        assertEquals("true", portal(draft, enabled = true), "flag on, switch never touched = on")
+        assertEquals("true", portal(contact(true), enabled = true))
+        assertEquals("false", portal(contact(false), enabled = true), "the agent's own switch is off")
+        assertEquals("false", portal(contact(true), enabled = false))
+        assertEquals("false", SitePreviewPayload.build(site, profile)["portal"]!!.jsonPrimitive.content, "default = off")
+        assertTrue(SitePreviewPayload.json(site, profile, portalEnabled = true).contains("\"portal\":true"))
     }
 
     @Test

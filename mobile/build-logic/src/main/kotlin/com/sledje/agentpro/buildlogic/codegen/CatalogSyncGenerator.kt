@@ -124,8 +124,14 @@ class CatalogSyncGenerator(
         sb.append("  ('flags', ${lit(flags.toString())}::jsonb),\n")
         val retention = defs.catalog["retention"]
         if (retention != null && retention !is JsonObject) throw IllegalArgumentException("catalog.json: \"retention\" must be an object")
+        val portal = defs.catalog["portal"]
+        if (portal != null && portal !is JsonObject) throw IllegalArgumentException("catalog.json: \"portal\" must be an object")
+        val signup = defs.catalog["customerSignup"]
+        if (signup != null && signup !is JsonObject) throw IllegalArgumentException("catalog.json: \"customerSignup\" must be an object")
         sb.append("  ('pricing', ${lit(pricing.toString())}::jsonb)")
         if (retention != null) sb.append(",\n  ('retention', ${lit(retention.toString())}::jsonb)")
+        if (portal != null) sb.append(",\n  ('portal', ${lit(portal.toString())}::jsonb)")
+        if (signup != null) sb.append(",\n  ('customer_signup', ${lit(signup.toString())}::jsonb)")
         sb.append("\non conflict (key) do update set value = excluded.value;\n")
         return sb.toString()
     }

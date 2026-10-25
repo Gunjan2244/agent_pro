@@ -200,11 +200,27 @@
     <string name="setup_about">अपना परिचय खुद के शब्दों में लिखें</string>
     <string name="setup_share">अपना लिंक शेयर करें</string>
     <string name="setup_customer">अपना पहला ग्राहक जोड़ें</string>
+    <string name="setup_companies">अपनी बीमा कंपनियाँ जोड़ें</string>
+    <string name="setup_portal">किसी ग्राहक को उसका लॉगिन दें</string>
+    <string name="setup_hint_about">इस टेक्स्ट को अपने शब्दों में बदलें: आप कौन हैं और परिवारों की कैसे मदद करते हैं, फिर सेव दबाएँ।</string>
     <string name="setup_done">पूरा</string>
+    <string name="whats_new_title">नया क्या है</string>
+    <string name="whats_new_companies">अपनी कंपनियाँ और आप जो बीमा बेचते हैं, जोड़ें</string>
+    <string name="whats_new_customers">ग्राहक अपनी पॉलिसियाँ ऑनलाइन देख सकें</string>
+    <string name="whats_new_website">‘मेरे ग्राहकों के लिए’ अब आपकी वेबसाइट पर है</string>
+    <string name="whats_new_got_it">समझ गया</string>
+    <string name="setup_next">अगला कदम</string>
     <string name="setup_todo">बाकी</string>
     <string name="enquiries_empty">पूछताछ पाने के लिए अपनी वेबसाइट शेयर करें</string>
     <string name="dues_empty">सब कुछ समय पर है</string>
     <string name="website_none">अभी कोई वेबसाइट नहीं है</string>
     <string name="settings_language">भाषा</string>
     <string name="settings_sign_out">साइन आउट करें</string>
+    <string name="form_offers_automatic">अपने आप: आपकी कंपनियों के चालू ऑफ़र</string>
+    <string name="form_offers_chosen">%1$d आपकी साइट पर</string>
+    <string name="form_offer_none">कोई नहीं</string>
+    <string name="form_offer_chosen">चुना गया</string>
+    <string name="validation_must_be_true">जारी रखने के लिए पुष्टि करें</string>
+    <string name="validation_too_far_ahead">आज से %1$d दिनों के भीतर की तारीख चुनें</string>
+    <string name="form_item_needs_confirmation">प्रकाशित करने से पहले जानकारी की पुष्टि करें</string>
 </resources>

@@ -54,7 +54,7 @@
     <string name="enquiry_form_title">नई पूछताछ</string>
     <string name="enquiry_saved">पूछताछ जोड़ी गई</string>
     <string name="customers_add">ग्राहक जोड़ें</string>
-    <string name="customers_add_manually">खुद जोड़ें</string>
+    <string name="customers_add_manually">खुद भरें</string>
     <string name="customers_pick_contact">कॉन्टैक्ट से चुनें</string>
     <string name="customers_filter_due_month">इस महीने देय</string>
     <string name="customers_filter_no_policy">कोई पॉलिसी नहीं</string>

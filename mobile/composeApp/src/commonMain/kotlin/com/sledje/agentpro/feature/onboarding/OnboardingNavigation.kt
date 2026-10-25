@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import com.sledje.agentpro.core.designsystem.currentAppLocale
 import androidx.compose.runtime.collectAsState
+import com.sledje.agentpro.core.catalog.FeatureId
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -95,7 +96,8 @@ fun OnboardingNavHost(deps: AppDependencies) {
                         val types = remember(memberships) { SiteServices.agentTypes(memberships) }
                         val content = remember(profile, template.key, state.locale, types) { StarterPreview.content(profile, template, state.locale, types) }
                         val offers = rememberPreviewOffers(deps.sites, content, template.key)
-                        val json = remember(profile, template.key, state.locale, offers, types) { StarterPreview.json(profile, template, state.locale, offers, types) }
+                        val portal = deps.featureFlags.collectAsState().value.isEnabled(FeatureId.CustomerPortal)
+                        val json = remember(profile, template.key, state.locale, offers, types, portal) { StarterPreview.json(profile, template, state.locale, offers, types, portal) }
                         deps.website.sitePreview.Render(json, Modifier.fillMaxSize())
                     },
                 )
@@ -147,7 +149,8 @@ private fun LaunchRoute(vm: OnboardingViewModel, deps: AppDependencies) {
         onDone = vm::finishLaunch,
         preview = { modifier ->
             val offers = site?.let { rememberPreviewOffers(deps.sites, it.draftContent, it.templateKey) }
-            val json = remember(site, profile, offers) { site?.let { SitePreviewPayload.json(it, profile, previewOffers = offers) } }
+            val portal = deps.featureFlags.collectAsState().value.isEnabled(FeatureId.CustomerPortal)
+            val json = remember(site, profile, offers, portal) { site?.let { SitePreviewPayload.json(it, profile, previewOffers = offers, portalEnabled = portal) } }
             if (json != null) deps.website.sitePreview.Render(json, modifier)
         },
     )
@@ -157,7 +160,7 @@ private fun LaunchRoute(vm: OnboardingViewModel, deps: AppDependencies) {
 private fun NavBackStackEntry.onboardingViewModel(nav: NavController, deps: AppDependencies): OnboardingViewModel {
     val graphEntry = remember(this) { nav.getBackStackEntry<OnboardingRoutes.Graph>() }
     val vm: OnboardingViewModel = viewModel(viewModelStoreOwner = graphEntry) {
-        OnboardingViewModel(deps.profiles, deps.sites, deps.onboarding, deps.events, deps.companies, photoUploader = deps.website.imageUploader)
+        OnboardingViewModel(deps.profiles, deps.sites, deps.onboarding, deps.events, deps.companies, photoUploader = deps.website.imageUploader, store = deps.store)
     }
     // The site is created in the app's language at that moment (docs/UX.md, Onboarding).
     val locale = currentAppLocale().key
@@ -185,12 +188,12 @@ internal object StarterPreview {
     fun content(profile: Profile?, template: TemplateSpec, locale: String, types: List<String> = emptyList()): kotlinx.serialization.json.JsonObject =
         profile?.let { StarterContent.from(it, template, locale, it.id, types) } ?: kotlinx.serialization.json.JsonObject(emptyMap())
 
-    fun json(profile: Profile?, template: TemplateSpec, locale: String, previewOffers: kotlinx.serialization.json.JsonObject? = null, types: List<String> = emptyList()): String {
+    fun json(profile: Profile?, template: TemplateSpec, locale: String, previewOffers: kotlinx.serialization.json.JsonObject? = null, types: List<String> = emptyList(), portalEnabled: Boolean = false): String {
         val content = content(profile, template, locale, types)
         val site = Site(
             id = "", slug = "", templateKey = template.key, accent = template.defaultAccent, locale = locale,
             draftContent = content, isPublished = false, publishedAt = null,
         )
-        return SitePreviewPayload.json(site, profile, previewOffers = previewOffers)
+        return SitePreviewPayload.json(site, profile, previewOffers = previewOffers, portalEnabled = portalEnabled)
     }
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Customer portal, agent side: the "Website login" card on Customer detail. Every key must also exist in the other locale (verifyShared). Compose resources format: apostrophes literal, placeholders %1$s / %1$d. -->
+<resources>
+    <string name="portal_title">वेबसाइट लॉगिन</string>
+    <string name="portal_none_message">%1$s आपकी वेबसाइट पर अपनी पॉलिसी देख सकें</string>
+    <string name="portal_send_link">लॉगिन लिंक भेजें</string>
+    <string name="portal_send_again">फिर से भेजें</string>
+    <string name="portal_send_new">नया लिंक भेजें (पिन रीसेट होगा)</string>
+    <string name="portal_send_new_short">नया लिंक भेजें</string>
+    <string name="portal_turn_off">बंद करें</string>
+    <string name="portal_turn_off_title">वेबसाइट लॉगिन बंद करें?</string>
+    <string name="portal_turn_off_message">%1$s का साइन इन बंद हो जाएगा। आप कभी भी नया लिंक भेज सकते हैं।</string>
+    <string name="portal_invited_until">लिंक %1$s तक मान्य है</string>
+    <string name="portal_signed_in">साइन इन: %1$s</string>
+    <string name="portal_not_signed_in">अभी तक साइन इन नहीं किया</string>
+    <string name="portal_shared_with">इनकी पॉलिसी भी दिखती हैं: %1$s</string>
+    <string name="portal_locked">गलत पिन बहुत बार डालने से लॉक हो गया</string>
+    <string name="portal_needs_phone">पहले मोबाइल नंबर जोड़ें</string>
+    <string name="portal_add_phone">ग्राहक बदलें</string>
+    <string name="portal_needs_site">पहले अपनी वेबसाइट प्रकाशित करें</string>
+    <string name="portal_invalid_phone">यह मोबाइल नंबर सही नहीं लग रहा। ग्राहक बदलकर इसे जाँचें।</string>
+    <string name="portal_unavailable">वेबसाइट लॉगिन अभी उपलब्ध नहीं है</string>
+    <string name="portal_share_message">नमस्ते %1$s, अब आप मेरी वेबसाइट पर अपनी पॉलिसी और प्रीमियम की तारीखें देख सकते हैं: %2$s। लिंक खोलकर %3$d अंकों का पिन सेट करें। — %4$s</string>
+    <string name="portal_login_off">आपकी वेबसाइट पर ग्राहक लॉगिन बंद है। वेबसाइट → कंटेंट में “‘मेरी पॉलिसियाँ’ लॉगिन लिंक दिखाएँ” चालू करें।</string>
+    <string name="portal_open_content">वेबसाइट कंटेंट खोलें</string>
+</resources>

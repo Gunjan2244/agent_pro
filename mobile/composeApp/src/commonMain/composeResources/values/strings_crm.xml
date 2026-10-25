@@ -54,7 +54,7 @@
     <string name="enquiry_form_title">New enquiry</string>
     <string name="enquiry_saved">Enquiry added</string>
     <string name="customers_add">Add customer</string>
-    <string name="customers_add_manually">Add manually</string>
+    <string name="customers_add_manually">Fill it in myself</string>
     <string name="customers_pick_contact">Pick from contacts</string>
     <string name="customers_filter_due_month">Due this month</string>
     <string name="customers_filter_no_policy">No policy</string>

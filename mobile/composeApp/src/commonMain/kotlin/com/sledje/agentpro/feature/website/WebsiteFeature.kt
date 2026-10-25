@@ -32,6 +32,7 @@ import com.sledje.agentpro.core.features.FeatureHost
 import com.sledje.agentpro.core.features.FeatureRegistry
 import com.sledje.agentpro.core.features.HubEntry
 import com.sledje.agentpro.core.ui.UiState
+import com.sledje.agentpro.feature.offers.OfferPickerRoute
 import com.sledje.agentpro.feature.website.data.SiteContent
 import com.sledje.agentpro.feature.website.data.SiteLinks
 import com.sledje.agentpro.feature.website.data.SitePreviewPayload
@@ -60,6 +61,7 @@ import com.sledje.agentpro.feature.website.ui.WebsiteHubViewModel
 import com.sledje.agentpro.feature.website.ui.sectionFor
 import com.sledje.agentpro.feature.website.ui.websiteErrorTextRes
 import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.feature.website.ui.setupHintFor
 import com.sledje.agentpro.resources.ic_bar_chart
 import com.sledje.agentpro.resources.ic_language
 import com.sledje.agentpro.resources.ic_public
@@ -84,7 +86,7 @@ import org.jetbrains.compose.resources.stringResource
 /** The Website tab (the hub) and its screens (docs/UX.md, Website tab; navigation map). */
 @Serializable data object WebsiteRoute
 @Serializable data object WebsiteContentRoute
-@Serializable data class WebsiteSectionRoute(val key: String)
+@Serializable data class WebsiteSectionRoute(val key: String, val fromSetup: Boolean = false)
 @Serializable data object WebsiteAppearanceRoute
 @Serializable data object WebsiteTemplatesRoute
 @Serializable data object WebsiteLinkRoute
@@ -202,27 +204,27 @@ private fun rememberSiteActions(host: FeatureHost, snackbar: SnackbarHostState):
     return remember(host, snackbar, clipboard) { SiteActions(host, snackbar) { clipboard.setText(AnnotatedString(it)) } }
 }
 
-/** Shows the hub's one-shot publish result as a snackbar; a refused publish opens Content. */
+/**
+ * Shows the hub's one-shot publish result as a snackbar; a refused publish opens Content. The snackbar runs in [scope],
+ * not in the effect: consuming the result changes the effect's key, which would cancel a snackbar shown inside it
+ * (it flashed for one frame, so "Your website is live" was never seen).
+ */
 @Composable
 private fun PublishResultEffect(host: FeatureHost, hub: WebsiteHubViewModel, snackbar: SnackbarHostState, openContentOnFix: Boolean) {
     val publish by hub.publish.collectAsState()
+    val scope = rememberCoroutineScope()
     LaunchedEffect(publish) {
-        when (val p = publish) {
-            PublishState.Live -> {
-                hub.consumePublishResult()
-                snackbar.showSnackbar(getString(Res.string.website_published))
-            }
+        val message = when (val p = publish) {
+            PublishState.Live -> getString(Res.string.website_published)
             is PublishState.NeedsFixes -> {
-                hub.consumePublishResult()
                 if (openContentOnFix) host.nav.navigate(WebsiteContentRoute) { launchSingleTop = true }
-                snackbar.showSnackbar(getString(Res.string.website_publish_fix, p.count))
+                getString(Res.string.website_publish_fix, p.count)
             }
-            is PublishState.Failed -> {
-                hub.consumePublishResult()
-                snackbar.showSnackbar(getString(websiteErrorTextRes(p.error)))
-            }
-            PublishState.Idle, PublishState.Publishing -> Unit
+            is PublishState.Failed -> getString(websiteErrorTextRes(p.error))
+            PublishState.Idle, PublishState.Publishing -> return@LaunchedEffect
         }
+        hub.consumePublishResult()
+        scope.launch { snackbar.showSnackbar(message) }
     }
 }
 
@@ -302,7 +304,8 @@ private fun ContentRoute(host: FeatureHost) {
 @OptIn(ExperimentalComposeUiApi::class) // BackHandler (ui-backhandler)
 @Composable
 private fun SectionRoute(host: FeatureHost, entry: NavBackStackEntry) {
-    val key = entry.toRoute<WebsiteSectionRoute>().key
+    val route = entry.toRoute<WebsiteSectionRoute>()
+    val key = route.key
     val section = sectionFor(key) ?: run { LaunchedEffect(Unit) { host.nav.popBackStack() }; return }
     val hub = host.websiteHub()
     val vm = viewModel {
@@ -334,7 +337,9 @@ private fun SectionRoute(host: FeatureHost, entry: NavBackStackEntry) {
         snackbar = snackbar,
         onBack = { back() },
         onPickImage = { field -> pickingField = field; pick() },
+        onOfferField = { field -> host.nav.navigate(OfferPickerRoute(section = key, field = field)) },
         onSave = vm::save,
+        hint = if (route.fromSetup) setupHintFor(key) else null,
     )
     if (confirmDiscard) {
         DiscardChangesDialog(onDiscard = { confirmDiscard = false; host.nav.popBackStack() }, onKeepEditing = { confirmDiscard = false })
@@ -383,8 +388,9 @@ private fun TemplatesRoute(host: FeatureHost) {
                 SiteContent.afterSwitch(site.draftContent, Templates.fromKey(site.templateKey), template)
             }
             val offers = rememberPreviewOffers(host.deps.sites, content, template.key)
-            val json = remember(site, profile, template.key, content, offers) {
-                SitePreviewPayload.json(site, profile, content, template.key, offers)
+            val portal = host.deps.featureFlags.collectAsState().value.isEnabled(FeatureId.CustomerPortal)
+            val json = remember(site, profile, template.key, content, offers, portal) {
+                SitePreviewPayload.json(site, profile, content, template.key, offers, portal)
             }
             host.deps.website.sitePreview.Render(json, Modifier.fillMaxSize())
         },
@@ -400,8 +406,10 @@ private fun LinkRoute(host: FeatureHost) {
     val actions = rememberSiteActions(host, snackbar)
     LaunchedEffect(state.changed) {
         if (state.changed) {
+            val message = getString(Res.string.website_link_changed)
             vm.consumeChanged()
-            snackbar.showSnackbar(getString(Res.string.website_link_changed))
+            // In [scope]: consuming flips the effect's key, which would cancel a snackbar shown here.
+            scope.launch { snackbar.showSnackbar(message) }
         }
     }
     LinkScreen(
@@ -451,7 +459,8 @@ private fun PreviewRoute(host: FeatureHost) {
             val current = (site as? UiState.Content)?.data
             if (current != null) {
                 val offers = rememberPreviewOffers(host.deps.sites, current.draftContent, current.templateKey)
-                val json = remember(current, profile, offers) { SitePreviewPayload.json(current, profile, previewOffers = offers) }
+                val portal = host.deps.featureFlags.collectAsState().value.isEnabled(FeatureId.CustomerPortal)
+                val json = remember(current, profile, offers, portal) { SitePreviewPayload.json(current, profile, previewOffers = offers, portalEnabled = portal) }
                 host.deps.website.sitePreview.Render(json, modifier)
             }
         },

@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +59,10 @@ fun ListRow(
     /** When set, a small primary dot before the title marks the row as unseen; this is its TalkBack label. */
     unseenLabel: String? = null,
     trailing: (@Composable () -> Unit)? = null,
+    /** The step the user is on (setup checklist): the leading icon and the title take the primary colour. */
+    current: Boolean = false,
+    /** Not available yet (a locked checklist step): quiet title colour, announced as disabled; pair it with a null [onClick]. */
+    muted: Boolean = false,
 ) {
     val minHeight = if (supporting != null) Dimens.rowTwoLine else Dimens.rowOneLine
     val background = if (selected) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface
@@ -65,6 +70,7 @@ fun ListRow(
         modifier
             .fillMaxWidth()
             .background(background)
+            .then(if (muted) Modifier.semantics { disabled() } else Modifier)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .heightIn(min = minHeight)
             .padding(horizontal = Spacing.m, vertical = Spacing.s),
@@ -72,7 +78,7 @@ fun ListRow(
     ) {
         when (leading) {
             is ListLeading.Icon -> {
-                Icon(painterResource(leading.icon), null, Modifier.size(Dimens.icon), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(painterResource(leading.icon), null, Modifier.size(Dimens.icon), tint = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(Spacing.m))
             }
             is ListLeading.Avatar -> {
@@ -92,7 +98,17 @@ fun ListRow(
                     )
                     Spacer(Modifier.width(Spacing.s))
                 }
-                Text(title, style = AgentProTheme.text.strong, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    title,
+                    style = AgentProTheme.text.strong,
+                    color = when {
+                        muted -> MaterialTheme.colorScheme.onSurfaceVariant
+                        current -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             if (supporting != null) {
                 Text(supporting, style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
