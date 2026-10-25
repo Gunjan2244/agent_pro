@@ -13,3 +13,4 @@ export const rejectReasons = list("membershipRejectReasons");
 export const insuranceTypes = list("insuranceTypes");
 export const statusEntry = (key: string) => membershipStatuses.find((s) => s.key === key);
 export const typeLabel = (key: string) => label(insuranceTypes.find((t) => t.key === key)?.labelKey ?? key);
+export const adminRoles = list("adminRoles");

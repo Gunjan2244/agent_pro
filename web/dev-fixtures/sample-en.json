@@ -1,4 +1,5 @@
 {
+ "portal": true,
  "template_key": "classic",
  "accent": "indigo",
  "locale": "en",

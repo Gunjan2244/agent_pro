@@ -9,5 +9,7 @@ const q = new URLSearchParams(location.search);
 // Defined immediately, so the app can call it as soon as the page has loaded; the first call waits for client.js.
 window.renderSite = async (input) => (await import("./client.js")).renderSite(input);
 
-if (root && root.hasAttribute("data-ssr")) import("./hydrate.js").then((m) => m.hydrate());
-else if (q.get("preview") !== "1") import("./client.js").then((m) => m.boot());
+if (root && root.hasAttribute("data-ssr")) {
+  import("./hydrate.js").then((m) => m.hydrate());
+  import("./reveal.js").then((m) => m.revealSections()).catch(() => {}); // cosmetic: never breaks the page
+} else if (q.get("preview") !== "1") import("./client.js").then((m) => m.boot());

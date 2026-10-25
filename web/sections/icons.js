@@ -7,6 +7,10 @@ const P = {
   handshake: '<path d="M3 11l4-4 4 2 4-2 6 6-6 6-3-2-2 1-3-3-4-4z"/><path d="M9 14l3 3"/>',
   savings: '<circle cx="12" cy="12" r="9"/><path d="M15 8H9m6 3H9m1 0c3 0 5 1 5 3H9m1-6c3 0 4 1 4 3"/>',
   favorite: '<path d="M12 20s-8-5-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 9c0 6-8 11-8 11z"/>',
+  description: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h6M9.5 16h6"/>',
+  event_upcoming: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4M9 15h6"/>',
+  payments: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 9.5v.01M17.5 14.5v.01"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
   thumb_up: '<path d="M7 11v9H4v-9zM7 11l4-8c2 0 3 1 3 3l-1 4h6l-1 9H7"/>',
 };
 export const icon = (k) =>

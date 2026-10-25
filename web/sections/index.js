@@ -8,12 +8,13 @@ import { testimonials } from "./testimonials.js";
 import { faq } from "./faq.js";
 import { contact } from "./contact.js";
 import { companies } from "./companies.js";
+import { portalPromo, portalBase } from "./portal-promo.js";
 import { footer } from "./footer.js";
 import { esc, url, tel, wa, firstName } from "./util.js";
 import { pickOffers, todayIST } from "./offer.js";
 
-export const PARTIALS = { hero, about, companies, services, offers, highlights, achievements, testimonials, faq, contact };
-const DEFAULT_ORDER = Object.keys(PARTIALS).filter((k) => k !== "companies");
+export const PARTIALS = { hero, about, companies, services, offers, highlights, achievements, testimonials, faq, portal: portalPromo, contact };
+const DEFAULT_ORDER = Object.keys(PARTIALS).filter((k) => k !== "companies" && k !== "portal");
 
 // "Companies I represent" (DECISIONS #90) comes from the payload, not from the agent's content, so an order that
 // doesn't name it (every site today) gets it right after the template's anchor section (`after`: about on "Meet me",
@@ -30,13 +31,24 @@ export function placeCompanies(order, after = "about") {
   return out;
 }
 
+// "For my customers" (DECISIONS #102) is like companies: an order that doesn't name it gets it right before contact
+// (or last, when contact isn't in the order either: contact is pinned and is appended after it). An order that names
+// it is followed, and content.hidden can hide it.
+export function placePortal(order) {
+  if (order.includes("portal")) return order;
+  const out = order.slice(), at = out.indexOf("contact");
+  out.splice(at < 0 ? out.length : at, 0, "portal");
+  return out;
+}
+
 // Section order + visibility from content.sectionOrder / content.hidden. Pinned sections
 // (schema `pinned`) are always shown and always present, even if missing from the order.
 export function visibleKeys(content, schema, opts = {}) {
-  const known = new Set(Object.keys(PARTIALS));
+  // the portal section exists only when the payload says the agent's customers have a portal (opts.portal)
+  const known = new Set(Object.keys(PARTIALS).filter((k) => k !== "portal" || opts.portal === true));
   const pinned = new Set((schema.sections || []).filter((s) => s.pinned).map((s) => s.key));
   const hidden = new Set(Array.isArray(content.hidden) ? content.hidden : []);
-  const order = placeCompanies(Array.isArray(content.sectionOrder) ? content.sectionOrder : DEFAULT_ORDER, opts.companiesAfter);
+  const order = placePortal(placeCompanies(Array.isArray(content.sectionOrder) ? content.sectionOrder : DEFAULT_ORDER, opts.companiesAfter));
   const seen = new Set();
   const out = [];
   for (const k of order) if (known.has(k) && !seen.has(k)) { seen.add(k); out.push(k); }
@@ -63,8 +75,10 @@ export function makeCtx(site, t, tokens, variant, opts = {}) {
     photo: url((content.hero || {}).photo) || url(profile.photo_url),
     firstName: firstName(profile.full_name),
     phone: (content.contact || {}).phone || profile.phone || "",
+    portal: site.portal === true,
   };
-  ctx.visible = new Set(visibleKeys(content, ctx.schema, { companiesAfter: opts.companiesAfter }));
+  ctx.portalBase = portalBase(ctx.portal, ctx.privacyHref);
+  ctx.visible = new Set(visibleKeys(content, ctx.schema, { companiesAfter: opts.companiesAfter, portal: ctx.portal }));
   ctx.offers = pickOffers(site, ctx);
   return ctx;
 }

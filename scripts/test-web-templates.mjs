@@ -43,7 +43,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
 
   ok("modern: full-width cover photo (640×480, high priority) then kicker before the <h1>; facts before the bio; numbered services; highlights row; open Q&A", () => {
     const h = html(en, "modern"), hero = heroOf(h);
-    assert.ok(/^id="hero"><div class="hero-in">\n<div class="cover"><img class="hero-photo" src="[^"]+" width="640" height="480" alt="Asha Verma" fetchpriority="high" decoding="async"><\/div>/.test(hero), hero.slice(0, 200));
+    assert.ok(/^id="hero">(?:<p class="hero-login"><a [^>]*>[^<]*<\/a><\/p>)?<div class="hero-in">\n<div class="cover"><img class="hero-photo" src="[^"]+" width="640" height="480" alt="Asha Verma" fetchpriority="high" decoding="async"><\/div>/.test(hero), hero.slice(0, 200));
     assert.ok(hero.indexOf('<p class="meta">Asha Verma · Insurance Advisor · Pune</p>') < hero.indexOf("<h1>"));
     const ab = section(h, "about");
     assert.ok(ab.indexOf('<ul class="facts">') < ab.indexOf('<p class="prose">'));

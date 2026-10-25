@@ -1,0 +1,8 @@
+/* Customer sign-up page (docs/WEB_RENDERER.md). Builds on portal.css; tokens and base.css components only. */
+.join .jn-notice{display:grid;gap:var(--space-s)}
+.join .jn-notice p{margin:0}
+.join .chk{min-height:48px;align-items:center}
+.join .jn-guardian{display:grid;gap:var(--space-s);padding:var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md)}
+.join .jn-guardian[hidden]{display:none}
+.join .jn-status{min-height:var(--line-s);margin:0}
+.join .pt-acts{display:flex;flex-wrap:wrap;gap:var(--space-s)}

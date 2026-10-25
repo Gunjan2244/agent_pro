@@ -815,9 +815,128 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
 - **Why:** a motor or health agent got a life-insurance site.
 - **Not done:** the renderer doesn't filter the agent's content by type; the agent's saved content stays the source of truth.
 
+### #95 — 2026-10-22 — Admin panel hosted as a sibling Worker on the current subdomain
+- **Decision:** the admin panel (`admin/`) is its own Worker, `agentpro-admin`, deployed next to `agentpro-sites` on the same account subdomain (`agentpro-admin.sledjesoftwares.workers.dev`) until the platform domain is bought, then `admin.<domain>`.
+- **Why:** the user asked for a subdomain of the site's current host. workers.dev doesn't allow `admin.agentpro-sites.…`, so a sibling Worker on the account subdomain is the closest option.
+- **Status:** Accepted. Deploying still needs the user's approval each time.
+
 ### #94 — 2026-10-22 — Real insurance companies replace the single "Demo Life Insurer" test row
 - **Decision:** the live `companies` table holds **11 real, IRDAI-registered insurers** (LIC, HDFC Life, ICICI Prudential Life, SBI Life, Max Life, Bajaj Allianz Life, Tata AIA Life, Kotak Mahindra Life, Aditya Birla Sun Life, PNB MetLife, Star Health), each with an EN/HI name and the standard IRDAI solicitation disclaimer. Only names, per #90; no logos are added (CLAUDE.md branding rule). The fake "Demo Life Insurer" row is **deactivated** (`is_active = false`), not deleted: its 6 disguised test offers are re-created (same content, per #77) under LIC because `offers_guard` forbids moving an offer between companies, and the 4 existing test memberships move from demo-life to LIC through the normal withdraw → request → approve state machine, because `memberships_guard` forbids changing `company_id` on an already-linked row. A real `DELETE` of demo-life was tried first and rejected (`23503`, `company_memberships_company_id_fkey`): withdrawn memberships keep their `company_id` as history, so `ON DELETE RESTRICT` blocks it even once nothing active points there — which is also exactly why `is_active` exists ("never hard-deleted", OFFERS.md). SQL: `supabase/migrations/20261022180000_real_companies.sql` (data-only; run once as postgres in the SQL Editor, not through the connector, which declines it as a production write; the whole thing is one transaction, so the first failed attempt rolled back cleanly with nothing committed).
 - **Scope:** this is the **live `AGENT_PRO` project only**. `supabase/demo/demo-offers.json`, `gen_demo_offers.py`/`demo_offers.sql`, `supabase/tests/95_offers.sql` and `web/dev-fixtures/*` keep the fictional `demo-life` company for local Postgres tests and web dev fixtures — that's an internal test fixture, not production data, and doesn't need to match the live catalog.
 - **Why:** the user asked to use real insurance companies, not a demo placeholder, now that #90 allows a real company's name to appear on an agent's site.
 - **Risk:** this is exactly the trademark/nominative-use question #90 already flagged for counsel, now with real data live rather than hypothetical — still a launch gate (STATUS.md).
 - **Not done:** the admin panel (8c) to manage this list doesn't exist yet, so adding, editing or deactivating a company is still a manual SQL statement by the user. `offers.internal_name` was left null for the 6 re-created LIC offers (admin-only field, unused until 8c).
+
+### #101 — 2026-10-22 — Offer images are one per offer
+- **Numbering note:** first written as a second "#96" (the customer-portal entries #96–#100 were added in parallel); renumbered 2026-10-23, content unchanged.
+- **Decision:** each offer has at most one image (`offers.image_url`, 16:9 WebP, 512 KB), uploaded by an admin in the panel. There is no shared company image library for agents.
+- **Why:** the user's answer to the open question. It keeps insurer artwork out of agent uploads and matches the existing schema.
+- **Status:** Accepted.
+
+### #96 — 2026-10-23 — Customers log in with an agent-issued link, then mobile + 6-digit PIN
+- **Decision:** the agent taps **Send login link** on Customer detail; the app shares `…/my/start?t=<token>` (WhatsApp/SMS through the share sheet). The customer types their mobile, which must equal the number the agent has on file (the second factor if the link is forwarded), sets a 6-digit PIN and ticks the `customer_portal` consent. Afterwards: mobile + PIN. The invite is single-use, valid `catalog.portal.inviteDays` (7), and burns after `inviteMaxPhoneTries` (5) wrong numbers; a new link also resets the PIN ("forgot PIN" = ask the agent). Lockout: `maxFailedAttempts` (5) → `lockMinutes` (15); `hardLockAfter` (20) → only a new invite unlocks. One login per (agent, mobile): it shows every customer the agent has **explicitly invited** on that number (families), never a number match alone.
+- **Why:** SMS OTP needs a paid provider (out of scope for v1); many customers have no email and Auth email is capped (Gmail SMTP, 100/hour). The agent already knows and verifies the customer.
+- **Status:** Accepted (user: "decide everything"). Values in `catalog.portal` are provisional.
+
+### #97 — 2026-10-23 — Customers are not Supabase Auth users
+- **Decision:** customer logins live in four `portal_*` tables (accounts, account_customers, invites, sessions) with RLS on and **no API grants**, reached only through `SECURITY DEFINER` RPCs that take an opaque bearer token. Tokens are 32 random bytes (pgcrypto `gen_random_bytes`), stored only as SHA-256; PINs are bcrypt (`extensions.crypt`). A session is valid only on its own agent's site.
+- **Why:** `auth.users` means "agent" everywhere (signup trigger, `entitlement()`, owner-only RLS); adding customers there would mix tenants and need exceptions in every policy. Public access through listed RPCs is the existing rule (CLAUDE.md).
+- **Status:** Accepted.
+
+### #98 — 2026-10-23 — The portal is server-rendered by the Worker with an HttpOnly cookie
+- **Decision:** `/a/<slug>/my…` (custom host `/my…`) is rendered by the Worker; forms POST to the Worker, which calls the RPCs and redirects (PRG). The session token is only in the cookie `ap_portal` (`HttpOnly; Secure; SameSite=Lax; Path=/a/<slug>/my` or `/my`; 90 days). CSRF: SameSite=Lax plus an `Origin` check on every POST. Responses are `no-store` and `noindex`. Works without JS.
+- **Why:** page JS never sees the token, so an XSS can't steal it; same stack and SSR path as the sites (#75); fast on budget phones.
+- **Status:** Accepted.
+
+### #99 — 2026-10-23 — Customer login v1 is read-only
+- **Decision:** in scope: policies, due status, payment history, "Ask about this policy" / "I've paid this premium" (an enquiry with the new source `portal`, linked to the customer), "Your details" with correction/erasure requests (`data_requests` linked to the customer), sign out (and everywhere). The payload never includes the agent's `notes`. Out of scope: online premium payment, document upload, self-editing.
+- **Why:** smallest useful scope; payments go through the insurer, and editing would bypass the agent, who is the fiduciary.
+- **Status:** Accepted.
+
+### #100 — 2026-10-23 — The portal is an installable PWA on the existing stack, with Web Push reminders
+- **Decision:** no framework: the Worker SSR + vanilla ES modules + token CSS stay. The portal gets its own manifest (`id` = `start_url` = `scope` = `/a/<slug>/my`, name "{Agent} · My policies"), a service worker served at `/a/<slug>/my/sw.js` (scope = the portal only; network-first, the last home page cached for offline with an "Offline — last updated" banner, never a POST or the start page; cleared on sign-out with `Clear-Site-Data: "cache"` and on revoked/unavailable). Opt-in Web Push premium reminders (`portal_push_subscriptions`, Edge Function `portal-reminders` on `pg_cron`, VAPID; minimal payload without amounts or policy numbers), built after the core portal is verified.
+- **Why:** the sites' PWA path already works (#65) and keeps first paint around 25 KB; a framework adds weight for mostly static lists. Offline access and reminders are what make installing worth it.
+- **Scope:** site pages still have **no** service worker (#65 stands). On iOS the installed app has its own storage, so the customer signs in once more there; push only inside the installed app (iOS 16.4+).
+- **Status:** Accepted. Push needs the user's approval for the VAPID secret, the Edge Function deploy and `pg_cron`.
+
+### #102 — 2026-10-23 — Admin invites use a short-lived email marker
+- **Decision:** before inviting, the `admin` Edge Function stores the email in `private.admin_invites` for at most 15 minutes, and `private.handle_new_user` skips a new user with a fresh marker. `app_metadata.account_kind = 'admin'` is set straight after the invite.
+- **Why:** GoTrue inserts the user before applying app_metadata, and `/invite` accepts none, so `account_kind` alone can't stop the signup trigger from creating an agent profile, trial and site.
+- **Alternatives rejected:** deleting the auto-created profile afterwards; user_metadata (users can edit it).
+- **Status:** Accepted (built, not applied).
+
+### #103 — 2026-10-23 — Revoking an admin ends their sessions in SQL
+- **Decision:** `svc_admin_revoke` sets `revoked_at` and deletes the user's `auth.sessions` and `auth.refresh_tokens` in the same transaction. Revoked accounts aren't banned. If Postgres can't write those tables, the revoke still succeeds and returns `signed_out: false`.
+- **Why:** supabase-js 2.58's `auth.admin.signOut` needs the user's own JWT.
+- **Status:** Accepted.
+
+### #104 — 2026-10-23 — Admin writes are audited by the helpers, not the trigger
+- **Decision:** each Edge Function write logs one explicit `audit_log` row (`admin.invite`, `admin.set_role`, `admin.revoke`, `admin.reset_mfa`, with the actor and IP; role and scope only). `audit_row` skips those writes via a transaction-local setting, and still logs any other write to `admins` as `system`.
+- **Why:** no double rows, and the actor and IP are only known in the function.
+- **Status:** Accepted.
+
+### #105 — 2026-10-23 — Admin self-protection and error statuses
+- **Decision:** an owner can't change, revoke or reset MFA on their own account (`self`), and the last active owner can't be demoted or revoked (`last_owner`, under an advisory lock). Errors are always 4xx and never 404 (`not_found` is 410, `failed` 422), because the panel reads 404 as "not deployed".
+- **Status:** Accepted.
+
+### #106 — 2026-10-23 — Admin role keys are repeated in the Edge Function
+- **Decision:** `supabase/functions/admin/index.ts` repeats `owner` and `editor`, with a comment pointing at `catalog.adminRoles`. The `admins_role_check` CHECK from `catalog_sync` is the authority.
+- **Why:** the function can't read `shared/` at runtime. This is an accepted exception to "definitions live only in `shared/`".
+- **Status:** Accepted.
+
+### #101 — 2026-10-23 — Customer login hardening after the security review
+- **Decision:** (1) the six anon portal RPCs run only with a secret header from the Worker (`x-portal-key`, a Worker secret; its SHA-256 sits in a private table set by hand), so the public anon key can't reach bcrypt or the lockouts; plus a per-site cap on failed logins checked before bcrypt; (2) a customer is attached to a login only when **their own** link is used (activation), with one consent row for that customer, never at invite time; (3) PIN rules reject patterns, a list of common PINs (`catalog.portal.blockedPins`) and the customer's date of birth; failures count over a window (`failureWindowDays`) and a successful login no longer resets the hard-lock count; the hard lock lasts `hardLockHours` instead of forever; (4) the invite token moves from the URL into a short-lived HttpOnly cookie on first load (`ap_invite`, 15 min), and the start page uses `Referrer-Policy: strict-origin` (with `no-referrer` browsers send `Origin: null`, which the CSRF check rightly refuses — no customer could activate); (5) verified customers' data requests get their own rate counter; (6) `Clear-Site-Data` is dropped (it doesn't clear service-worker caches and, on the shared origin, would clear every agent's cache); the signed-out page tells the service worker to wipe.
+- **Why:** the review (2026-10-23) found H1 (activation impossible in Chrome/Firefox), H2 (direct RPC calls bypass the Worker's rate limit: database DoS and mass lockouts), M1 (a new invite exposed a customer to an existing login before consent) and M2 (endless slow guessing; DOB PINs accepted).
+- **Recorded for later:** cookie `Path` is not a security boundary on the shared sites origin, and Cache Storage is per origin; the long-term fix is a separate origin for portals (e.g. `my.<platform domain>`) once the platform domain exists. Until then any XSS on the sites origin is treated as critical.
+- **Supersedes:** the "permanent hard lock" and "sessions on invite" parts of #96, and the `Clear-Site-Data` part of #100.
+- **Status:** Accepted (security review; the user said "decide everything").
+
+### #102 — 2026-10-23 — Sites promote customer accounts; the portal home opens with a dashboard row
+- **Decision:** a new field-less site section `portal` ("For my customers", before Contact in every template's default order, placed before Contact when a saved order doesn't name it, hideable and movable like `companies`) and a small "Customer login" link at the top of the hero, both rendered only when the public payload's `portal` is true. The section's copy is fixed i18n (not agent-editable) and promises only what exists: policies, next premium, recorded payments, asking about a policy; reminders are mentioned only once Web Push ships. Each template draws it in its own system (classic soft card, modern hairline row, minimal plain lines, Best offers a compact card above the contact band). The portal home gets summary tiles computed from the existing payload (policies, premium per year, total cover, next due, people).
+- **Why:** user request; customers can't use a login they don't know exists, and agents gain a reason to share their site with existing clients.
+- **Status:** Accepted (user: "plan it well, then implement it").
+
+### #107 — 2026-10-24 — Sites reveal sections on scroll, injected by script
+**Decision:** one subtle reveal (fade + `--space-s` rise, `--motion-medium`) for below-the-fold sections, applied by `web/reveal.js`, with its CSS injected by the script instead of added to `base.css`.
+**Why:** the user asked for section animations "as per the convention", which is subtle, token-only, reduced-motion-safe motion (DESIGN_SYSTEM.md, Motion). A hidden-by-default CSS state would hide content from no-JS visitors and crawlers and would push modern's first-paint CSS past its 26 KB limit.
+**Not done:** per-template animation styles, stagger of cards, parallax or hero animation (decorative, and they would delay reading).
+
+### #103 — 2026-10-24 — Existing agents are led to new features by a one-time "What's new" sheet and the setup checklist
+- **Decision:** (1) a one-time "What's new" bottom sheet on Home, versioned by a constant (`WhatsNew.VERSION = 1`) stored in the key-value store (`whats_new_seen`); shown only when the agent already has a site and hasn't seen this version; finishing onboarding marks it seen, so new sign-ups never get it. Version 1 lists: companies and insurance types (→ Settings → Profile), customer login (→ Customers), and "For my customers" on your website (→ Website → Content); each row opens its screen, plus "Got it". (2) The Home "Finish setup" checklist gains "Add your companies" (done when the agent has a pending or approved company link, or a "not listed" request; checked online from `my_company_offers`, stays undone offline) and "Give a customer their login" (done once an invite has been sent from this device, a local mark like "Share your link"); each item shows only when its feature flag is on. (3) In the checklist only the **next** task (the first visible item not done, in order) and the tasks already done are tappable, each opening its screen; later tasks are shown muted and can't be tapped until their turn (user, 2026-10-24: "let them click only the next task or the previously completed tasks"). The avatar shows the agent's photo (hero photo, else profile photo, as the site does).
+- **Why:** user question; website changes reach existing sites automatically, but the app never told existing agents about companies or customer login.
+- **Status:** Accepted (user: "ok do it").
+
+### #104 — 2026-10-24 — Offers editor in two steps: a list editor now, tap-to-place next
+- **Decision:** step 1 (8b-4a) ships a list-based Offers editor; step 2 (8b-4b) adds OFFERS.md's slot mode (tap a spot on the preview, `preview-bridge.js`, `addWebMessageListener`), with its own security review. Step 1:
+  - `offers` leaves `SiteContent.pendingSections`, so Website → Content lists **Offers** (show/hide, move, the section title).
+  - `FormRenderer` gets the `offerRef` and `offerList` field types. Each is a row opening an **offer picker**:
+    - **Pick offers** (`offers.items`): the agent's live company offers from `my_company_offers`, with tick boxes, an order and the `maxSectionItems` cap. Each row shows the public title, the summary, "Ends {date}" and the company name (the company name only inside the app). Ended or unavailable picks are flagged, as `publish_site` warns.
+    - **Featured offer** (`hero.featuredOffer`): one company offer, one custom offer, or none.
+  - **Your own offers** (`offers.custom`, the existing list field): title, summary, end date (`maxDaysAhead`), CTA kind (agent-allowed kinds), interest, and the required "I confirm this offer is accurate and my company allows it" toggle (`equals: true`).
+  - App validators for `mustBeTrue` and `maxDaysAhead`, matching `publish_site`.
+  - With no approved company, the picker explains why and points to Settings → Profile.
+  - Empty picks keep the automatic offers (DECISIONS #79), and the editor says so.
+- **Why:** user report; the site showed offers the agent couldn't control.
+- **Status:** Accepted (user chose this option).
+- **Amended the same day (user: "offers are configured by the admin and they just need a click to be added by the agent, which can be edited after they are added"):** the picker is an **"Offers on your site"** manager instead of a checkbox list.
+  - **Add:** "From your companies" lists live company offers with a one-tap **Add**. It saves at once as a company reference, so admin updates and endings flow through.
+  - **"On your site":** each added offer can be moved, removed or set as featured.
+  - **Edit on a company offer** makes the agent's **own copy**: after a one-time confirmation, it becomes an `offers.custom` item prefilled from the company's text, with `confirmed` false so the agent must confirm before publishing. Its reference (and the featured reference, if it was featured) is re-pointed to the copy. The site then shows "Details provided by the agent", and the blocked-term check applies.
+  - **Why the admin's text isn't edited in place:** it stays accurate and keeps its disclaimer. No schema, backend or web change.
+
+### #108 — 2026-10-25 — Two ways to add a customer: autosaved forms ("Incomplete forms") and a live customer sign-up link
+- **Decision:** Add customer offers **Fill it in myself** (Pick from contacts stays as a shortcut) and **Send the customer a link**. Both kinds of unfinished form live in one agent-owned table, `customer_drafts` (`source` `agent` or `customer`), listed in the app as **Incomplete forms** (resume or delete, with Undo).
+  - **Manual form:** the Add form autosaves into a `source = agent` draft as the agent types (debounced), through the normal client writes and RLS. Saving the customer completes the draft.
+  - **Sign-up link:** `customer_signup_link()` creates a `source = customer` draft and a single-use token (32 random bytes, stored only as sha256 in a private table, returned once), shared as `<site>/join?t=<token>`. The page on the agent's site is served by the Worker (the token moves into an HttpOnly path cookie, as for the portal invite). It calls four anon RPCs (`signup_open`, `signup_consent`, `signup_save`, `signup_submit`), all behind the portal's Worker gate (`x-portal-key`). The page autosaves each pause in typing plus a heartbeat. The app watches the row over Supabase Realtime (values, `active_field`, `customer_seen_at`), so the agent can guide the customer live.
+  - **Submit adds the customer automatically** (the user's choice over "agent reviews first"). The RPC validates fully, creates the `customers` row, records the consents (channel `web`), and completes the draft, clearing its `fields`.
+  - **Consent before collection (DPDP):** the page shows the new `customer_signup` notice, and no field can be saved until the customer ticks it; the consent is held on the draft and copied to `consents` at Submit. An under-18 date of birth needs the separate `customer_signup_guardian` notice ticked by the parent or guardian, because the app's `guardian_consent` wording is the agent's attestation, not the guardian's own words. The agent passes the one-time customer-duty gate before sending a link.
+  - **Retention:** `retention.customerDraftsDays = 30` (the user's choice). Old drafts stop working and are purged by `private.purge_customer_drafts()`; its daily schedule needs the user's approval (pg_cron). Limits are in `catalog.customerSignup` (provisional): link 7 days, 60 saves a minute, 25 open links, presence 30 s.
+- **Why:** user request (PRODUCT.md, 2026-10-25). One table keeps "Incomplete forms" a single list and lets Realtime drive the live view without polling. The token lives off the client-readable table, so RLS `select *` can never expose it. Reusing the portal's gate and token rules means one reviewed pattern instead of two.
+- **Alternatives considered:** local-only drafts in Room (rejected: the user asked for the database, and a phone change would lose them); the agent reviewing before the customer is added (offered; the user chose automatic); storing the customer's typing before consent (rejected: DPDP needs notice and consent before collection).
+- **Status:** Accepted (user chose the three options on 2026-10-25).
+
+## 105. Finish setup: every step tappable, soft prompt on arrival
+- **Decision:** supersedes the next-only lock in #103. All visible checklist rows open their screen; "Next step" stays as a suggestion. Opening the About editor from the list (`WebsiteSectionRoute(fromSetup = true)`) shows a prompt card saying what to do.
+- **Why:** user report: could not get past "Make your About section your own" (the editor opens pre-filled with the seeded bio; saving it unchanged leaves the step undone, and the lock hid every later step). A step the agent doesn't understand must not block the rest.
+- **Not done (open):** backfill of the local Share / Customer login marks for agents who finished them before this update; prompts for steps other than About; a Skip action. Existing agents' data-derived steps (profile, publish, About, first customer) already count automatically.
+- **Status:** Accepted.

@@ -50,3 +50,9 @@
 .tpl-minimal .contact-grid{gap:calc(var(--space-l)*2)}
 .tpl-minimal .contact-info .actions{display:flex;flex-wrap:wrap;gap:var(--space-s) var(--space-m);max-width:none}
 .tpl-minimal .foot{background:none;padding-top:0;padding-bottom:calc(var(--space-l)*2)}
+/* promo: the label heading, one sentence, the 4 points as one plain line, a text link */
+.tpl-minimal .pp{gap:var(--space-s)}
+.tpl-minimal .pp-pts{display:flex;flex-wrap:wrap;column-gap:var(--space-m);color:var(--c-onSurfaceVariant)}
+.tpl-minimal .pp-pts .ico{display:none}
+.tpl-minimal .pp-pts li+li::before{content:"\00b7";margin-right:var(--space-m)}
+.tpl-minimal .pp-go .btn{min-height:24px;padding:0;border:0;border-radius:0;background:none;color:var(--accent);font-weight:500;text-decoration:underline;text-underline-offset:4px}

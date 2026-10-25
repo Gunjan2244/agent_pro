@@ -1,4 +1,5 @@
 {
+ "portal": true,
  "template_key": "spotlight",
  "accent": "maroon",
  "locale": "en",

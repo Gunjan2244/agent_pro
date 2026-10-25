@@ -16,7 +16,7 @@ img{max-width:100%;height:auto;display:block}
 @media(min-width:720px){.tpl{--gutter:var(--space-l)}}
 @media(min-width:1024px){.tpl{--sec-y:calc(var(--space-l)*2)}}
 .sec{max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto;padding:var(--sec-y) var(--gutter)}
-.sec-hero{padding-top:calc(var(--space-l)*2)}
+.sec-hero{position:relative;padding-top:calc(var(--space-l)*2)}
 @media(min-width:1024px){.sec-hero{padding-top:calc(var(--space-l)*3)}}
 .sec:last-of-type{padding-bottom:calc(var(--sec-y)*2)}
 
@@ -59,6 +59,12 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 .hero-offer{margin-top:calc(var(--space-l)*2);max-width:560px}
 .hero-side{display:contents}
 
+/* "Customer login" (DECISIONS #102): out of the flow, in the hero's top padding, so the photo and <h1> sit where they
+   would without it (no shift, no LCP change); padding makes the 14sp link a comfortable tap target. */
+.hero-login{position:absolute;top:0;right:var(--gutter);font-weight:500}
+.hero-login a{display:block;padding:var(--space-s);text-decoration:none}
+.hero-login a:hover{text-decoration:underline}
+
 /* ---- cards and grids (one card style: white, hairline, md corners, 16/24 padding) ---- */
 .card{padding:var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surface)}
 .card p{margin-top:var(--space-s);color:var(--c-onSurfaceVariant)}
@@ -81,6 +87,16 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 /* companies (DECISIONS #90): the name, then its insurance types as tags */
 .co h3{font-size:var(--text-m);line-height:var(--line-m)}
 .co .tags{margin-top:var(--space-m)}
+/* customer accounts promo (DECISIONS #102): heading + lead, the 4 points with icons, the sign-in button, the first-time line */
+.pp{display:grid;gap:var(--space-m);max-width:var(--measure)}
+.pp-lead{color:var(--c-onSurfaceVariant)}
+.pp-pts{display:grid;gap:var(--space-s)}
+.pp-pts li{display:flex;align-items:center;gap:var(--space-s)}
+.pp-pts .ico{flex:none;color:var(--accent)}
+.pp h2{margin-bottom:var(--space-s)}
+.pp-go .btn{max-width:100%}
+.pp-first{color:var(--c-onSurfaceVariant)}
+.pp-first a{color:var(--accent);font-weight:500}
 /* about */
 .about-b{display:grid;gap:var(--space-m);max-width:var(--measure)}
 .stats{display:flex;flex-wrap:wrap;gap:var(--space-m) calc(var(--space-l)*2);margin-top:var(--space-s)}
@@ -188,7 +204,13 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 .fam-offers .hero-more{order:4}
 .fam-offers .scene{order:5}
 .fam-offers .hero-offer .offer-b{padding:var(--space-l)}
-.fam-offers .sec-contact{background:var(--c-surfaceContainerLow);box-shadow:0 0 0 100vmax var(--c-surfaceContainerLow);clip-path:inset(0 -100vmax)}
+.fam-offers .sec-contact,.fam-offers .sec-portal{background:var(--c-surfaceContainerLow);box-shadow:0 0 0 100vmax var(--c-surfaceContainerLow);clip-path:inset(0 -100vmax)}
+/* the promo: a compact white card on the band, the points as a row of pills (the trust strip's look) */
+.fam-offers .pp{max-width:none;padding:var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surface)}
+.fam-offers .pp-pts{display:flex;flex-wrap:wrap}
+.fam-offers .pp-pts li{min-height:40px;padding:var(--space-s) var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg)}
+.fam-offers .pp-go .btn{width:100%}
+@media(min-width:720px){.fam-offers .pp{padding:var(--space-l)}.fam-offers .pp-go .btn{width:auto}}
 @media(min-width:1024px){
   .fam-offers .hero-in{grid-template-columns:minmax(0,1fr) 440px;grid-template-rows:auto auto 1fr;column-gap:calc(var(--space-l)*3);grid-template-areas:"id side" "text side" "more side";align-items:start}
   .fam-offers .hero-id{grid-area:id}

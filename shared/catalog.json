@@ -191,11 +191,18 @@
       "order": 4
     },
     {
+      "key": "portal",
+      "labelKey": "enquiry_source.portal",
+      "icon": "badge",
+      "tone": "neutral",
+      "order": 5
+    },
+    {
       "key": "other",
       "labelKey": "enquiry_source.other",
       "icon": "more_horiz",
       "tone": "neutral",
-      "order": 5
+      "order": 6
     }
   ],
   "premiumModes": [
@@ -762,6 +769,20 @@
       "icon": "savings",
       "order": 12,
       "default": true
+    },
+    {
+      "key": "customerPortal",
+      "labelKey": "feature.customerPortal",
+      "icon": "person",
+      "order": 13,
+      "default": true
+    },
+    {
+      "key": "customerSignup",
+      "labelKey": "feature.customerSignup",
+      "icon": "person_add",
+      "order": 14,
+      "default": true
     }
   ],
   "privacyNotices": [
@@ -844,6 +865,50 @@
         "privacy.guardian_consent.title",
         "privacy.guardian_consent.notice",
         "privacy.guardian_consent.consent"
+      ]
+    },
+    {
+      "key": "customer_portal",
+      "labelKey": "privacy.customer_portal.title",
+      "order": 5,
+      "version": 1,
+      "textKeys": [
+        "privacy.customer_portal.consent",
+        "privacy.customer_portal.link",
+        "privacy.customer_portal.title",
+        "privacy.customer_portal.what",
+        "privacy.customer_portal.why",
+        "privacy.customer_portal.who",
+        "privacy.customer_portal.how_long",
+        "privacy.customer_portal.reminders",
+        "privacy.customer_portal.rights"
+      ]
+    },
+    {
+      "key": "customer_signup",
+      "labelKey": "privacy.customer_signup.title",
+      "order": 6,
+      "version": 1,
+      "textKeys": [
+        "privacy.customer_signup.consent",
+        "privacy.customer_signup.link",
+        "privacy.customer_signup.title",
+        "privacy.customer_signup.what",
+        "privacy.customer_signup.why",
+        "privacy.customer_signup.who",
+        "privacy.customer_signup.how_long",
+        "privacy.customer_signup.rights"
+      ]
+    },
+    {
+      "key": "customer_signup_guardian",
+      "labelKey": "privacy.customer_signup_guardian.title",
+      "order": 7,
+      "version": 1,
+      "textKeys": [
+        "privacy.customer_signup_guardian.title",
+        "privacy.customer_signup_guardian.notice",
+        "privacy.customer_signup_guardian.consent"
       ]
     }
   ],
@@ -1186,7 +1251,10 @@
     },
     "auditLogMonths": 13,
     "orphanMediaDays": 30,
-    "endedPolicySuggestDeleteYears": 3
+    "endedPolicySuggestDeleteYears": 3,
+    "portalSessionsDays": 30,
+    "portalInvitesDays": 30,
+    "customerDraftsDays": 30
   },
   "offers": {
     "maxSectionItems": 6,
@@ -1195,5 +1263,142 @@
     "imageMaxBytes": 524288,
     "imageAspect": "16:9",
     "logoMaxPx": 512
+  },
+  "portal": {
+    "pinLength": 6,
+    "inviteDays": 7,
+    "inviteMaxPhoneTries": 5,
+    "sessionDays": 90,
+    "maxFailedAttempts": 5,
+    "lockMinutes": 15,
+    "hardLockAfter": 20,
+    "enquiriesPerHour": 5,
+    "paymentsShown": 12,
+    "remindDaysBefore": [
+      7,
+      1
+    ],
+    "failureWindowDays": 30,
+    "hardLockHours": 24,
+    "siteFailedLoginsPerMinute": 30,
+    "blockedPins": [
+      "000000",
+      "000111",
+      "007007",
+      "010203",
+      "020304",
+      "030405",
+      "100000",
+      "100100",
+      "101010",
+      "101112",
+      "102030",
+      "111000",
+      "111111",
+      "111222",
+      "112112",
+      "112211",
+      "112233",
+      "121212",
+      "121314",
+      "123000",
+      "123123",
+      "123321",
+      "123456",
+      "123654",
+      "123789",
+      "131313",
+      "131415",
+      "131420",
+      "135790",
+      "141414",
+      "142536",
+      "147147",
+      "147258",
+      "147852",
+      "150150",
+      "151515",
+      "159357",
+      "159753",
+      "161616",
+      "171717",
+      "181818",
+      "191919",
+      "198019",
+      "199019",
+      "199119",
+      "199219",
+      "199319",
+      "199419",
+      "199519",
+      "199619",
+      "199719",
+      "199819",
+      "199919",
+      "200020",
+      "200120",
+      "200200",
+      "200220",
+      "200320",
+      "200420",
+      "200520",
+      "200620",
+      "200720",
+      "200820",
+      "200920",
+      "201020",
+      "201314",
+      "202020",
+      "212121",
+      "214365",
+      "222333",
+      "232323",
+      "232425",
+      "242424",
+      "246810",
+      "250250",
+      "252525",
+      "258258",
+      "258369",
+      "300300",
+      "313131",
+      "321123",
+      "321321",
+      "321654",
+      "333444",
+      "369369",
+      "400400",
+      "456123",
+      "456456",
+      "456789",
+      "500500",
+      "520131",
+      "520520",
+      "555666",
+      "600600",
+      "654123",
+      "654321",
+      "666666",
+      "696696",
+      "696969",
+      "700700",
+      "741852",
+      "753951",
+      "789012",
+      "789456",
+      "789789",
+      "800800",
+      "852456",
+      "900900",
+      "951753",
+      "963852",
+      "987654"
+    ]
+  },
+  "customerSignup": {
+    "linkDays": 7,
+    "savesPerMinute": 60,
+    "openLinksPerAgent": 25,
+    "presenceSeconds": 30
   }
 }

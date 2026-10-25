@@ -1,6 +1,7 @@
 // Pure web app manifest for one agent's site (docs/WEB_RENDERER.md, Add to home screen). Used by worker.js; testable in node.
 import { headData } from "./head.js";
 import { firstName, has } from "./sections/util.js";
+import { portalLinks } from "./route.js";
 import { localeKeys, pickLocale } from "./i18n.js";
 
 export const MANIFEST_PATH = "/manifest.webmanifest";
@@ -27,11 +28,16 @@ export function swatchFor(catalog, accent) {
   return swatches.find((s) => s.key === accent) || swatches[0] || null;
 }
 
-export function manifestFor(site, target, { catalog, tokens }) {
-  const { name, short } = appNames(site);
+// The customer portal's own manifest (DECISIONS #100): `app=portal` on the same URL; id = start_url = scope = the portal base.
+export const portalManifestHref = (target) => manifestHref(target) + (target.slug ? "&" : "?") + "app=portal";
+
+// portal: true -> the installed app is the customer portal; t = the i18n lookup (makeT) for its names.
+export function manifestFor(site, target, { catalog, tokens, portal = false, t }) {
+  let { name, short } = appNames(site);
+  if (portal && t) { name = t("portal.app_name", { name }).trim().slice(0, 45); short = t("portal.app_short_name", { name }).trim().slice(0, SHORT_MAX); }
   const swatch = swatchFor(catalog, site.accent);
   const light = ((tokens || {}).color || {}).light || {};
-  const base = appBase(target);
+  const base = portal ? portalLinks(target).base : appBase(target);
   const icons = swatch ? ICON_SIZES.flatMap((n) => ["any", "maskable"].map((purpose) => ({ src: iconPath(swatch.key, n), sizes: `${n}x${n}`, type: "image/png", purpose }))) : [];
   const m = {
     id: base, start_url: base, scope: base,
@@ -42,7 +48,7 @@ export function manifestFor(site, target, { catalog, tokens }) {
     background_color: light.background, theme_color: light.surface,
     icons, prefer_related_applications: false,
   };
-  if (!m.description) delete m.description;
+  if (portal || !m.description) delete m.description;
   return m;
 }
 

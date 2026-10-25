@@ -96,6 +96,56 @@
         "en": "aa352b833bdd55b21b1aafe6a9432abb88851e410768c8231ef9e40307c0e562",
         "hi": "7a34650541944f056c6f463588f565d7c8ad189f383ed25b4af890260b21a62a"
       }
+    },
+    "customer_portal": {
+      "version": 1,
+      "labelKey": "privacy.customer_portal.title",
+      "textKeys": [
+        "privacy.customer_portal.consent",
+        "privacy.customer_portal.link",
+        "privacy.customer_portal.title",
+        "privacy.customer_portal.what",
+        "privacy.customer_portal.why",
+        "privacy.customer_portal.who",
+        "privacy.customer_portal.how_long",
+        "privacy.customer_portal.reminders",
+        "privacy.customer_portal.rights"
+      ],
+      "hash": {
+        "en": "4bf469dafca8f01f5a06fe2a447bc46fbb5f826391068add9a31c86ab617a799",
+        "hi": "7070aa96be3dd948f590fa4c94349743408551e5ead17c4456cfa3e3f04898ce"
+      }
+    },
+    "customer_signup": {
+      "version": 1,
+      "labelKey": "privacy.customer_signup.title",
+      "textKeys": [
+        "privacy.customer_signup.consent",
+        "privacy.customer_signup.link",
+        "privacy.customer_signup.title",
+        "privacy.customer_signup.what",
+        "privacy.customer_signup.why",
+        "privacy.customer_signup.who",
+        "privacy.customer_signup.how_long",
+        "privacy.customer_signup.rights"
+      ],
+      "hash": {
+        "en": "808fd82876bd9d461d73f8110d4b0046e23881dbf16c453b77141aa7e32125da",
+        "hi": "38054eab84ccb2217a7d3de0fb22c329223b3eb80cf84d44f28ab73a65129166"
+      }
+    },
+    "customer_signup_guardian": {
+      "version": 1,
+      "labelKey": "privacy.customer_signup_guardian.title",
+      "textKeys": [
+        "privacy.customer_signup_guardian.title",
+        "privacy.customer_signup_guardian.notice",
+        "privacy.customer_signup_guardian.consent"
+      ],
+      "hash": {
+        "en": "34f516e53bab19871802d3a393b9805ea51e7ccf91ce12255a3bc04bd21853ec",
+        "hi": "137581428b2f6ccc1ea55e10e8871882a3ee0aa32b95eee245c97b10c9331fd8"
+      }
     }
   }
 }

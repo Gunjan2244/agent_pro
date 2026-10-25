@@ -18,12 +18,15 @@
 │ Web renderer       │ ────────────────────────────────────────────────────────────┘
 │ (Cloudflare)       │  Worker SSR: /, /a/{slug}/, /privacy → rpc/get_public_site* → HTML (DECISIONS #75)
 └────────────────────┘  also /manifest.webmanifest, /robots.txt, /sitemap.xml (list_public_sites); assets for the rest
+                        /a/{slug}/my/* (customer login): GET → portal_home; POST login|start|ask|request|logout → portal_* (anon RPCs, cookie ap_portal, secret header x-portal-key)
 App ─JWT→ Edge Functions (billing, domains) ─→ Razorpay · Registrar API · Cloudflare API
 Razorpay ─webhook→ razorpay-webhook ; pg_cron → cron   (details: BILLING.md, DOMAINS.md)
 ```
 
 ## Public-site data flow (Worker SSR, DECISIONS #75)
 `GET /a/<slug>/` → `worker.js` (`run_worker_first`) → `resolveTarget` → anon RPC `get_public_site` (or `get_public_site_by_host` on a custom domain) → `ssr.js renderDocument()` calls the same pure template `render()` the browser uses (from the static map in `templates/index.js`) → full HTML with head tags and JSON-LD, security headers from `headers.js`, `Last-Modified`. The browser then loads `app.js` → `hydrate.js` to wire the enquiry form, install button and view count; it never re-renders. Static data (config, schema, catalog, dictionaries, notices) is read through `env.ASSETS` and cached per isolate. `?preview=1` (in-app preview) and a backend failure use the static `index.html` shell and the client render. Details: WEB_RENDERER.md.
+
+**Customer-login data flow (DECISIONS #96–#102).** `/a/<slug>/my…` is a separate branch of the same Worker (`handlePortal`): GET renders from `portal_home` with the `ap_portal` session cookie (a first-login link's token is moved into a 15-minute `ap_invite` cookie), POST forms call the six anon `portal_*` RPCs and redirect. **Every one of those calls carries the secret header `x-portal-key`** (the Worker secret `PORTAL_RPC_KEY`; the SQL side compares its SHA-256 with the one row in `private.portal_gate`), so the public anon key alone cannot reach the login logic; without the secret the Worker fails closed with a 503 portal page and makes no call. The site pages only link to the portal: the payload's `portal` boolean (from `get_public_site*`: flag on, owner not lapsed, `showCustomerLogin` not off) decides whether the hero link, the "For my customers" section and the footer link are drawn, and the portal base path is derived from the privacy URL (`ctx.portalBase`). The in-app preview has no Worker, so the app adds the same boolean itself (`SitePreviewPayload.build(…, portalEnabled)`, below).
 
 ## Repo layout
 ```
@@ -86,7 +89,7 @@ core/
   ui/           ScreenState, UiState<T>, LocalIsOnline (connectivity composition local), SharedAxisNavHost (the NavHost for linear flows)
 feature/<name>/ data/ (Dto, Entity, Dao, Repository) · ui/ (Screen, ViewModel, components) · <Name>Feature.kt
   names: auth, onboarding, home, insights, enquiries, customers, policies, dues,
-         website, domains, billing, settings, export
+         website, domains, billing, settings, export, portal
 domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, StatsAggregator, CsvWriter
 ```
 
@@ -99,7 +102,8 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
   `SetNewPasswordViewModel`, This link has expired), `AuthNavigation.kt` (`AuthRoutes`, `AuthNavHost`, `PasswordRecoveryNavHost`).
 - `feature/onboarding`: `ui/OnboardingViewModel` (one instance shared by the 3 steps, scoped to the onboarding graph;
   `SlugSuggestion`), `ui/OnboardingScreens.kt`, `OnboardingNavigation.kt` (`OnboardingRoutes`, `OnboardingNavHost`).
-- `feature/offers` (built so far: the companies part of DECISIONS #89): `data/CompanyRepository` (`SupabaseCompanyRepository`, `Company`, `Membership`, `CompanyJson`; remote only, an in-memory `StateFlow` of the memberships), `ui/CompaniesViewModel` + `CompaniesUi` (the "Your companies" block, the picker and form sheets). `AppDependencies.companies`; used by `feature/onboarding` (step 1) and `feature/settings` (Profile route).
+- `feature/offers` (built: the companies part of DECISIONS #89 and the offers picker, DECISIONS #104 step 1: `OffersFeature` registers `OfferPickerRoute(section, field)`, `OfferPickerViewModel`/`OfferPickerUi`, `OfferDraft.kt` with the pure draft edits, and `CompanyRepository.liveOffers()` over `my_company_offers`; it saves through `sites.saveDraft`. `FormRenderer(onOfferField)` renders `offerRef`/`offerList` as `NavRow`s and `SectionRoute` navigates to the picker; with a null callback or a disabled form the rows are muted. Slot mode is still to do, 8b-4b): `data/CompanyRepository` (`SupabaseCompanyRepository`, `Company`, `Membership`, `CompanyJson`; remote only, an in-memory `StateFlow` of the memberships), `ui/CompaniesViewModel` + `CompaniesUi` (the "Your companies" block, the picker and form sheets). `AppDependencies.companies`; used by `feature/onboarding` (step 1) and `feature/settings` (Profile route).
+- `feature/portal` (customer login, DECISIONS #96–#100): `PortalFeature` (flag `customerPortal`, no routes and no tab; it contributes one `CustomerDetailItem`, key `website_login`, order 1), `data/PortalRepository` (reached as `AppDependencies.portal`, default `NoPortalRepository` so tests that don't care get an offline stub; `AppContainer` supplies `SupabasePortalRepository`, which calls `portal_status`, `portal_invite`, `portal_revoke`; `PortalState`, `PortalStatus`, `PortalJson`; **online only, nothing in Room**), `ui/PortalViewModel`, `ui/WebsiteLoginCard` (and the public `WebsiteLoginCardContent`, the stateless card used by the screenshot tests). Strings in `strings_portal.xml` (EN + HI). The invite link is shared through the share sheet (`/a/<slug>/my/start?t=<token>`; a custom domain isn't used yet because the app's `Site` model has no domain field).
 - `feature/settings/data`: `Profile`, `ProfileDto`/`ProfileEntity`/`ProfileDao`, `ProfileRepository` (`SupabaseProfileRepository`).
   `feature/settings/SettingsFeature.kt`: Profile (the companies list), Language, the privacy notice and Sign out (the rest is Phase 13).
 - `feature/website` (Phase 8, the Website hub):
@@ -107,7 +111,7 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
     (`SupabaseSiteRepository`: `is_slug_available`, insert, `publish_site`, `saveDraft` (only `draft_content`; the 64 KB cap is
     checked first, `ContentTooLarge`), `updateAppearance` (`template_key`, `accent`, `locale`), `changeSlug`; `NewSite` carries the site `locale`), `StarterContent` (`from(profile, template, locale, agentId)`: the generated `SiteSeed` resolved into the first draft, with `sectionOrder`, `hidden`, `maxLength` cuts and publish-safe list items; `isOwnBio` for Home's checklist; services seeded from the agent's insurance types), `SiteServices` (`agentTypes`: the union of `insurance_types` over pending and approved company links; the services to add or remove when the types change; DECISIONS #93), `ServicesMatchViewModel` (the "Update your website to match?" sheet from Settings → Profile and the Website → Content hint),
     `SiteLinks`; `SiteContent` (pure: section order, `withOffersAfterHero` for the Appearance switch, `hidden`, pinned sections, schema values ⇄ `FormState`, summaries, size
-    cap) and `PublishIssues` (`publish_site` errors → schema field + `ValidationError`); `SitePreviewPayload` (the renderSite input, optionally with the `preview_site_offers` answer as top-level `offers`/`company`; `SiteRepository.previewOffers` caches it in memory per (draft, template) in `PreviewOffersCache`, and `rememberPreviewOffers` loads it after the preview is shown and re-renders on arrival, any failure meaning no offers; DECISIONS #84, #86) (the
+    cap) and `PublishIssues` (`publish_site` errors → schema field + `ValidationError`); `SitePreviewPayload` (the renderSite input, which **always** carries `portal`: `FeatureId.CustomerPortal` enabled and `contact.showCustomerLogin` not `false`, passed as `portalEnabled` by the Preview screen, the template-switch preview, the onboarding template picker and the launch preview; optionally with the `preview_site_offers` answer as top-level `offers`/`company`; `SiteRepository.previewOffers` caches it in memory per (draft, template) in `PreviewOffersCache`, and `rememberPreviewOffers` loads it after the preview is shown and re-renders on arrival, any failure meaning no offers; DECISIONS #84, #86) (the
     `renderSite` JSON); `SiteMedia` (`SiteMediaRepository` / `SupabaseSiteMediaRepository`: Storage upload to
     `site-media/<uid>/<name>-<millis>-<nonce>.webp` and its public URL; `ImageUploader` = `ImageProcessor` + upload;
     `MediaPaths`); `SiteStats` (`SiteDailyViewDto`/`Entity`/`Dao` + its sync table, `SiteStatsAggregator`, `StatsPeriod`
@@ -123,7 +127,10 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
     `WebsiteAppearanceRoute`, `WebsiteTemplatesRoute`, `WebsiteLinkRoute`, `WebsiteStatsRoute`, `WebsitePreviewRoute`, and
     its 4 `websiteHubEntries` (Content, Appearance, Link & domain, Stats). `WebsiteServices` groups what the hub needs
     beyond `sites` (MediaPicker, `ImageUploader`, SitePreview, stats) as one `AppDependencies.website` entry.
-- `feature/home` (greeting, setup-checklist stub, `TabScreen` frame).
+- `feature/home` (greeting, `TabScreen` frame, the setup checklist and What's new):
+  - `HomeViewModel` builds `HomeUiState` with the ordered checklist (Profile, Companies, Publish, About, Share, FirstCustomer, CustomerLogin; items whose flag is off are hidden and not counted) and `next`/`isTappable`: only the first undone item and done items open anything (`openSetupItem`). Companies is done on a pending or approved link or a pending "not listed" (one `companies.refresh()`; undone offline); CustomerLogin on `StoreKeys.PORTAL_INVITED` (set by `PortalViewModel` on invite, cleared by `DataSync.clearAll`).
+  - `WhatsNew.kt` (no route, no flag): `VERSION = 1`, the rows Companies, CustomerLogin and ForMyCustomers (each gated on its flag), and the sheet. It shows when `whats_new_seen < VERSION`, the agent has a site, at least one row is enabled and the checklist sheet is closed; closing, a row or Got it marks it seen, and `OnboardingViewModel.finish()` marks it seen (`NonCancellable`) so new sign-ups skip it. Sign-out doesn't reset it.
+  - `FeatureHost.openTab(tabKey): Boolean` switches the bottom-bar tab (false when that tab is off); the checklist and What's new use it before navigating to a screen inside the tab.
 - **Phases 6–7 (enquiries, customers, policies, dues):**
   - `domain/DueDateCalculator.kt`: `DueDateCalculator` (calendar months from `start_date`, clamped to the month end;
     `nextAfterPayment` is exactly the `mark_premium_paid` rule; `initialNextDue` for new policies) and `DueBuckets`
@@ -133,6 +140,16 @@ domain/         pure Kotlin, unit-tested in commonTest: DueDateCalculator, Stats
     `statusPatch`), `EnquiryRealtime` (`EnquiryLive` seam + `SupabaseEnquiryRealtime`); `ui/` list, detail (status sheet,
     follow-up sheet), Add enquiry and notes editor with their ViewModels; `EnquiriesFeature.kt` (routes `EnquiriesRoute`,
     `EnquiryDetailRoute(id)`, `AddEnquiryRoute`, `EnquiryNotesRoute(id)`; tab badge = unseen enquiries).
+  - `feature/customers` also holds the **customer sign-up link and Incomplete forms** (DECISIONS #108): `data/CustomerDraft.kt`
+    (`CustomerDraft`, `CustomerDraftDto/Entity/Dao`, `DraftJson`), `CustomerDraftRepository.kt` (`SupabaseCustomerDraftRepository`,
+    `customerDraftsSyncTable`, `CustomerSignupJson` for the `customer_signup_link` / `customer_signup_renew` answers, `SignupLinks.joinUrl`
+    = `<site url>/join?t=<token>`, `NoCustomerDraftRepository`), `CustomerDraftRealtime.kt` (`CustomerDraftLive` seam +
+    `SupabaseCustomerDraftRealtime`); `ui/CustomerSignupViewModels.kt` (`IncompleteForms` presence/line logic, `IncompleteFormsViewModel`,
+    `SignupStartViewModel`, `SignupLiveViewModel`) and `ui/CustomerSignupScreens.kt` (Add customer sheet content, Incomplete forms,
+    start and live screens). `CustomerFormViewModel` autosaves Add mode into the draft (debounced, insert then update, completed after Save).
+    Routes in `CustomersFeature`: `IncompleteFormsRoute`, `CustomerSignupStartRoute`, `CustomerSignupLiveRoute(draftId, token?)` and
+    `CustomerFormRoute(draftId)`. They are registered with the Customers feature (not behind the `customerSignup` flag, so an existing
+    link still opens if the flag is turned off); the flag only gates the "Send the customer a link" option and the realtime channel.
   - `feature/customers`: `data/` `Customer` (+ DTO/entity/DAO, `CustomerInput`), `CustomerRepository` (create, update,
     `convertEnquiry` (insert with `source_enquiry_id`, then the enquiry's `customer_id` + status `converted`; a retry reuses
     the customer), soft delete of the customer and its policies); `ui/` list (`CustomerFilter`), detail (Policies · Details
@@ -193,16 +210,17 @@ The one hand-written `expect`/`actual` declaration is `LocalAppLocale` in `core/
 ```kotlin
 interface AppFeature {
     val flag: FeatureId?                      // catalog.features flag; null = core feature, always on
-    fun NavGraphBuilder.routes(host: FeatureHost)   // host: nav, deps, segmentsFor(tabKey), openSettings()
+    fun NavGraphBuilder.routes(host: FeatureHost)   // host: nav, deps, segmentsFor(tabKey), openSettings(), openTab(tabKey): Boolean
     val bottomNavItem: BottomNavItem? get() = null
     val segments: List<TabSegment> get() = emptyList()   // e.g. Dues inside the Customers tab
     val homeCards: List<HomeCard> get() = emptyList()
     val settingsEntries: List<SettingsEntry> get() = emptyList()
+    val customerDetailItems: List<CustomerDetailItem> get() = emptyList()   // cards on Customer detail's Details tab, drawn in `order`; content(host, customerId)
     val websiteHubEntries: List<HubEntry> get() = emptyList()
     fun openDeepLink(link: DeepLink, host: FeatureHost): Boolean = false   // after the shell opened the link's tab
 }
 object FeatureRegistry {
-    val all = listOf(HomeFeature, EnquiriesFeature, CustomersFeature, DuesFeature, PoliciesFeature, WebsiteFeature, SettingsFeature)
+    val all = listOf(HomeFeature, EnquiriesFeature, CustomersFeature, DuesFeature, PoliciesFeature, WebsiteFeature, PortalFeature, SettingsFeature)
     fun enabled(flags: FeatureFlags) = all.filter { f -> f.flag?.let(flags::isEnabled) ?: true }
 }
 ```
@@ -210,6 +228,7 @@ object FeatureRegistry {
 - `BottomNavItem.badge` (a composable `(FeatureHost) -> Int?`) gives a tab its count badge. `openDeepLink` lets the owning feature open `agentpro://enquiry|customer|policy/{id}` and `dues?bucket=` on its detail screen or segment.
 - **Home and Settings have no catalog flag**, so `flag` is nullable and null means "always on" (pending the user's confirmation; the alternative is adding `home`/`settings` flags to `catalog.features`).
 - `MainShell` builds the bottom bar (tabs sorted by `BottomNavItem.order`: Home · Enquiries · Customers · Website, labels `tab_*`, icons from `FeatureId.icon` and `ic_home`) and the NavHost from the enabled features, and hides the bar on non-tab screens (Settings).
+- `customerDetailItems` is the extension point that lets a feature add a card to another feature's screen without that feature knowing it: `CustomersFeature`'s `CustomerDetailRoute` collects the enabled features' items and passes them to `CustomerDetailScreen(detailExtras = …)`, which draws them on the **Details** tab under the fields. `PortalFeature` is the first user.
 `FeatureFlags` takes its defaults from `catalog.features`. The server's values come from the RPC `effective_flags()`, cached in DataStore by `FeatureFlagsRepository` (refreshed with every `DataSync.refreshAll()`; a failed refresh keeps the cache). That RPC merges two `app_config` rows (DECISIONS #35): `flags`, the catalog defaults that every `catalog_sync` migration rewrites, and `flag_overrides`, manual overrides that migrations never touch. An override wins, and only boolean override values count. `FeatureFlags` applies the cached result over the catalog defaults, and the SQL (`private.flag_enabled`) and the Edge Functions use the same rule.
 
 ## Data flow and offline cache
@@ -218,12 +237,13 @@ object FeatureRegistry {
 - **Refresh.** `SyncEngine.refresh(table)` pulls rows where `updated_at > lastSyncAt`, upserts them, and removes rows with `deleted_at` set. The cursor for each table is stored in DataStore.
   - It runs at app start, on pull-to-refresh, when the app returns to the foreground, and after each write.
   - **Details (Phase 5):** pages of 500 ordered by `updated_at, id`, continued with a keyset `(updated_at, id)` so rows sharing a timestamp are never skipped at a page boundary; the cursor is stored only after every page applied; offline it returns `Offline` without a request; one mutex per table. `applyLocal(table, rows)` writes a returned row without moving the cursor.
-  - Synced tables so far: `profiles`, `sites`, `site_daily_views` (Phase 8; read-only for the client), `enquiries`, `customers`, `policies` and `premium_payments` (Phases 6–7; `premium_payments` is written only by the RPCs; `AppDatabase.VERSION` 2) (`SyncTable` adapters over the Room DAOs, `RoomSyncTable`). Room filters soft-deleted rows in its queries too (DECISIONS #27).
+  - Synced tables so far: `profiles`, `sites`, `site_daily_views` (Phase 8; read-only for the client), `enquiries`, `customers`, `customer_drafts` (DECISIONS #108; the agent writes only `source = agent` drafts, customer links are made by `customer_signup_link()`), `policies` and `premium_payments` (Phases 6–7; `premium_payments` is written only by the RPCs; `AppDatabase.VERSION` 3) (`SyncTable` adapters over the Room DAOs, `RoomSyncTable`). Room filters soft-deleted rows in its queries too (DECISIONS #27).
   - `AppDataSync` (`DataSync`) runs `refreshAll()` (flags + every table) at sign-in (`RootViewModel`), on `ON_START` and from Retry. It clears the cache and cursors on sign-out and when a different user signs in (`last_user_id`), and resets the cursors once when `AppDatabase.VERSION` changes, because the cache uses a destructive migration (it can always be re-synced).
 - **Writes** go to Supabase first, and Room is updated from the returned row.
   - While offline, save buttons are disabled and the `OfflineBanner` shows. There's no write queue (DECISIONS #8).
 - **Realtime.** While the app is in the foreground, channels on `enquiries`, `orders`, `subscriptions` and `site_domains` (filtered to `agent_id`) upsert into Room. These drive in-app notifications, payment results and domain setup progress.
   - **Enquiries (Phase 6):** `SupabaseEnquiryRealtime` opens a `postgres_changes` channel on `enquiries` filtered to `agent_id = auth.uid()`; `MainShell` starts it on `ON_START` and stops it on `ON_STOP` (`LifecycleStartEffect`). Each insert, update or delete event runs `SyncEngine.refresh("enquiries")`, which upserts the changed rows (and removes tombstones) with the same row format and cursor as a normal sync. Failures are ignored; the next foreground refresh catches up.
+  - **Customer sign-up links (DECISIONS #108):** `SupabaseCustomerDraftRealtime` does the same for `customer_drafts` (channel `customer-drafts-<uid>`, `agent_id` filter); `MainShell` starts it on `ON_START` only while the `customerSignup` flag is on. Each event refreshes `customer_drafts` **and** `customers` (a customer's Submit creates one), which is how the live screen shows typing, presence and consent.
 - **Payments.** `PaymentLauncher` calls `billing/create-order` with a `kind` (and a `quote_id` for domains). It then opens checkout and sends the result to `billing/verify`. The app never decides a price or writes payment, plan or domain status (BILLING.md, DOMAINS.md).
 - **Entitlement.** `EntitlementRepository` calls `my_entitlement()` and caches the result. `FeatureGate` disables edit actions when the plan is `lapsed`. The server enforces the same rule through RLS `can_write()`.
 - **Stats** are computed locally from Room by `StatsAggregator`, so charts work offline.

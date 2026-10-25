@@ -181,30 +181,30 @@ try {
     // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip); WP5c's template partials (modern/minimal parts.js and
     // their layouts, DECISIONS #85) add up to ~6KB; the 2026-10-22 redesign (one layout system in base.css, the companies
     // partials) another ~7KB, so the cap is 100KB (unminified, commented source); the SSR path keeps its own caps above.
-    assert.ok(raw < 100 * 1024, tpl + " over 100KB");
+    assert.ok(raw < 106 * 1024, tpl + " over 106KB"); // 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
     const later = [...shared, ...own(tpl), `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 106 * 1024, tpl + " + install modules over 106KB");
+    assert.ok(later < 112 * 1024, tpl + " + install modules over 112KB"); // 106 -> 112KB, same reason
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
-      assert.ok(sz < 94 * 1024, extra + " page over 94KB"); // counts every sections/ file (and all of base.css), which these pages never fully load
+      assert.ok(sz < 102 * 1024, extra + " page over 102KB"); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
     }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);
   }
 } catch (e) { if (e.code === "ENOENT") console.log("SIZE skipped (run build first)"); else throw e; }
 // hosting config (Cloudflare Workers static assets, DECISIONS #59)
-ok("wrangler.jsonc: SPA static assets; the Worker runs first only for pages, manifest, robots.txt, sitemap.xml (DECISIONS #65, #75)", () => {
+ok("wrangler.jsonc: SPA static assets; the Worker runs first only for pages, the customer portal, manifest, robots.txt, sitemap.xml (DECISIONS #65, #75, #98)", () => {
   const raw = readFileSync(new URL("../web/wrangler.jsonc", import.meta.url), "utf8");
   const strip = raw.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
   const w = JSON.parse(strip);
   assert.equal(w.name, "agentpro-sites"); assert.equal(w.assets.directory, "./dist");
   assert.equal(w.assets.not_found_handling, "single-page-application");
   assert.equal(w.main, "./worker.js"); assert.equal(w.assets.binding, "ASSETS");
-  assert.deepEqual(w.assets.run_worker_first, ["/", "/a/*", "/privacy", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
+  assert.deepEqual(w.assets.run_worker_first, ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
   assert.ok(!w.routes && !w.vars, "no routes yet; no keys in the config");
 });
 if (existsSync(dist + "index.html")) ok("dist: _headers present, no vercel.json, no secrets in _headers", () => {
@@ -435,6 +435,9 @@ await import("./test-web-offers.mjs").then((m) => m.run({ ok, R, dicts, catalog,
 await import("./test-web-install.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-templates.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-companies.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-promo.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-types.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-ssr.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-portal.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-join.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 console.log(`\n${n} checks passed`);

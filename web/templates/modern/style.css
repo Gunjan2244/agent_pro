@@ -54,3 +54,15 @@
 }
 @media(min-width:1024px){.tpl-modern .hero-text h1{font-size:var(--text-xl);line-height:var(--line-xl)}}
 .tpl-modern .list{max-width:none}
+/* promo: a hairline row, heading + lead + a text link left, the points a plain list right */
+.tpl-modern .pp{max-width:none;padding:var(--space-l) 0;border-block:1px solid var(--c-outlineVariant)}
+.tpl-modern .pp-go .btn,.tpl-modern .pp-first{min-height:0;padding:0;border:0;border-radius:0;background:none;color:var(--accent);font-weight:600;text-decoration:none}
+.tpl-modern .pp-go .btn::after{content:" \2192"}
+.tpl-modern .hero-login a{margin:var(--space-s);padding:var(--space-s) var(--space-m);border-radius:var(--shape-lg);background:var(--c-surface)}
+@media(min-width:720px){
+  .tpl-modern .pp{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"head pts" "go pts" "first pts";column-gap:calc(var(--space-l)*2);align-content:start}
+  .tpl-modern .pp-head{grid-area:head}
+  .tpl-modern .pp-pts{grid-area:pts}
+  .tpl-modern .pp-go{grid-area:go}
+  .tpl-modern .pp-first{grid-area:first}
+}

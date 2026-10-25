@@ -33,7 +33,7 @@ export function normalizeCompanies(v) {
   }));
 }
 
-// RPC row -> { content, template_key, accent, locale, canonical_host, published_at, profile, offers, company, companies }.
+// RPC row -> { portal, content, template_key, accent, locale, canonical_host, published_at, profile, offers, company, companies }.
 // `company` keeps only the disclaimer (the offers' fine print); the company *names* come only through `companies`.
 export function normalizeSite(row) {
   if (Array.isArray(row)) row = row[0];
@@ -44,7 +44,7 @@ export function normalizeSite(row) {
   return {
     content, template_key: row.template_key, accent: row.accent, locale: row.locale, canonical_host: row.canonical_host || null,
     published_at: row.published_at || null, profile: row.profile || {}, offers: normalizeOffers(row.offers), company: disclaimer ? { disclaimer } : null,
-    companies: normalizeCompanies(row.companies),
+    companies: normalizeCompanies(row.companies), portal: row.portal === true,
   };
 }
 

@@ -426,6 +426,13 @@
       ]
     },
     {
+      "key": "portal",
+      "labelKey": "section.portal",
+      "icon": "person",
+      "defaultVisible": true,
+      "fields": []
+    },
+    {
       "key": "contact",
       "labelKey": "section.contact",
       "icon": "call",
@@ -475,6 +482,12 @@
           "key": "showInstallButton",
           "type": "toggle",
           "labelKey": "field.show_install_button",
+          "default": true
+        },
+        {
+          "key": "showCustomerLogin",
+          "type": "toggle",
+          "labelKey": "field.show_customer_login",
           "default": true
         }
       ]

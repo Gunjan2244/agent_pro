@@ -5,6 +5,7 @@ import { esc, has, arr, textOr, interestLabel } from "./util.js";
 import { initials, pic, fnv1a32 } from "./media.js";
 import { offerCard } from "./offer.js";
 import { needGroups } from "./offers.js";
+import { heroLogin } from "./portal-promo.js";
 
 const MAX_CHIPS = 4;
 
@@ -62,13 +63,14 @@ export function heroParts(d, ctx, opts = {}) {
     meta: sub ? `<p class="meta">${has(p.full_name) ? esc(p.full_name) + " · " : ""}${sub}</p>` : "",
     button: cta ? `<a class="btn" href="#contact">${esc(cta)}</a>` : "",
     chips: leadOffer ? "" : chips(ctx, d),
+    login: heroLogin(ctx),
     offer: banner ? `<div class="hero-offer">${banner}</div>` : "",
   };
 }
 
 export function hero(d, ctx) {
   const x = heroParts(d, ctx);
-  return `<div class="hero-in">
+  return `${x.login}<div class="hero-in">
 <div class="hero-id">${x.face}${x.who}</div>
 <div class="hero-text">
 ${x.h1}

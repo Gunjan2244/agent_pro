@@ -12,6 +12,10 @@ grant anon, authenticated, service_role to postgres;
 
 grant usage on schema public to anon, authenticated, service_role;
 
+-- Supabase installs extensions (pgcrypto among them) in schema `extensions`; migrations call extensions.<fn>.
+create schema if not exists extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
+
 -- Supabase's default privileges: everything postgres creates in public is granted to the API roles.
 alter default privileges for role postgres in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges for role postgres in schema public grant all on functions to anon, authenticated, service_role;
@@ -26,8 +30,26 @@ create table auth.users (
   email              text unique,
   raw_user_meta_data jsonb not null default '{}'::jsonb,
   raw_app_meta_data  jsonb not null default '{}'::jsonb,
+  email_confirmed_at timestamptz,
+  last_sign_in_at    timestamptz,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
+);
+
+-- Sessions and refresh tokens (the admin function's revoke ends them). Same key columns and types as Supabase Auth.
+create table auth.sessions (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  aal        text,
+  created_at timestamptz not null default now()
+);
+create table auth.refresh_tokens (
+  id         bigserial primary key,
+  token      text unique,
+  user_id    varchar(255),
+  revoked    boolean,
+  session_id uuid references auth.sessions (id) on delete cascade,
+  created_at timestamptz not null default now()
 );
 
 create function auth.uid() returns uuid language sql stable as $$

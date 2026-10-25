@@ -13,7 +13,7 @@ import { companyList, companiesHeading, tags } from "../../sections/companies.js
 // Wide: the photo (4:5) beside the text, two columns. The photo has explicit width/height and a CSS aspect ratio (no CLS).
 export function hero(d, ctx) {
   const x = heroParts(d, ctx, { photo: [640, 480] });
-  return `<div class="hero-in">
+  return `${x.login}<div class="hero-in">
 <div class="cover">${x.face}</div>
 <div class="hero-text">
 ${x.meta}

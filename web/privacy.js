@@ -23,12 +23,16 @@ export function privacyHtml(site, t, { notice, catalog, backHref }) {
   const params = { name: a.name, phone: a.phone || none, email: a.email || none };
   const keys = (notice && notice.textKeys) || [];
   const body = keys.slice(3).map((k) => `<p>${esc(t(k, params))}</p>`).join("");
+  const nf = (key) => ((catalog && catalog.privacyNotices) || []).find((n) => n.key === key);
+  const sec = (id, on) => { const k = (on && nf(id === "portal" ? "customer_portal" : "customer_signup") || {}).textKeys || []; return k.length > 2 ? `<section id="${id}"><h2>${esc(t(k[2]))}</h2>${k.slice(3).map((x) => `<p>${esc(t(x, params))}</p>`).join("")}</section>` : ""; };
   const opts = kindsOf(catalog).map((k) => `<option value="${esc(k.key)}">${esc(t(k.labelKey))}</option>`).join("");
   const f = (id, label, input) => `<div class="fld"><label for="r-${id}">${esc(label)}</label>${input}<p class="err" id="re-${id}" role="alert" hidden></p></div>`;
   return `<div class="doc"><nav class="nav"><a href="${esc(backHref || "/")}">${esc(t("site.privacy_back"))}</a></nav>
 <h1>${esc(t(keys[2] || "privacy.enquiry_form.title"))}</h1>
 <p>${esc(t("site.privacy_fiduciary", params))}</p>${body}
 <p>${esc(t("site.privacy_contact", params))}</p>
+${sec("portal", site.portal === true)}
+${sec("signup", true)}
 <h2>${esc(t("site.privacy_how_title"))}</h2><p>${esc(t("site.privacy_how_text", params))}</p>
 <form class="enq" id="req" novalidate><h3>${esc(t("site.request_title"))}</h3>
 ${f("kind", t("site.request_kind"), `<select id="r-kind" name="kind">${opts}</select>`)}

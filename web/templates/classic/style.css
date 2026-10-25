@@ -26,3 +26,8 @@
   .tpl-classic .svcs>li,.tpl-classic .offers>li,.tpl-classic .cos>li,.tpl-classic .quotes>li{flex:0 1 calc((100% - var(--space-l))/2)}
 }
 @media(min-width:1024px){.tpl-classic .svcs>li,.tpl-classic .offers>li,.tpl-classic .cos>li,.tpl-classic .quotes>li{flex-basis:calc((100% - var(--space-l)*2)/3)}}
+/* promo: a centred soft card, the points a 2x2 grid of icon tiles, a centred button */
+.tpl-classic .pp{max-width:720px;margin-inline:auto;padding:var(--space-m);border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow);justify-items:center}
+.tpl-classic .pp-pts{grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:var(--space-s)}
+.tpl-classic .pp-pts li{flex-direction:column;justify-content:flex-start;padding:var(--space-m) var(--space-s);border-radius:var(--shape-md);background:var(--c-surface)}
+@media(min-width:720px){.tpl-classic .pp{padding:var(--space-l)}.tpl-classic .pp-pts{gap:var(--space-m)}}

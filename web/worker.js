@@ -4,11 +4,18 @@
 //   page      GET|HEAD  server-side render (web/ssr.js); 301 /a/<slug> -> /a/<slug>/; 404 + noindex when unavailable;
 //                       backend error -> the static shell (index.html), so the browser retries; platform pages pass through
 //   manifest  the agent's web app manifest (a lapsed or unpublished site is never installable)
+//   portal    the customer login at /a/<slug>/my/* (custom domain /my/*), GET|HEAD|POST, server-rendered, never cached (DECISIONS #98)
+//   join      the customer sign-up page at /a/<slug>/join/* (custom domain /join/*), GET|HEAD|POST, server-rendered, never cached (DECISIONS #108)
 //   robots.txt, sitemap.xml  see docs/WEB_RENDERER.md
 import { manifestFor, parseConfig, MANIFEST_PATH } from "./manifest.js";
-import { resolveTarget } from "./route.js";
+import { portalServiceWorker } from "./portal-sw.js";
+import { resolveTarget, portalLinks } from "./route.js";
+import { portalToken, portalCookie, clearPortalCookie, inviteToken, inviteCookie, clearInviteCookie, isInviteToken, joinToken, joinCookie, clearJoinCookie } from "./cookies.js";
+import * as portal from "./portal.js";
+import * as join from "./join.js";
+import { JOIN_KEYS, joinLinks } from "./join.js";
 import { normalizeSite } from "./api.js";
-import { loadDictWith, localeKeys, pickLocale } from "./i18n.js";
+import { loadDictWith, localeKeys, makeT, pickLocale } from "./i18n.js";
 import { renderDocument, unavailableDocument } from "./ssr.js";
 import { SECURITY_HEADERS } from "./headers.js";
 
@@ -25,10 +32,11 @@ async function asset(env, url, path) {
   return r;
 }
 
-async function rpc(cfg, name, args) {
+// `portalKey` (the PORTAL_RPC_KEY secret) is sent as x-portal-key on the six anon portal RPCs only (DECISIONS #101, H2).
+async function rpc(cfg, name, args, portalKey) {
   const r = await fetch(`${cfg.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
-    headers: { "content-type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, authorization: `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    headers: { "content-type": "application/json", apikey: cfg.SUPABASE_ANON_KEY, authorization: `Bearer ${cfg.SUPABASE_ANON_KEY}`, ...(portalKey ? { "x-portal-key": portalKey } : {}) },
     body: JSON.stringify(args),
   });
   if (!r.ok) throw new Error(`rpc ${name} ${r.status}`);
@@ -64,9 +72,17 @@ export async function handleManifest(request, env) {
   const [cfg, catalog, tokens] = await Promise.all([loadConfig(env, url), json(env, url, "/shared/catalog.json"), json(env, url, "/shared/design-tokens.json")]);
   const target = resolveTarget(url, url.searchParams, primaryHostOf(cfg, url));
   if (!target || target.platform || (target.slug && !SLUG.test(target.slug))) return missing();
-  const site = normalizeSite(target.slug ? await rpc(cfg, "get_public_site", { slug: target.slug }) : await rpc(cfg, "get_public_site_by_host", { host: target.host }));
+  const raw = target.slug ? await rpc(cfg, "get_public_site", { slug: target.slug }) : await rpc(cfg, "get_public_site_by_host", { host: target.host });
+  const site = normalizeSite(raw);
   if (!site) return missing();
-  return new Response(JSON.stringify(manifestFor(site, target, { catalog, tokens })), {
+  const portalApp = url.searchParams.get("app") === "portal";
+  let t;
+  if (portalApp) { // the customer portal's installable app: only while the portal is available (the RPC's flag)
+    const row = Array.isArray(raw) ? raw[0] : raw;
+    if (!row || row.portal !== true) return missing();
+    t = makeT(await loadDict(env, url, pickLocale(localeKeys(catalog), site.locale)).catch(() => ({})));
+  }
+  return new Response(JSON.stringify(manifestFor(site, target, { catalog, tokens, portal: portalApp, t })), {
     headers: headers({ "content-type": "application/manifest+json; charset=utf-8", "cache-control": "public, max-age=300" }),
   });
 }
@@ -75,12 +91,12 @@ export async function handleManifest(request, env) {
 const htmlHeaders = (extra = {}) => ({ ...SECURITY_HEADERS, "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...extra });
 const acceptLocale = (request) => ((request.headers.get("accept-language") || "").split(",")[0] || "").trim().slice(0, 2).toLowerCase();
 
-async function unavailablePage(request, env, url) {
+async function unavailablePage(request, env, url, extra = {}) {
   const { catalog } = await loadShared(env, url);
   const locale = pickLocale(localeKeys(catalog), acceptLocale(request));
   const dict = await loadDict(env, url, locale).catch(() => ({}));
   const body = unavailableDocument({ dict, locale });
-  return new Response(request.method === "HEAD" ? null : body, { status: 404, headers: htmlHeaders() });
+  return new Response(request.method === "HEAD" ? null : body, { status: 404, headers: htmlHeaders(extra) });
 }
 
 // The static shell: the browser resolves and renders the page itself (preview, mock, or a backend error).
@@ -132,6 +148,370 @@ export async function handlePage(request, env) {
   }
 }
 
+// --- customer portal (DECISIONS #98; web/portal.js renders, this file handles the session, forms and RPCs) ---
+const PORTAL_FORM_MAX = 4096; // bytes; the biggest legitimate form is a 500-character message
+const PORTAL_POST = new Set(["login", "start", "ask", "request", "logout"]);
+const PORTAL_FLASH = new Set(["asked", "requested", "signed_out"]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let keyMissingLogged = false; // log the missing secret once per isolate, never its value
+const PORTAL_NO_STORE = { "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" };
+const portalHeaders = (extra = {}) => htmlHeaders({ "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", ...extra });
+const redirectTo = (location, cookie) => {
+  const h = new Headers(portalHeaders({ location }));
+  h.delete("content-type");
+  for (const c of [].concat(cookie || [])) h.append("set-cookie", c);
+  return h;
+};
+const seeOther = (location, cookie, extra = {}) => {
+  const h = redirectTo(location, cookie);
+  for (const [k, v] of Object.entries(extra)) h.set(k, v);
+  return new Response(null, { status: 303, headers: h });
+};
+const plain = (status, body) => new Response(body, { status, headers: { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", ...PORTAL_NO_STORE } });
+const todayIST = () => new Date(Date.now() + 19800000).toISOString().slice(0, 10);
+
+// Reads a small urlencoded body with a hard byte cap (a lying or missing Content-Length cannot get past it).
+async function readForm(request) {
+  const len = Number(request.headers.get("content-length"));
+  if (Number.isFinite(len) && len > PORTAL_FORM_MAX) return null;
+  if (!request.body) return new URLSearchParams();
+  const reader = request.body.getReader(), chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > PORTAL_FORM_MAX) { await reader.cancel().catch(() => {}); return null; }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(total);
+  let o = 0;
+  for (const c of chunks) { buf.set(c, o); o += c.length; }
+  return new URLSearchParams(new TextDecoder().decode(buf));
+}
+
+// The consent the start form sends: the current notice's version and hash for the site's language (see form.js consentFor).
+const portalConsent = (notices, locale) => {
+  const n = notices && ((notices.notices || notices).customer_portal);
+  if (!n || !n.hash) return null;
+  return { notice_key: "customer_portal", version: n.version, hash: n.hash[locale] || n.hash.en };
+};
+
+export async function handlePortal(request, env) {
+  const url = new URL(request.url);
+  const method = request.method, isGetHead = method === "GET" || method === "HEAD", isPost = method === "POST";
+  const respond = (body, status = 200, extra, cookie) => {
+    const h = new Headers(portalHeaders(extra));
+    if (cookie) h.append("set-cookie", cookie);
+    return new Response(method === "HEAD" ? null : body, { status, headers: h });
+  };
+  // A backend or asset failure never falls back to the shell: the shell would show a logged-out page (and cache).
+  const failure = async (cfgLocale) => {
+    let dict = {}, locale = cfgLocale || "en";
+    try { const { catalog } = await loadShared(env, url); locale = pickLocale(localeKeys(catalog), cfgLocale || acceptLocale(request)); dict = await loadDict(env, url, locale); } catch { /* bare error page */ }
+    let body;
+    try { body = portal.portalErrorDocument({ dict, locale }); } catch { body = "Unavailable"; }
+    return respond(body, 503);
+  };
+  try {
+    // Fail closed without the shared secret: the portal RPCs would all be refused anyway (E1), so do not even try.
+    const portalKey = env.PORTAL_RPC_KEY;
+    if (!portalKey) {
+      if (!keyMissingLogged) { keyMissingLogged = true; console.error("portal disabled: PORTAL_RPC_KEY secret is not set"); }
+      return failure();
+    }
+    let cfg;
+    try { cfg = await loadConfig(env, url); } catch (e) { console.error("portal config", e && e.message); return failure(); }
+    const target = resolveTarget(url, url.searchParams, primaryHostOf(cfg, url));
+    if (!target || target.platform || target.page !== "portal") return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    if (target.slug && !SLUG.test(target.slug)) return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    const path = target.portalPath;
+    if (path === null || path === undefined) return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    const links = portalLinks(target);
+    const idArgs = { slug: target.slug || null, host: target.slug ? null : target.host };
+
+    // Method rules first, so a wrong request costs no RPC.
+    if (path === "sw.js") {
+      if (!isGetHead) return plain(405, "Method not allowed");
+      // served after the site/portal-flag check below (404 while the portal is off)
+    }
+    if (PORTAL_POST.has(path)) {
+      if (!isPost && !isGetHead) return plain(405, "Method not allowed");
+      // A GET on the action URLs (ask, request, logout) is just a stray link: send it home.
+      if (isGetHead && path !== "login" && path !== "start") return seeOther(links.home);
+    } else if (!isGetHead) {
+      return plain(405, "Method not allowed");
+    }
+    let form = null;
+    if (isPost) {
+      if (!/^application\/x-www-form-urlencoded\b/i.test(request.headers.get("content-type") || "")) return plain(415, "Unsupported media type");
+      if (request.headers.get("origin") !== url.origin) return plain(403, "Forbidden");
+      form = await readForm(request);
+      if (!form) return plain(413, "Payload too large");
+    }
+
+    let site;
+    try {
+      const raw = target.slug ? await rpc(cfg, "get_public_site", { slug: target.slug }) : await rpc(cfg, "get_public_site_by_host", { host: target.host });
+      // normalizeSite may not carry `portal` (the RPC's "portal available" flag), so read it from the raw row.
+      const row = Array.isArray(raw) ? raw[0] : raw;
+      site = normalizeSite(raw);
+      if (site) site = { ...site, portal: !!row && row.portal === true };
+    } catch (e) { console.error("portal site rpc", e && e.message); return failure(); }
+    if (!site || site.portal !== true) return unavailablePage(request, env, url, PORTAL_NO_STORE);
+
+    const shared = await loadShared(env, url);
+    const locale = pickLocale(localeKeys(shared.catalog), site.locale);
+    const [dict, notices] = await Promise.all([loadDict(env, url, locale), loadNotices(env, url)]);
+    const ctx = { site, target, dict, shared, config: cfg };
+    const notFound = () => unavailablePage(request, env, url, PORTAL_NO_STORE);
+    if (path === "sw.js") return portalServiceWorker({ request, env, url, target, links, dict, locale, config: cfg });
+    const cookieFor = (r) => {
+      const secs = Math.floor((Date.parse(r.expires_at) - Date.now()) / 1000);
+      return portalCookie(r.session_token, links.base, Number.isFinite(secs) ? Math.max(0, secs) : 0);
+    };
+
+    const renderLogin = (status, error, values, flash) => respond(portal.portalLoginDocument({ ...ctx, error, values, flash }), status);
+    // The start page must NOT use no-referrer: Chromium sends an `Origin: null` header on the same-origin form POST under
+    // no-referrer (and same-origin has similar quirks), which the Origin check below rightly rejects, so the first login would
+    // fail. strict-origin sends only the origin (no path, no token) and is never downgraded on https. The invite token is not in
+    // the URL anyway (it travels in the ap_invite cookie, DECISIONS #101).
+    const renderStart = (status, error, values, cookie) =>
+      respond(portal.portalStartDocument({ ...ctx, notices, error, values }), status, { "Referrer-Policy": "strict-origin" }, cookie);
+    // The signed-in home. `error` re-renders it after a rejected ask/request (a fresh fetch, so the page is never stale).
+    const renderHome = async (token, { status = 200, flash, error, values } = {}) => {
+      const home = await rpc(cfg, "portal_home", { token, ...idArgs }, portalKey);
+      if (home && home.ok === true) return respond(portal.portalHomeDocument({ ...ctx, home, flash, error, values, today: todayIST() }), status);
+      if (home && home.error === "session") return seeOther(links.login, clearPortalCookie(links.base));
+      return notFound();
+    };
+
+    if (isPost) {
+      const limiter = env.PORTAL_LIMIT;
+      const val = (k) => String(form.get(k) || "");
+      const token = portalToken(request.headers.get("cookie"));
+      const limited = limiter ? !(await limiter.limit({ key: request.headers.get("cf-connecting-ip") || "unknown" })).success : false;
+      const rate = { key: "portal.err_rate" };
+
+      if (path === "login") {
+        const values = { phone: val("phone") };
+        if (limited) return renderLogin(429, rate, values);
+        const r = await rpc(cfg, "portal_login", { ...idArgs, phone: val("phone"), pin: val("pin") }, portalKey);
+        if (r && r.ok === true) return seeOther(links.home, cookieFor(r));
+        if (r && r.error === "rate_limited") return renderLogin(429, rate, values);
+        if (r && r.error === "locked") {
+          const ms = r.until ? Date.parse(r.until) - Date.now() : NaN;
+          if (!r.until || Number.isNaN(ms)) return renderLogin(400, { key: "portal.err_hard_locked" }, values);
+          return renderLogin(400, { key: "portal.err_locked", params: { minutes: Math.max(1, Math.ceil(ms / 60000)) } }, values);
+        }
+        if (r && r.error === "invalid") return renderLogin(400, { key: "portal.err_invalid" }, values);
+        return notFound();
+      }
+
+      if (path === "start") {
+        // The invite token comes from the ap_invite cookie set by GET start?t= (never from the form).
+        const t = inviteToken(request.headers.get("cookie")), values = { phone: val("phone") };
+        if (!t) return renderStart(400, { key: "portal.err_invite" }, values);
+        if (limited) return renderStart(429, rate, values);
+        if (val("pin") !== val("pin2")) return renderStart(400, { key: "portal.err_pin_mismatch", field: "pin2" }, values);
+        if (val("consent") !== "1") return renderStart(400, { key: "portal.err_consent", field: "consent" }, values);
+        const consent = portalConsent(notices, locale);
+        if (!consent) console.error("portal notice missing for", locale); // the RPC then rejects with field consent
+        const r = await rpc(cfg, "portal_activate", { ...idArgs, token: t, phone: val("phone"), pin: val("pin"), consent }, portalKey);
+        if (r && r.ok === true) return seeOther(links.home, [cookieFor(r), clearInviteCookie(links.start)]);
+        if (r && r.error === "rate_limited") return renderStart(429, rate, values);
+        if (r && r.error === "invalid_invite") return renderStart(400, { key: "portal.err_invite" }, values, clearInviteCookie(links.start));
+        if (r && r.error === "invalid") {
+          const key = { phone: "portal.err_phone_match", pin: "portal.err_pin_rule", consent: "portal.err_consent" }[r.field] || "portal.err_generic";
+          return renderStart(400, { key, field: r.field }, values);
+        }
+        return notFound();
+      }
+
+      // ask / request / logout need the session cookie
+      if (!token) return seeOther(links.login);
+      if (path === "logout") {
+        // The server revokes the session; the browser forgets the cookie, and the signed-out login page tells the service worker
+        // to wipe its cache (portal-client.js). No Clear-Site-Data: on the shared origin it would clear every agent's site cache.
+        // Even if the RPC fails the browser still forgets the cookie (the session then just expires on its own).
+        try { await rpc(cfg, "portal_logout", { token, everywhere: val("everywhere") === "1" }, portalKey); } catch (e) { console.error("portal logout rpc", e && e.message); }
+        return seeOther(links.login + "?done=signed_out", clearPortalCookie(links.base));
+      }
+      const values = { message: val("message"), kind: val("kind"), policy_id: val("policy_id"), customer_id: val("customer_id") };
+      if (limited) return renderHome(token, { status: 429, error: rate, values });
+      // L1: ids must be uuids before they reach the database (a malformed one would be a 500 from Postgres).
+      if (!UUID.test(path === "ask" ? values.policy_id : values.customer_id)) return renderHome(token, { status: 400, error: { key: "portal.err_generic", field: path === "ask" ? "policy_id" : "customer_id" }, values });
+      const r = path === "ask"
+        ? await rpc(cfg, "portal_ask", { token, ...idArgs, policy_id: val("policy_id"), kind: val("kind"), message: val("message") }, portalKey)
+        : await rpc(cfg, "portal_request", { token, ...idArgs, customer_id: val("customer_id"), kind: val("kind"), message: val("message") }, portalKey);
+      if (r && r.ok === true) return seeOther(`${links.home}?done=${path === "ask" ? "asked" : "requested"}`);
+      if (r && r.error === "session") return seeOther(links.login, clearPortalCookie(links.base));
+      if (r && r.error === "rate_limited") return renderHome(token, { status: 429, error: rate, values });
+      if (r && r.error === "invalid") return renderHome(token, { status: 400, error: { key: r.field === "message" ? "portal.err_required" : "portal.err_generic", field: r.field }, values });
+      return notFound();
+    }
+
+    // GET / HEAD
+    const flashRaw = url.searchParams.get("done");
+    const flash = PORTAL_FLASH.has(flashRaw) ? flashRaw : undefined;
+    if (path === "login") return renderLogin(200, undefined, undefined, flash === "signed_out" ? flash : undefined);
+    if (path === "start") {
+      if (url.searchParams.has("t")) {
+        // Move the token out of the URL into a short-lived path-scoped cookie, then redirect to the bare start page.
+        const t = url.searchParams.get("t") || "";
+        return isInviteToken(t) ? seeOther(links.start, inviteCookie(t, links.start)) : renderStart(200, { key: "portal.err_invite" });
+      }
+      return inviteToken(request.headers.get("cookie")) ? renderStart(200) : renderStart(200, { key: "portal.err_invite" });
+    }
+    // home
+    const token = portalToken(request.headers.get("cookie"));
+    if (!token) return seeOther(links.login);
+    return await renderHome(token, { flash });
+  } catch (e) {
+    console.error("portal", e && e.message); // message only: never a body, token, phone or PIN
+    return failure();
+  }
+}
+
+// --- customer sign-up page (DECISIONS #108; web/join.js renders, join-client.js autosaves; same gate, cookie and POST rules as the portal) ---
+const JOIN_POST = new Set(["consent", "save", "submit"]);
+// The consent payload for a notice: the current version and hash for the site's language (like portalConsent).
+const noticeConsent = (notices, key, locale) => {
+  const n = notices && ((notices.notices || notices)[key]);
+  if (!n || !n.hash) return null;
+  return { notice_key: key, version: n.version, hash: n.hash[locale] || n.hash.en };
+};
+const JOIN_ERR = { name: "join.err_name", phone: "join.err_phone", email: "join.err_email", dob: "join.err_dob", address: "join.err_long", city: "join.err_long", nominee: "join.err_long", guardian: "join.err_guardian" };
+
+export async function handleJoin(request, env) {
+  const url = new URL(request.url);
+  const method = request.method, isGetHead = method === "GET" || method === "HEAD", isPost = method === "POST";
+  const jsonOut = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...SECURITY_HEADERS, "content-type": "application/json; charset=utf-8", ...PORTAL_NO_STORE } });
+  // strict-origin, not no-referrer: Chromium sends `Origin: null` on same-origin form posts under no-referrer (see the portal's start page).
+  const respond = (body, status = 200, cookie) => {
+    const h = new Headers(portalHeaders({ "Referrer-Policy": "strict-origin" }));
+    if (cookie) h.append("set-cookie", cookie);
+    return new Response(method === "HEAD" ? null : body, { status, headers: h });
+  };
+  let wantsJson = /\/join\/save\/?$/.test(url.pathname); // the autosave answers JSON, even when it fails
+  const failure = async (cfgLocale) => {
+    if (wantsJson) return jsonOut({ ok: false, error: "unavailable" }, 503);
+    let dict = {}, locale = cfgLocale || "en";
+    try { const { catalog } = await loadShared(env, url); locale = pickLocale(localeKeys(catalog), cfgLocale || acceptLocale(request)); dict = await loadDict(env, url, locale); } catch { /* bare error page */ }
+    let body;
+    try { body = join.joinErrorDocument({ dict, locale }); } catch { body = "Unavailable"; }
+    return respond(body, 503);
+  };
+  try {
+    const portalKey = env.PORTAL_RPC_KEY; // the same gate secret as the portal; fail closed without it
+    if (!portalKey) {
+      if (!keyMissingLogged) { keyMissingLogged = true; console.error("sign-up disabled: PORTAL_RPC_KEY secret is not set"); }
+      return failure();
+    }
+    let cfg;
+    try { cfg = await loadConfig(env, url); } catch (e) { console.error("join config", e && e.message); return failure(); }
+    const target = resolveTarget(url, url.searchParams, primaryHostOf(cfg, url));
+    if (!target || target.platform || target.page !== "join") return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    if (target.slug && !SLUG.test(target.slug)) return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    const path = target.joinPath;
+    if (path === null || path === undefined) return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    const links = joinLinks(target);
+    const idArgs = { slug: target.slug || null, host: target.slug ? null : target.host };
+
+    if (JOIN_POST.has(path)) {
+      if (!isPost && !isGetHead) return plain(405, "Method not allowed");
+      if (isGetHead) return seeOther(links.home); // a stray GET on an action URL
+    } else if (!isGetHead) {
+      return plain(405, "Method not allowed");
+    }
+    let form = null;
+    if (isPost) {
+      if (!/^application\/x-www-form-urlencoded\b/i.test(request.headers.get("content-type") || "")) return plain(415, "Unsupported media type");
+      if (request.headers.get("origin") !== url.origin) return plain(403, "Forbidden");
+      form = await readForm(request);
+      if (!form) return plain(413, "Payload too large");
+    }
+    const token = joinToken(request.headers.get("cookie"));
+    const limiter = env.JOIN_LIMIT;
+    const limited = isPost && limiter ? !(await limiter.limit({ key: request.headers.get("cf-connecting-ip") || "unknown" })).success : false;
+
+    // The autosave: no page, only the RPC; JSON answers.
+    if (path === "save") {
+      if (limited) return jsonOut({ ok: false, error: "rate_limited" }, 429);
+      if (!token) return jsonOut({ ok: false, error: "invalid_link" }, 401);
+      const fields = {};
+      for (const k of JOIN_KEYS) if (form.has(k)) fields[k] = String(form.get(k));
+      const active = form.get("active");
+      const r = await rpc(cfg, "signup_save", { ...idArgs, token, fields, active_field: active ? String(active) : null }, portalKey);
+      if (r && r.ok === true) return jsonOut({ ok: true });
+      const e = r && typeof r.error === "string" && /^[a-z_]+$/.test(r.error) ? r.error : "unavailable";
+      return jsonOut({ ok: false, error: e }, e === "rate_limited" ? 429 : 200);
+    }
+
+    // Everything else renders the agent's site, so it needs the site.
+    let site;
+    try {
+      site = normalizeSite(target.slug ? await rpc(cfg, "get_public_site", { slug: target.slug }) : await rpc(cfg, "get_public_site_by_host", { host: target.host }));
+    } catch (e) { console.error("join site rpc", e && e.message); return failure(); }
+    if (!site) return unavailablePage(request, env, url, PORTAL_NO_STORE);
+    const shared = await loadShared(env, url);
+    const locale = pickLocale(localeKeys(shared.catalog), site.locale);
+    const [dict, notices] = await Promise.all([loadDict(env, url, locale), loadNotices(env, url)]);
+    const ctx = { site, target, dict, shared, config: cfg };
+    const clear = clearJoinCookie(links.base);
+    const invalid = () => respond(join.joinInvalidDocument(ctx), 200, clear);
+    const notFound = () => unavailablePage(request, env, url, PORTAL_NO_STORE);
+    const renderConsent = (status, error) => respond(join.joinConsentDocument({ ...ctx, notices, error }), status);
+    const renderForm = (status, values, error) => respond(join.joinFormDocument({ ...ctx, notices, values, error, today: todayIST() }), status);
+
+    if (isPost) {
+      if (!token) return invalid();
+      const rate = { key: "join.err_rate" };
+      if (path === "consent") {
+        if (limited) return renderConsent(429, "join.err_rate");
+        if (String(form.get("consent") || "") !== "1") return renderConsent(400, "join.err_consent");
+        const consent = noticeConsent(notices, "customer_signup", locale);
+        if (!consent) console.error("sign-up notice missing for", locale); // the RPC then answers invalid
+        const r = await rpc(cfg, "signup_consent", { ...idArgs, token, consent }, portalKey);
+        if (r && r.ok === true) return seeOther(links.home);
+        if (r && r.error === "invalid_link") return invalid();
+        if (r && r.error === "invalid") return renderConsent(400, "join.err_generic");
+        return notFound();
+      }
+      // submit
+      const fields = {};
+      for (const k of JOIN_KEYS) if (form.has(k)) fields[k] = String(form.get(k));
+      const ticked = String(form.get("guardian") || "") === "1";
+      const values = { ...fields, guardian: ticked ? "1" : "" };
+      if (limited) return renderForm(429, values, rate);
+      const guardian = ticked ? noticeConsent(notices, "customer_signup_guardian", locale) : null; // sent only when the box is ticked
+      const r = await rpc(cfg, "signup_submit", { ...idArgs, token, fields, guardian }, portalKey);
+      if (r && r.ok === true) return seeOther(links.done, clear);
+      if (r && r.error === "invalid_link") return invalid();
+      if (r && r.error === "consent_required") return seeOther(links.home);
+      if (r && r.error === "rate_limited") return renderForm(429, values, rate);
+      if (r && r.error === "invalid") return renderForm(400, values, { key: JOIN_ERR[r.field] || "join.err_generic", field: JOIN_ERR[r.field] ? r.field : undefined });
+      return notFound();
+    }
+
+    // GET / HEAD
+    if (path === "done") return respond(join.joinDoneDocument(ctx), 200, clear);
+    if (url.searchParams.has("t")) {
+      // Move the token out of the URL into a path-scoped cookie, then redirect to the bare page.
+      const t = url.searchParams.get("t") || "";
+      return isInviteToken(t) ? seeOther(links.home, joinCookie(t, links.base)) : invalid();
+    }
+    if (!token) return invalid();
+    const r = await rpc(cfg, "signup_open", { ...idArgs, token }, portalKey);
+    if (r && r.ok === true) return r.consented === true ? renderForm(200, r.fields && typeof r.fields === "object" ? r.fields : {}) : renderConsent(200);
+    if (r && r.error === "invalid_link") return invalid();
+    return notFound();
+  } catch (e) {
+    console.error("join", e && e.message); // message only: never a body, token or field value
+    return failure();
+  }
+}
+
 // --- crawling ---
 const text = (body, type, cache) => new Response(body, { headers: headers({ "content-type": type, "cache-control": cache }) });
 const xml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]);
@@ -140,7 +520,7 @@ const iso = (v) => { const ms = Date.parse(v); return Number.isNaN(ms) ? null : 
 export function handleRobots(request) {
   const url = new URL(request.url);
   // Preview, install and mock pages are for the agent and developers, never for search.
-  const body = ["User-agent: *", "Allow: /", "Disallow: /*?preview", "Disallow: /*&preview", "Disallow: /*?install", "Disallow: /*&install", "Disallow: /*?mock", "Disallow: /*&mock", "", `Sitemap: ${url.origin}/sitemap.xml`, ""].join("\n");
+  const body = ["User-agent: *", "Allow: /", "Disallow: /*?preview", "Disallow: /*&preview", "Disallow: /*?install", "Disallow: /*&install", "Disallow: /*?mock", "Disallow: /*&mock", "Disallow: /a/*/my", "Disallow: /my", "Disallow: /a/*/join", "Disallow: /join", "", `Sitemap: ${url.origin}/sitemap.xml`, ""].join("\n");
   return text(body, "text/plain; charset=utf-8", "public, max-age=3600");
 }
 
@@ -162,6 +542,8 @@ export async function handleSitemap(request, env) {
   return text(urlset(entries), "application/xml; charset=utf-8", "public, max-age=300");
 }
 
+const PORTAL_PATH = /^(\/a\/[^/]+)?\/my(\/.*)?$/;
+const JOIN_PATH = /^(\/a\/[^/]+)?\/join(\/.*)?$/;
 const PAGE_PATH = /^\/(a\/.*|privacy\/?)?$/;
 
 export default {
@@ -179,6 +561,10 @@ export default {
         return unavailable503();
       }
     }
+    // The customer portal: /a/<slug>/my[/...] and (custom domain) /my[/...]. GET, HEAD and POST; checked before the page routes.
+    if (PORTAL_PATH.test(path)) return handlePortal(request, env);
+    // The customer sign-up page: /a/<slug>/join[/...] and (custom domain) /join[/...]. GET, HEAD and POST.
+    if (JOIN_PATH.test(path)) return handleJoin(request, env);
     if (isGetHead && PAGE_PATH.test(path)) return handlePage(request, env);
     return env.ASSETS.fetch(request);
   },

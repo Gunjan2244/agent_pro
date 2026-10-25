@@ -21,7 +21,7 @@ export function hero(d, ctx) {
   ].join("");
   const row = links || (x.cta ? `<li><a href="#contact">${esc(x.cta)}</a></li>` : "");
   const who = [has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : "", x.sub].filter(Boolean).join(" · ");
-  return `<div class="hero-in">
+  return `${x.login}<div class="hero-in">
 <div class="hero-id">${x.face}${who ? `<p class="who">${who}</p>` : ""}</div>
 ${x.h1}
 ${x.lead}

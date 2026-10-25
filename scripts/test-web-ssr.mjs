@@ -326,6 +326,34 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     await assert.rejects(loadDictWith(async () => new Response("", { status: 404 }), "en"));
   });
 
+  // ---- reveal.js: below-the-fold sections fade in; never hides anything above the fold or under reduced motion ----
+  {
+    const { revealSections } = await import("../web/reveal.js");
+    const mkEl = (top) => ({ classes: new Set(), getBoundingClientRect: () => ({ top }), classList: { add(c) { this.owner.classes.add(c); } } });
+    const run = (reduce, hasIO = true) => {
+      const els = [mkEl(100), mkEl(900), mkEl(1800)];
+      els.forEach((e) => { e.classList.owner = e; });
+      const styles = [], observed = [];
+      const doc = { querySelectorAll: () => els, createElement: () => ({}), head: { appendChild: (n) => styles.push(n) } };
+      let cb;
+      const win = { innerHeight: 800, matchMedia: () => ({ matches: reduce }), IntersectionObserver: hasIO ? class { constructor(f) { cb = f; } observe(e) { observed.push(e); } unobserve() {} } : undefined };
+      revealSections({ doc, win });
+      return { els, styles, observed, fire: (e) => cb([{ isIntersecting: true, target: e }]) };
+    };
+    ok("reveal.js hides only sections below the fold, then reveals them on entry", () => {
+      const r = run(false);
+      assert.ok(!r.els[0].classes.has("rv"), "in-view section stays visible");
+      assert.ok(r.els[1].classes.has("rv") && r.els[2].classes.has("rv"));
+      assert.equal(r.styles.length, 1);
+      assert.match(r.styles[0].textContent, /prefers-reduced-motion:no-preference/);
+      r.fire(r.els[1]);
+      assert.ok(r.els[1].classes.has("rv-in") && !r.els[2].classes.has("rv-in"));
+    });
+    ok("reveal.js does nothing under reduced motion or without IntersectionObserver", () => {
+      for (const r of [run(true), run(false, false)]) { assert.equal(r.styles.length, 0); assert.ok(r.els.every((e) => !e.classes.has("rv"))); }
+    });
+  }
+
   // ---- hydrate.js: wires behaviour, never renders ----
   {
     const { hydrate, wireChips } = await import("../web/hydrate.js");

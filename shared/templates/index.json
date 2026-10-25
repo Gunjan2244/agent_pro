@@ -16,6 +16,7 @@
         "achievements",
         "testimonials",
         "faq",
+        "portal",
         "contact"
       ],
       "defaultAccent": "indigo",
@@ -37,6 +38,7 @@
         "achievements",
         "testimonials",
         "faq",
+        "portal",
         "contact"
       ],
       "defaultAccent": "teal",
@@ -58,6 +60,7 @@
         "achievements",
         "testimonials",
         "faq",
+        "portal",
         "contact"
       ],
       "defaultAccent": "slate",
@@ -79,6 +82,7 @@
         "testimonials",
         "achievements",
         "faq",
+        "portal",
         "contact"
       ],
       "defaultAccent": "maroon",
@@ -100,6 +104,7 @@
         "testimonials",
         "achievements",
         "faq",
+        "portal",
         "contact"
       ],
       "defaultAccent": "green",

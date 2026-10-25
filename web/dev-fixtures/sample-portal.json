@@ -1,0 +1,178 @@
+{
+ "_comment": "portal_home payloads (contract C). 'home' has 2 customers sharing one phone: overdue, due this week, lapsed with no due date; dates relative to today=2026-10-23. 'hostile' has HTML/quote payloads for escaping tests.",
+ "today": "2026-10-23",
+ "home": {
+  "ok": true,
+  "customers": [
+   {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "name": "Meena Sharma",
+    "phone": "+919876500001",
+    "email": "meena@example.com",
+    "dob": "1984-06-12",
+    "city": "Pune",
+    "address": "14 Lake View, Kothrud",
+    "nominee": "Ravi Sharma",
+    "policies": [
+     {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "plan_name": "Jeevan Anand",
+      "policy_number": "501234567",
+      "sum_assured": 1000000,
+      "premium_amount": 24500.5,
+      "premium_mode": "yearly",
+      "start_date": "2019-03-31",
+      "next_due_date": "2026-10-10",
+      "status": "active",
+      "payments": [
+       {
+        "amount": 24500.5,
+        "paid_on": "2025-10-09"
+       },
+       {
+        "amount": 24500.5,
+        "paid_on": "2024-10-11"
+       }
+      ]
+     },
+     {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "plan_name": "Term Shield",
+      "policy_number": "501234999",
+      "sum_assured": 5000000,
+      "premium_amount": 1250,
+      "premium_mode": "quarterly",
+      "start_date": "2022-01-15",
+      "next_due_date": "2026-10-27",
+      "status": "active",
+      "payments": [
+       {
+        "amount": 1250,
+        "paid_on": "2026-07-20"
+       },
+       {
+        "amount": 1250,
+        "paid_on": "2026-04-18"
+       },
+       {
+        "amount": 1250,
+        "paid_on": "2026-01-17"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "10000000-0000-4000-8000-000000000002",
+    "name": "Ravi Sharma",
+    "phone": "+919876500001",
+    "email": null,
+    "dob": null,
+    "city": "Pune",
+    "address": null,
+    "nominee": null,
+    "policies": [
+     {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "plan_name": "Money Back 20",
+      "policy_number": "501000111",
+      "sum_assured": null,
+      "premium_amount": 8000,
+      "premium_mode": "half_yearly",
+      "start_date": "2015-05-01",
+      "next_due_date": null,
+      "status": "lapsed",
+      "payments": []
+     }
+    ]
+   }
+  ]
+ },
+ "hostile": {
+  "ok": true,
+  "customers": [
+   {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "name": "<script>alert(1)</script> \"Meena\"",
+    "phone": "+919876500001",
+    "email": "meena@example.com",
+    "dob": "1984-06-12",
+    "city": "'><img src=x onerror=alert(2)>",
+    "address": "14 Lake View, Kothrud",
+    "nominee": "\"><b>x</b>",
+    "policies": [
+     {
+      "id": "\"><script>alert(5)</script>",
+      "plan_name": "<script>alert(3)</script> Plan\"'",
+      "policy_number": "\"><svg onload=alert(4)>",
+      "sum_assured": 1000000,
+      "premium_amount": 24500.5,
+      "premium_mode": "yearly",
+      "start_date": "2019-03-31",
+      "next_due_date": "2026-10-10",
+      "status": "active",
+      "payments": [
+       {
+        "amount": 24500.5,
+        "paid_on": "2025-10-09"
+       },
+       {
+        "amount": 24500.5,
+        "paid_on": "2024-10-11"
+       }
+      ]
+     },
+     {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "plan_name": "Term Shield",
+      "policy_number": "501234999",
+      "sum_assured": 5000000,
+      "premium_amount": 1250,
+      "premium_mode": "quarterly",
+      "start_date": "2022-01-15",
+      "next_due_date": "2026-10-27",
+      "status": "active",
+      "payments": [
+       {
+        "amount": 1250,
+        "paid_on": "2026-07-20"
+       },
+       {
+        "amount": 1250,
+        "paid_on": "2026-04-18"
+       },
+       {
+        "amount": 1250,
+        "paid_on": "2026-01-17"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "10000000-0000-4000-8000-000000000002",
+    "name": "Ravi Sharma",
+    "phone": "+919876500001",
+    "email": null,
+    "dob": null,
+    "city": "Pune",
+    "address": null,
+    "nominee": null,
+    "policies": [
+     {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "plan_name": "Money Back 20",
+      "policy_number": "501000111",
+      "sum_assured": null,
+      "premium_amount": 8000,
+      "premium_mode": "half_yearly",
+      "start_date": "2015-05-01",
+      "next_due_date": null,
+      "status": "lapsed",
+      "payments": []
+     }
+    ]
+   }
+  ]
+ }
+}
