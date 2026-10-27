@@ -4,8 +4,7 @@
   "placeholders": {
     "name": "fullName",
     "firstName": "firstName",
-    "city": "city",
-    "designation": "designation"
+    "city": "city"
   },
   "requiredPlaceholders": [
     "name",
@@ -193,7 +192,9 @@
         }
       },
       "designation": {
-        "fromProfile": "designation"
+        "variants": [
+          "seed.about.designation"
+        ]
       },
       "languagesSpoken": {
         "byLocale": {

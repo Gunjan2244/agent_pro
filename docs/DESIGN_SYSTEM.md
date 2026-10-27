@@ -163,6 +163,7 @@ Fixed **component dimensions** aren't spacing; they're constants inside `core/de
 | Secondary | Outlined (outline colour), 48dp | At most 2 |
 | Tertiary | Text button | Inline links, "More details" |
 | Destructive | Text or filled in error colour | Only inside confirm dialogs |
+| Google sign-in (`GoogleSignInButton`) | The secondary style with Google's four-colour "G" (24dp, **untinted**, `ic_google_g`) before "Continue with Google" | Welcome only (DECISIONS #112). Google's branding asks for its mark unchanged; it is the only multi-colour icon in the app and the only third-party mark |
 
 ## Iconography
 Use **Material Symbols Rounded**, outlined weight 400, in `onSurfaceVariant` grey. Icons take the primary colour only when they're selected.
@@ -205,6 +206,7 @@ Subtle and quick: Material 3 standard easing, 150ms for state changes and 250ms 
 | A list row arrives, leaves or moves (a new enquiry, a filter, a delete) | Fade in or out (150ms); the other rows slide into place (250ms). Rows need a stable `key`. | `itemMotion()` on customers, policies, enquiries and dues |
 | Showing and hiding a part of the screen (More details, the offline banner, field errors) | Expand or shrink with a fade (150ms) | `AnimatedVisibility` in the components |
 | Onboarding progress | The bar's fill animates (250ms) | `StepProgressBar` |
+| Inviting a tap on "Continue →" (onboarding template intro) | **Nudge**: the trailing arrow moves forward by `space.s` and back, forever (`Motion.NUDGE_MILLIS` = 600ms each way, standard easing; mirrored in RTL). The one deliberate loop besides the skeleton shimmer; it stops when animations are off. | `PrimaryButton`/`BottomActionBar` `trailingIcon` + `nudgeTrailingIcon` |
 
 - A haptic tick when an action succeeds.
 - Respects the system "remove animations" setting: Compose scales every animation by the platform's `MotionDurationScale`, so they become instant; the skeleton shimmer stops (`rememberReduceMotion()`).
@@ -229,7 +231,7 @@ Charts follow the dataviz method: pick the form first, colour last, and validate
 ## Components (`core/designsystem/components`)
 | Component | Purpose / rules |
 |---|---|
-| `AppScaffold` | Top bar, offline banner slot, snackbar host, FAB or bottom action slot |
+| `AppScaffold` | Top bar, offline banner slot, snackbar host, FAB or bottom action slot; lifts above the keyboard (`imePadding`) |
 | `AppTopBar` | Title, back, and at most 2 actions plus overflow; a `trailing` slot (counts as one action) holds the Home avatar |
 | `OfflineBanner` | A thin grey bar: "Offline — showing saved data" |
 | `ScreenState` | Switches between loading (skeleton), empty, error and content |
@@ -247,15 +249,15 @@ Charts follow the dataviz method: pick the form first, colour last, and validate
 | `MoneyText` / `MoneyField` | Indian grouping, tabular figures |
 | `DateField` | Opens the Material date picker |
 | `MoreDetails` | An expandable group for optional form fields |
-| `BottomActionBar` | Sticky primary action, with optional helper text ("Needs internet") and one optional text-button alternative (e.g. Publish now / Later) |
+| `BottomActionBar` | Sticky primary action, with optional helper text ("Needs internet") and one optional text-button alternative (e.g. Publish now / Later); an optional trailing icon (e.g. the nudging forward arrow) |
 | `AppSnackbarHost` | Includes Undo |
 | `ConfirmDialog` | Only for irreversible actions |
 | `PriceSummary` | Line items, the total "incl. GST", and the renewal note (used in checkout) |
 | `ProgressStepper` | Vertical steps with status (used for domain setup) |
-| `FormRenderer` | Renders `FieldSpec` lists; the only way to build forms |
+| `FormRenderer` | Renders `FieldSpec` lists; the only way to build forms. The focused text field gets an accent label and a faint accent fill, and is scrolled into view with the next field visible below it |
 | `AppNavigationBar` | The 4-tab bottom bar: flat surface with a hairline on top, grey icons and labels, primary + `primaryContainer` indicator for the selected tab, optional count badge |
 | `SegmentedControl` | Single-choice segments, e.g. `[ Customers | Dues ]`; the selected one uses `primaryContainer` |
-| `StepProgressBar` | The thin progress bar at the top of each onboarding step; TalkBack reads "Step 2 of 3" |
+| `StepProgressBar` | The thin progress bar at the top of each onboarding step; TalkBack reads "Step 2 of 5" |
 | `AvatarButton` | The Home avatar that opens Settings (48dp touch target around the 40dp `Avatar`) |
 | `AppBottomSheet` | Modal sheet with a title (radius 16 top corners, elevated surface), e.g. the setup checklist |
 
@@ -274,7 +276,7 @@ A debug-only **Component gallery** shows every component in light, dark, EN, HI 
 | `Motion.kt` | Standard easing, 150/250ms specs, shared-axis X, fade-through (`fadeThroughEnter`/`Exit`), `crossfade()`, `rememberReduceMotion()` (the platform's `MotionDurationScale` is 0), `rememberSuccessHaptic()` |
 | `ChartStyle.kt` | `AppChart(ChartData)` over Vico: `ChartKind.Column/Line/Ordinal`, at most 2 series, compact ₹ when `money`, tooltip on tap, legend and a direct label of the latest values for 2 series |
 | `AppLocale.kt` | `LocalAppLocale` (expect/actual): overrides the language inside a composition (used by the gallery; the iOS `LocaleController` later) |
-| `components/` | Every component in the table above, plus `PrimaryButton`/`SecondaryButton`/`TertiaryButton`/`DestructiveButton`, `AppFab`, `AppCard`, `HairlineDivider`, `Avatar`, `AppTextField`, `FieldFrame`, `PickerField`, `SelectField`, `ChoiceChips`, `ToggleRow`, `SwatchPicker`, `ImagePickerSlot`, `NetworkImage` (Coil 3 remote image, centre-cropped in its slot; Phase 8), `AppSnackbar`, `DiscardChangesDialog` and `CardSkeleton` |
+| `components/` | Every component in the table above, plus `PrimaryButton`/`SecondaryButton`/`TertiaryButton`/`DestructiveButton`/`GoogleSignInButton`, `AppFab`, `AppCard`, `HairlineDivider`, `Avatar`, `AppTextField`, `FieldFrame`, `PickerField`, `SelectField`, `ChoiceChips`, `ToggleRow`, `SwatchPicker`, `ImagePickerSlot`, `NetworkImage` (Coil 3 remote image, centre-cropped in its slot; Phase 8), `AppSnackbar`, `DiscardChangesDialog` and `CardSkeleton` |
 | `gallery/ComponentGallery.kt` | The component gallery (sections, `GalleryFrame` variants) |
 
 Component behaviour that the tables above leave to the implementation:

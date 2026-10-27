@@ -21,8 +21,8 @@ Agent PRO is for insurance agents in India (LIC and other insurers; each agent b
 ## v1 features
 | Area | Features |
 |---|---|
-| Account | Sign-up with full name, mobile, email and password (typed twice), automatic sign-in once the email is confirmed; sign-in, password reset, change password, delete account |
-| Onboarding | Profile → pick template → choose link (slug) → publish now or later; setup checklist on Home |
+| Account | **One-tap Continue with Google** (name and email come from Google); or sign-up with full name, mobile, email and password (typed twice), automatic sign-in once the email is confirmed; sign-in, password reset, change password, delete account |
+| Onboarding | Mobile number → style ("Meet me" or "Best offers", each explained) → pick a design → companies, insurance types and city → choose link (slug) → publish now or later; setup checklist on Home |
 | Website builder | 3 templates (Classic "Trust", Modern "Fresh", Minimal "Simple")<br>Section editor driven by the site schema<br>Show/hide and reorder sections<br>8 accent swatches; site language EN or HI<br>Draft vs published, with preview before publishing<br>Change link, share, copy, QR code<br>**Add to home screen:** every site can be installed on a phone like an app (an icon with the agent's name); the agent installs their own from the Website tab, and customers get an "Add to home screen" button the agent can turn off<br>View stats |
 | Enquiries | Arrive from the website form or are added manually (walk-in, referral, phone)<br>Statuses: New, Contacted, Follow-up, Converted, Closed<br>Follow-up date with reminder; notes<br>Convert to customer |
 | Customers | Add manually or from the system contact picker, or send the customer a sign-up link that the agent watches fill in live; Submit adds them automatically<br>The form saves itself as it's typed; unfinished forms (by the agent or the customer) are listed under Incomplete forms, to finish or delete, and are deleted after 30 days<br>Detail screen with Policies, Details and Activity tabs |
@@ -57,7 +57,7 @@ Agent PRO is for insurance agents in India (LIC and other insurers; each agent b
 - Integration with official LIC systems.
 
 ## Constraints
-- **No insurer logo or trademark artwork is bundled** in templates or app assets. Company logos appear only as admin-uploaded content, with the company's permission (DECISIONS #47). The agent enters their own designation (for example "LIC Agent · Club Member"), and site footers say "Independent insurance advisor".
+- **No insurer logo or trademark artwork is bundled** in templates or app assets. Company logos appear only as admin-uploaded content, with the company's permission (DECISIONS #47). The agent's designation isn't asked: every site says "Insurance agent" (editable in the website's About section; DECISIONS #114), and site footers say "Independent insurance advisor".
 - The app must comply with Play Store policy: in-app account deletion, a privacy policy, and a sensible moment to ask for the notification permission.
 
 ## Requirement log
@@ -121,3 +121,16 @@ Add new requirements here, with the date, before implementing them.
   - **Fill it in myself:** the form saves itself to the database as the agent types. A form left unfinished appears under **Incomplete forms** in the Customers tab, where the agent can carry on with it or **delete** it.
   - **Send the customer a link:** the agent shares a link (WhatsApp or other apps) to a sign-up page on the agent's website. Everything the customer types is **saved live** in the database, so a form left half-done is kept and listed under Incomplete forms. The agent **watches the form fill in live** in the app (each field as it's typed, which field the customer is on, and whether they're on the page now), so they can guide the customer, e.g. on a call. When the customer taps **Submit**, they're added to the agent's customers straight away.
   - **Privacy (DPDP):** the sign-up page shows a notice and asks for consent **before** any field can be filled, so nothing is stored without consent. A customer under 18 needs a parent's or guardian's agreement on the page. Unfinished forms are deleted after 30 days. The agent confirms their one-time customer-data duty before sending a link, as for adding a customer.
+- 2026-10-25: **agents reach the templates sooner, with one-tap Google sign-up** (user: "i want the agent to reach the templates sooner so can see the idea of their websites sooner"; DECISIONS #112–#114).
+  - **Sign up with Google first:** Welcome offers one-tap **Continue with Google**. The agent's name and email come from Google. Email sign-up stays as a second option, and existing accounts still sign in as before.
+  - **Then only the mobile number** is asked (the name from Google is shown, editable).
+  - **Then the style family**, with both families clearly explained, because the agent sees them for the first time. *(Replaced 2026-10-26 by an intro screen and one list of all 5 templates, below.)*
+  - **Then the design** of that family, previewed **without** any company or insurance-type details.
+  - **Only then the company details:** the companies, the insurance types ("sectors") the agent sells with each, and the rest of the old profile screen (city, photo, agency code, branch). Then the link and Publish, as before. *(Changed 2026-10-26: the photo has its own step, agency code and branch are dropped, and the finished site is shown before the link; below.)*
+  - **No designation box:** the agent's designation is always "agent", so the field and everything that depended on it are removed. The site says "Insurance agent".
+- 2026-10-26: **no template families, 5 templates only** (user: "remove two families, have 5 templates only"; DECISIONS #115). The screen that asked to choose a style now says **"Let's select a template for your website"**, with a **Continue** button whose arrow moves back and forth, and it moves on to the templates **automatically after 5 seconds**. The templates are then one list of all five designs, in onboarding and in Website → Appearance.
+- 2026-10-26: **onboarding fixes after a walk-through** (user: "Your work → More details asks for agency code and branch, which is a fault because it is already linked with the companies, so remove the More details part; add a new screen to ask for the picture of the agent with an option to skip; after that show him the final site on the screen with picture and company details; then let him share and the rest as defined earlier"; "the templates shown are hard to scroll down"; DECISIONS #116).
+  - **Your work** asks only for the companies (each with its agency code and insurance types) and the city: no More details, no separate agency code, no branch.
+  - **Your photo** is a step of its own, with the photo tips and **Skip**.
+  - **Your website** then shows the finished site, with the photo and the companies, before the link and Publish. After publishing: Add to phone, then Share (the site was just seen, so it isn't shown again).
+  - **The template designs must scroll easily:** scrolling down a design must not be taken over by the sideways swipe between designs.

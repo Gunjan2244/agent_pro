@@ -40,7 +40,8 @@ const side = (banner, sceneHtml, more) => `${more}<div class="hero-side">${banne
 export function heroParts(d, ctx, opts = {}) {
   const { t, profile: p } = ctx;
   const photo = ctx.photo;
-  const sub = [p.designation, p.city].filter(has).map(esc).join(" · ");
+  // about.designation first: seeded "Insurance agent" (DECISIONS #114)
+  const sub = [((ctx.site.content || {}).about || {}).designation || p.designation, p.city].filter(has).map(esc).join(" · ");
   const feat = ctx.offers.hero;
   // One call to action: on the offers family the featured offer's button replaces the generic one.
   // The guide leads with its needs chips instead (they jump to the offer groups), and its banner uses a link.

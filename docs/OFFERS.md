@@ -286,11 +286,11 @@ The new `SECURITY DEFINER` functions exposed to `authenticated` (`is_admin`, `is
 - **Accessible path:** WebView placeholders aren't reliable with TalkBack, so every slot is also reachable as a list (the Offers section editor and the hero's Featured offer row), opening the same picker. Place offers has a **List** action in the top bar.
 
 ## Screens (UX.md style; planned)
-### Profile → Companies (onboarding step 1 and Settings → Profile)
-> Built (2026-10-22, UX.md "Your companies"): onboarding step 1 and Settings → Profile, with every add, change and removal saved at once through its RPC (not on Continue). The backend contract it builds on: `request_company(company_id, suggested_name, agency_code, insurance_types)` per company, `set_membership_types`, `withdraw_company_request(membership_id)`, `my_company_offers().memberships` (BACKEND.md, Agent RPCs).
-- Step 1 Profile lists **one or more companies**, each with its **agency code** (required, the admin verifies it) and **the insurance types** the agent deals in there (one or more chips from `catalog.insuranceTypes`). **My company isn't listed** asks for the company's name (one text field) and its types.
+### Profile → Companies (onboarding step 4 "Your work" and Settings → Profile)
+> Built (2026-10-22, UX.md "Your companies"): onboarding step 4 (step 1 until DECISIONS #113) and Settings → Profile, with every add, change and removal saved at once through its RPC (not on Continue). The backend contract it builds on: `request_company(company_id, suggested_name, agency_code, insurance_types)` per company, `set_membership_types`, `withdraw_company_request(membership_id)`, `my_company_offers().memberships` (BACKEND.md, Agent RPCs).
+- Onboarding step 4, Your work, lists **one or more companies**, each with its **agency code** (required, the admin verifies it) and **the insurance types** the agent deals in there (one or more chips from `catalog.insuranceTypes`). **My company isn't listed** asks for the company's name (one text field) and its types.
 - The picker (**CompanyPickerSheet**): a search field (when there are more than 8 companies), then one `ListRow` per company (logo 40dp if permitted, otherwise the name's initials in a neutral avatar; the name in the app language); companies already added are marked.
-- Saving calls `request_company` once per new company, when its sheet is saved. **The agent is never blocked** (but onboarding step 1 needs at least one pending or approved company): onboarding continues, and the whole app works at once, with custom offers only until approval.
+- Saving calls `request_company` once per new company, when its sheet is saved. **The agent is never blocked** (but onboarding step 4 needs at least one pending or approved company): onboarding continues, and the whole app works at once, with custom offers only until approval.
 
 **One row per company in Settings → Profile, by membership status** (a `StatusPill` from `catalog.membershipStatuses` plus an optional detail line; the catalog wording is the only status text), plus **Add company**:
 | Status (pill) | Detail line | Action |

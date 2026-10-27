@@ -52,7 +52,8 @@ export function servicesFor(types, max, seed, catalog) {
 
 export function placeholderValues(profile) {
   const name = String(profile.fullName || "").trim();
-  const out = { name, firstName: name.split(/\s+/)[0] || "", city: String(profile.city || "").trim(), designation: String(profile.designation || "").trim() };
+  // No designation: the agent no longer enters one; the seed's about.designation is a fixed text (DECISIONS #114).
+  const out = { name, firstName: name.split(/\s+/)[0] || "", city: String(profile.city || "").trim() };
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v));
 }
 const PHONE = /^[6-9]\d{9}$/, EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -126,7 +127,7 @@ export function starterContent({ profile, templateKey, locale, agentId, types = 
 // insurance only (the life-and-family copy; DECISIONS #93).
 export const SEEDED = {
   agentId: "00000000-0000-0000-0000-000000000001", templateKey: "classic", locale: "en", types: ["life"],
-  profile: { fullName: "Priya Nair", city: "Kochi", designation: "", phone: "9847012345", email: "priya.nair@example.com" },
+  profile: { fullName: "Priya Nair", city: "Kochi", phone: "9847012345", email: "priya.nair@example.com" },
 };
 export function seededFixture() {
   const dicts = { en: R("shared/i18n/en.json"), hi: R("shared/i18n/hi.json") };
@@ -135,7 +136,7 @@ export function seededFixture() {
   return {
     template_key: SEEDED.templateKey, accent: reg.templates.find((x) => x.key === SEEDED.templateKey).defaultAccent, locale: SEEDED.locale,
     published_content: starterContent({ ...SEEDED, dicts }),
-    profile: { full_name: p.fullName, designation: p.designation || null, city: p.city, photo_url: "", phone: p.phone, agency_code: null },
+    profile: { full_name: p.fullName, designation: null, city: p.city, photo_url: "", phone: p.phone, agency_code: null },
     canonical_host: null, published_at: "2026-10-18T09:00:00.000Z", offers: { featured: null, items: [] }, company: null,
   };
 }

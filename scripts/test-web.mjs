@@ -186,7 +186,7 @@ try {
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
     const later = [...shared, ...own(tpl), `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 112 * 1024, tpl + " + install modules over 112KB"); // 106 -> 112KB, same reason
+    assert.ok(later < 113 * 1024, tpl + " + install modules over 113KB"); // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);

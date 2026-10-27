@@ -52,7 +52,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   });
 
   const agent = { agentId: "00000000-0000-0000-0000-000000000001", templateKey: "classic", locale: "en", dicts,
-    profile: { fullName: "Priya Nair", city: "Kochi", designation: "", phone: "9847012345", email: "p@example.com" } };
+    profile: { fullName: "Priya Nair", city: "Kochi", phone: "9847012345", email: "p@example.com" } };
   for (const l of LOCALE_KEYS) ok(`seed (${l}): a motor agent gets motor services and the general copy; a life agent the life copy`, () => {
     const motor = starterContent({ ...agent, locale: l, types: ["motor"] });
     const life = starterContent({ ...agent, locale: l, types: ["life"] });

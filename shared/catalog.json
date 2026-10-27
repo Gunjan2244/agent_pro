@@ -674,6 +674,8 @@
       "key": "personal",
       "labelKey": "template_family.personal.name",
       "descriptionKey": "template_family.personal.description",
+      "showsKey": "template_family.personal.shows",
+      "bestForKey": "template_family.personal.best_for",
       "icon": "person",
       "order": 1
     },
@@ -681,6 +683,8 @@
       "key": "offers",
       "labelKey": "template_family.offers.name",
       "descriptionKey": "template_family.offers.description",
+      "showsKey": "template_family.offers.shows",
+      "bestForKey": "template_family.offers.best_for",
       "icon": "savings",
       "order": 2
     }
@@ -790,7 +794,7 @@
       "key": "agent_signup",
       "labelKey": "privacy.agent_signup.title",
       "order": 1,
-      "version": 1,
+      "version": 2,
       "textKeys": [
         "privacy.agent_signup.consent",
         "privacy.agent_signup.title",

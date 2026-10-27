@@ -56,21 +56,23 @@
 
 **Definitions in `shared/` (built, P1-1):** each notice is versioned in `catalog.privacyNotices` (`{key, labelKey, order, version, textKeys}`) and its text lives in `shared/i18n` (`privacy.*`). `generateShared` computes a `sha256` per notice, version and locale over the canonical text (SHARED_DEFINITIONS.md, "privacyNotices": NFC, `\n` joins, `JSON.stringify({key, locale, text, version})`) and emits `catalog_privacy_notice(p_key) → jsonb {version, hash_en, hash_hi}`, `catalog_privacy_notice_hash(key, version, locale)` and `catalog_privacy_notice_locale(key, version, hash)` into `catalog_sync`, so the database records exactly which text was shown. Changing the text means a new version (`verifyShared` enforces it); old versions' hashes stay in the lockfile and in the SQL. The notices are `agent_signup`, `enquiry_form`, `agent_customer_duty` and `guardian_consent`, all at version 1. Clients send **`{notice_key, version, hash}`** for the text they showed; see [P1-1 contract](#p1-1-contract-for-p1-2-p1-3-and-p1-4).
 
-### 1. Agent sign-up (app, Create account) — Agent PRO as fiduciary
-- One unticked checkbox under the password field, required to enable **Create account**:
+### 1. Agent sign-up (app, Create account or Continue with Google) — Agent PRO as fiduciary
+- One unticked checkbox under the password field, required to enable **Create account**; the same checkbox on Welcome, above **Continue with Google**, which stays disabled until it is ticked (DECISIONS #112):
   - EN: "I'm 18 or older, and I agree to the Terms and the Privacy notice."
   - HI: "मेरी आयु 18 वर्ष या उससे अधिक है, और मैं शर्तों और गोपनीयता सूचना से सहमत हूँ।"
 - "Privacy notice" opens the full notice (an in-app screen, the same text as the web privacy policy). **Itemised content** (provisional; counsel):
   | Data | Purpose | Kept |
   |---|---|---|
-  | Email and password (stored hashed by Supabase Auth) | Sign-in, account emails | While the account exists |
-  | Name, mobile, designation, city, company, optional photo, agency code | Your profile and your public website (only what you publish is public) | While the account exists |
+  | Email, and either a password (stored hashed by Supabase Auth) or, with Continue with Google, the Google account's name and email | Sign-in, account emails | While the account exists |
+  | Name, mobile, city, company, optional photo, agency code | Your profile and your public website (only what you publish is public) | While the account exists |
   | Website content | Showing your website | While the account exists |
   | Orders, payments and receipts | Billing and tax records | 8 years after the financial year, anonymised after account deletion (law) |
   | Registrant details (domain buyers only) | Registering your domain (shared with the registrar and registry) | Until 90 days after your last domain ends |
   | Login session on your phone | Keeping you signed in (encrypted with the Android Keystore) | Until you sign out |
   | Enquiries and customers you add | You decide the purpose; we store them for you as your processor | See "Your customers' data" |
   - Also: no ads, no trackers, no selling of data; processors and their locations; how to download, correct and delete your data and nominate someone (Settings → Your data); the grievance officer's contact (Rule 9); the right to complain to the Data Protection Board.
+- **Notice version 2 (2026-10-25, DECISIONS #112, #114):** the account row above, Google added to the processors ("only if you continue with Google: it confirms who you are and shares your name and email with us"), and the designation dropped (no longer collected). Data minimisation: only the name and email are taken from Google; Supabase Auth also keeps Google's profile details (such as the picture link) in the auth user's metadata, which the app never reads. Counsel should confirm the wording.
+- **Recording it for Continue with Google (DECISIONS #112):** an id-token sign-in carries no sign-up metadata, so the trigger records nothing. Before signing in, the app keeps the consent the agent ticked as pending (local store); right after the session starts it calls `record_consent('agent_signup', version, hash)` (not tied to the Welcome screen, which closes at once). If that fails, onboarding step 1 records it **before** it saves the mobile or anything else, and doesn't continue until it has. Sign-out drops a pending consent, so it can never be recorded for another account.
 - **Recording it (built, P1-2):** the app sends `PrivacyNotice.AgentSignup.consent(locale)` = `{notice_key: 'agent_signup', version, hash}` as `raw_user_meta_data.consent` in the Auth sign-up call, and the signup trigger (`private.handle_new_user`) validates it and inserts the `consents` row (version, hash, the locale the hash resolves to, `principal_kind = 'agent'`, `channel = 'app'`). If the metadata is missing or invalid the account is still created (a trigger can't cleanly block Auth) but nothing is recorded; the app must then call `record_consent('agent_signup', version, hash)` before continuing.
 
 ### 2. Website enquiry form — the agent as fiduciary

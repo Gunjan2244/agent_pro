@@ -59,10 +59,10 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
     assert.equal((section(h, "faq").match(/<dt>/g) || []).length, en.content.faq.items.length);
   });
 
-  ok("modern without a photo: the initials on the tint fill the cover; seeded facts show only the languages", () => {
+  ok("modern without a photo: the initials on the tint fill the cover; seeded facts show the fixed designation and the languages", () => {
     const h = html(seeded, "modern");
     assert.ok(heroOf(h).includes('<div class="cover"><span class="hero-photo mono" aria-hidden="true">PN</span></div>'));
-    assert.ok(section(h, "about").includes(`<ul class="facts"><li><span class="fact-k">${dicts.en["field.languages_spoken"]}</span> English</li></ul>`));
+    assert.ok(section(h, "about").includes(`<ul class="facts"><li class="fact-d">${dicts.en["seed.about.designation"]}</li><li><span class="fact-k">${dicts.en["field.languages_spoken"]}</span> English</li></ul>`));
   });
 
   ok("minimal: compact header (56 px portrait, name · designation · city), Call · WhatsApp · Email links instead of a button; no cards, no images but the portrait; one Questions disclosure", () => {

@@ -9,7 +9,7 @@
   ],
   "notices": {
     "agent_signup": {
-      "version": 1,
+      "version": 2,
       "labelKey": "privacy.agent_signup.title",
       "textKeys": [
         "privacy.agent_signup.consent",
@@ -49,8 +49,8 @@
         "privacy.agent_signup.board"
       ],
       "hash": {
-        "en": "ee10393a0af9f4849f911b09c6850d32805be32f31d9f6a942f96a486bb52713",
-        "hi": "43613aba84636a50f5af1e9a3ed326dc2abe564ba54d0b7113b5068337970417"
+        "en": "cd74628e3d65b64615dde4d2cc30f4649a3f441cad77b8737330b2fecca6fcd2",
+        "hi": "6b8d88a471e6ed7bc97acf9e5f8e10eb51f3ca9c4b399d481527c13440cf3cc2"
       }
     },
     "enquiry_form": {
