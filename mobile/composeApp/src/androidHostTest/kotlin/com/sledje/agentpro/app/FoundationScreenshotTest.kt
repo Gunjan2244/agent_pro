@@ -15,7 +15,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.sledje.agentpro.core.catalog.AppLocale
-import com.sledje.agentpro.core.catalog.TemplateFamily
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.designsystem.gallery.GalleryFrame
 import com.sledje.agentpro.core.forms.FormState
@@ -25,9 +24,13 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormScreen
 import com.sledje.agentpro.feature.auth.ui.AuthFormUiState
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.auth.ui.WelcomeScreen
+import com.sledje.agentpro.feature.auth.ui.WelcomeViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingLinkScreen
 import com.sledje.agentpro.feature.onboarding.ui.LaunchStep
-import com.sledje.agentpro.feature.onboarding.ui.OnboardingProfileScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingMobileScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingPhotoScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingPreviewScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingIntroScreen
 import com.sledje.agentpro.feature.onboarding.ui.SiteLaunchScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingUiState
@@ -45,8 +48,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Roborazzi baselines of the Phase 5 screens (docs/TESTING.md): Welcome, Sign in, the three onboarding
- * steps and the empty tab shell (Home in Main), in light/dark × EN/HI.
+ * Roborazzi baselines of the Phase 5 screens (docs/TESTING.md): Welcome (with and without Google), Sign in, the
+ * onboarding steps (Your work is in CompaniesScreenshotTest) and the empty tab shell (Home in Main), in light/dark × EN/HI.
  * Images: composeApp/src/androidHostTest/screenshots/<variant>/screens/<Screen>.png.
  */
 @OptIn(ExperimentalTestApi::class)
@@ -58,54 +61,54 @@ class FoundationScreenshotTest {
     private fun LaunchScreenFor(step: LaunchStep) = SiteLaunchScreen(
         step, "Ramesh Kumar", "https://agentpro.site/a/ramesh-kumar", "agentpro.site/a/ramesh-kumar",
         onAddToHome = {}, onNext = {}, onOpen = {}, onShare = {}, onDone = {},
-        // The WebView isn't screenshotted; a surface stands in for the render.
-        preview = { Box(it.background(MaterialTheme.colorScheme.surfaceContainer)) },
     )
 
     private fun screens(hindi: Boolean): List<Pair<String, @Composable () -> Unit>> = listOf(
         "Welcome" to {
             WelcomeScreen(if (hindi) AppLocale.Hi else AppLocale.En, onSwitchLocale = {}, onCreateAccount = {}, onSignIn = {})
         },
+        // With Google sign-in (DECISIONS #112): the consent ticked, so Continue with Google is enabled.
+        "WelcomeGoogle" to {
+            val form = remember { FormState(WelcomeViewModel.FIELDS, mapOf(AuthFormViewModel.CONSENT to true)) }
+            WelcomeScreen(
+                if (hindi) AppLocale.Hi else AppLocale.En, onSwitchLocale = {}, onCreateAccount = {}, onSignIn = {},
+                consentForm = form, onGoogle = {},
+            )
+        },
         "SignIn" to {
             val form = remember { FormState(AuthFormViewModel.fieldsFor(AuthFormMode.SignIn), mapOf("email" to "ramesh@example.com", "password" to "secret123")) }
             AuthFormScreen(AuthFormMode.SignIn, form, AuthFormUiState(), {}, {}, {}, {})
         },
-        "OnboardingProfile" to {
+        "OnboardingMobile" to {
             val form = remember {
-                FormState(
-                    OnboardingViewModel.PROFILE_FIELDS,
-                    mapOf(OnboardingViewModel.NAME to "Ramesh Kumar", OnboardingViewModel.MOBILE to "+919876543210", OnboardingViewModel.CITY to "Pune"),
-                )
+                FormState(OnboardingViewModel.PROFILE_FIELDS, mapOf(OnboardingViewModel.NAME to "Ramesh Kumar", OnboardingViewModel.MOBILE to "+919876543210"))
             }
-            OnboardingProfileScreen(form, OnboardingUiState(), onContinue = {})
+            OnboardingMobileScreen(form, OnboardingUiState(), onContinue = {})
         },
         "LaunchAddToPhone" to { LaunchScreenFor(LaunchStep.AddToPhone) },
-        "LaunchPreview" to { LaunchScreenFor(LaunchStep.Preview) },
         "LaunchShare" to { LaunchScreenFor(LaunchStep.Share) },
-        "OnboardingProfileFromSignUp" to {
-            val form = remember {
-                FormState(
-                    OnboardingViewModel.PROFILE_FIELDS,
-                    mapOf(OnboardingViewModel.NAME to "Ramesh Kumar", OnboardingViewModel.MOBILE to "+919876543210"),
-                )
-            }
-            OnboardingProfileScreen(form, OnboardingUiState(contactSummary = true), onContinue = {})
+        // After Continue with Google: the name and email as a summary, only the mobile asked.
+        "OnboardingMobileFromGoogle" to {
+            val form = remember { FormState(OnboardingViewModel.PROFILE_FIELDS, mapOf(OnboardingViewModel.NAME to "Ramesh Kumar")) }
+            OnboardingMobileScreen(form, OnboardingUiState(contactSummary = true, email = "ramesh.kumar@gmail.com"), onContinue = {})
         },
-        // Step 2 asks for the family first (the two cards), then pages through that family's templates.
-        "OnboardingTemplateFamily" to {
-            OnboardingTemplateScreen(Templates.all, Templates.all.first().key, "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {})
+        // Step 2: the template intro (no countdown in a still); step 3 pages through all five templates.
+        "OnboardingIntro" to {
+            OnboardingIntroScreen(templateCount = Templates.all.size, onContinue = {}, onBack = {}, autoAdvance = false)
         },
         "OnboardingTemplate" to {
-            OnboardingTemplateScreen(
-                Templates.all, Templates.all.first().key, "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {},
-                initialFamily = TemplateFamily.Personal,
-            )
+            OnboardingTemplateScreen(Templates.all, Templates.all.first().key, "Ramesh Kumar", "Pune", onUse = {}, onBack = {})
         },
         "OnboardingTemplateOffers" to {
-            OnboardingTemplateScreen(
-                Templates.all, "spotlight", "Ramesh Kumar", "LIC Agent · Pune", onUse = {}, onBack = {},
-                initialFamily = TemplateFamily.Offers,
-            )
+            OnboardingTemplateScreen(Templates.all, "spotlight", "Ramesh Kumar", "Pune", onUse = {}, onBack = {})
+        },
+        "OnboardingPhoto" to {
+            val form = remember { FormState(OnboardingViewModel.PROFILE_FIELDS, mapOf(OnboardingViewModel.NAME to "Ramesh Kumar")) }
+            OnboardingPhotoScreen(form, OnboardingUiState(), onPickPhoto = {}, onContinue = {}, onSkip = {}, onBack = {})
+        },
+        // The WebView isn't screenshotted; a surface stands in for the render.
+        "OnboardingPreview" to {
+            OnboardingPreviewScreen(pendingCompanies = true, onContinue = {}, onBack = {}, preview = { Box(it.background(MaterialTheme.colorScheme.surfaceContainer)) })
         },
         "OnboardingLink" to {
             OnboardingLinkScreen(

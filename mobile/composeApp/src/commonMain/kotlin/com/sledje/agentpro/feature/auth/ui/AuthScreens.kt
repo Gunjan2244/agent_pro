@@ -38,6 +38,7 @@ import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.core.designsystem.components.AppScaffold
 import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
+import com.sledje.agentpro.core.designsystem.components.GoogleSignInButton
 import com.sledje.agentpro.core.designsystem.components.OfflineBanner
 import com.sledje.agentpro.core.designsystem.components.PrimaryButton
 import com.sledje.agentpro.core.designsystem.components.TertiaryButton
@@ -49,6 +50,10 @@ import com.sledje.agentpro.resources.app_name
 import com.sledje.agentpro.resources.auth_check_email_text
 import com.sledje.agentpro.resources.auth_check_email_title
 import com.sledje.agentpro.resources.auth_check_spam
+import com.sledje.agentpro.resources.auth_continue_google
+import com.sledje.agentpro.resources.auth_error_google_failed
+import com.sledje.agentpro.resources.auth_error_google_no_account
+import com.sledje.agentpro.resources.auth_sign_up_email
 import com.sledje.agentpro.resources.auth_create_account
 import com.sledje.agentpro.resources.auth_error_code
 import com.sledje.agentpro.resources.auth_error_credentials
@@ -93,12 +98,16 @@ fun authErrorMessage(error: AuthFormError): String = when (error) {
     AuthFormError.SamePassword -> stringResource(Res.string.auth_error_same_password)
     AuthFormError.AccountExists -> stringResource(Res.string.auth_error_exists)
     AuthFormError.WrongCode -> stringResource(Res.string.auth_error_code)
+    AuthFormError.GoogleNoAccount -> stringResource(Res.string.auth_error_google_no_account)
+    AuthFormError.GoogleFailed -> stringResource(Res.string.auth_error_google_failed)
     is AuthFormError.Other -> stringResource(error.error.message)
 }
 
 /**
- * Welcome (docs/UX.md): the name, one line, **Create account** (primary) and **Sign in** (text button),
- * and the EN/हिं switch at the top right. Nothing else.
+ * Welcome (docs/UX.md): the name, one line, and the EN/हिं switch at the top right. With Google sign-in
+ * ([onGoogle] set; DECISIONS #112): the sign-up consent checkbox, **Continue with Google** (disabled until it is
+ * ticked), then **Sign up with email** and **Sign in** as text buttons. Without it: **Create account** (primary)
+ * and **Sign in** (text button). Nothing else.
  */
 @Composable
 fun WelcomeScreen(
@@ -106,6 +115,13 @@ fun WelcomeScreen(
     onSwitchLocale: (AppLocale) -> Unit,
     onCreateAccount: () -> Unit,
     onSignIn: () -> Unit,
+    /** The consent checkbox ([WelcomeViewModel.form]); shown with the Google button. */
+    consentForm: FormState? = null,
+    state: WelcomeUiState = WelcomeUiState(),
+    /** Continue with Google; null when this build has no Google client ID. */
+    onGoogle: (() -> Unit)? = null,
+    /** A consent line's link was tapped ([AuthFormViewModel.LINK_TERMS] / [AuthFormViewModel.LINK_NOTICE]). */
+    onLink: (linkKey: String) -> Unit = {},
 ) {
     val online = LocalIsOnline.current
     Column(
@@ -123,8 +139,25 @@ fun WelcomeScreen(
             Text(stringResource(Res.string.app_name), style = AgentProTheme.text.display, modifier = Modifier.semantics { heading() })
             Text(stringResource(Res.string.welcome_tagline), style = AgentProTheme.text.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Column(Modifier.fillMaxWidth().padding(Spacing.m)) {
-            PrimaryButton(stringResource(Res.string.auth_create_account), onCreateAccount, Modifier.fillMaxWidth())
+        Column(Modifier.fillMaxWidth().padding(Spacing.m), verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            if (onGoogle != null && consentForm != null) {
+                FormRenderer(consentForm, enabled = !state.signingIn, onLink = { _, linkKey -> onLink(linkKey) })
+                state.error?.let {
+                    Text(
+                        authErrorMessage(it),
+                        style = AgentProTheme.text.body,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+                GoogleSignInButton(
+                    stringResource(Res.string.auth_continue_google), onGoogle, Modifier.fillMaxWidth(),
+                    enabled = online && consentForm.isValid && !state.signingIn,
+                )
+                TertiaryButton(stringResource(Res.string.auth_sign_up_email), onCreateAccount, Modifier.fillMaxWidth())
+            } else {
+                PrimaryButton(stringResource(Res.string.auth_create_account), onCreateAccount, Modifier.fillMaxWidth())
+            }
             TertiaryButton(stringResource(Res.string.auth_sign_in), onSignIn, Modifier.fillMaxWidth())
         }
     }

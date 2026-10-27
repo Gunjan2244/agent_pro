@@ -12,6 +12,7 @@ import com.sledje.agentpro.core.forms.FieldLink
 import com.sledje.agentpro.core.forms.FieldSpec
 import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
+import com.sledje.agentpro.core.platform.GoogleSignInResult
 import com.sledje.agentpro.feature.auth.data.AuthRepository
 import com.sledje.agentpro.feature.auth.data.AuthRules
 import com.sledje.agentpro.feature.auth.data.NewAccount
@@ -46,6 +47,12 @@ sealed interface AuthFormError {
     data object SamePassword : AuthFormError
     data object AccountExists : AuthFormError
     data object WrongCode : AuthFormError
+
+    /** Continue with Google: the phone has no Google account to offer. */
+    data object GoogleNoAccount : AuthFormError
+
+    /** Continue with Google failed for any reason but a lost connection or a rate limit. */
+    data object GoogleFailed : AuthFormError
     data class Other(val error: AppError) : AuthFormError
 }
 
@@ -149,16 +156,72 @@ class AuthFormViewModel(val mode: AuthFormMode, private val auth: AuthRepository
             }
             if (mode == AuthFormMode.SignUp) {
                 add(FieldSpec(CONFIRM_PASSWORD, FieldType.Password, Res.string.auth_confirm_password, required = true, mustMatch = PASSWORD))
-                add(
-                    FieldSpec(
-                        CONSENT, FieldType.Consent, Res.string.cat_privacy_agent_signup_consent, required = true,
-                        links = listOf(
-                            FieldLink(LINK_TERMS, Res.string.cat_privacy_agent_signup_link_terms),
-                            FieldLink(LINK_NOTICE, Res.string.cat_privacy_agent_signup_link_notice),
-                        ),
-                    ),
-                )
+                add(consentField())
             }
+        }
+
+        /** The sign-up consent checkbox (Create account and Welcome's Continue with Google). */
+        fun consentField(): FieldSpec = FieldSpec(
+            CONSENT, FieldType.Consent, Res.string.cat_privacy_agent_signup_consent, required = true,
+            links = listOf(
+                FieldLink(LINK_TERMS, Res.string.cat_privacy_agent_signup_link_terms),
+                FieldLink(LINK_NOTICE, Res.string.cat_privacy_agent_signup_link_notice),
+            ),
+        )
+    }
+}
+
+data class WelcomeUiState(
+    /** The account chooser is open or the Google sign-in is running. */
+    val signingIn: Boolean = false,
+    val error: AuthFormError? = null,
+)
+
+/**
+ * Welcome's **Continue with Google** (docs/UX.md, Welcome; DECISIONS #112): the sign-up consent is ticked first (the
+ * same unticked, required `agent_signup` checkbox as Create account, built by FormRenderer), then the account chooser
+ * opens, then [AuthRepository.signInWithGoogle] signs in or creates the account. Success needs no navigation: the
+ * session starts and the gate moves on (onboarding for a new agent).
+ */
+class WelcomeViewModel(private val auth: AuthRepository) : ViewModel() {
+    val form = FormState(FIELDS)
+
+    private val _state = MutableStateFlow(WelcomeUiState())
+    val state: StateFlow<WelcomeUiState> = _state.asStateFlow()
+
+    /** Continue with Google was tapped: true when the chooser may open (the consent is ticked, nothing is running). */
+    fun startGoogle(): Boolean {
+        if (_state.value.signingIn || !form.validateAll()) return false
+        _state.update { it.copy(signingIn = true, error = null) }
+        return true
+    }
+
+    /** The chooser's outcome; [locale] is the language the consent line was shown in (its notice hash). */
+    fun onGoogleResult(result: GoogleSignInResult, locale: AppLocale) {
+        when (result) {
+            is GoogleSignInResult.Token -> viewModelScope.launch {
+                val signedIn = auth.signInWithGoogle(result.idToken, result.rawNonce, PrivacyNotice.AgentSignup.consent(locale))
+                _state.update {
+                    when (signedIn) {
+                        is Result.Ok -> it.copy(signingIn = false)
+                        is Result.Err -> it.copy(signingIn = false, error = googleError(signedIn.error))
+                    }
+                }
+            }
+            GoogleSignInResult.Cancelled -> _state.update { it.copy(signingIn = false) }
+            GoogleSignInResult.NoAccount -> _state.update { it.copy(signingIn = false, error = AuthFormError.GoogleNoAccount) }
+            is GoogleSignInResult.Failed -> _state.update { it.copy(signingIn = false, error = AuthFormError.GoogleFailed) }
+        }
+    }
+
+    companion object {
+        /** The sign-up consent checkbox, as on Create account (`agent_signup`; unticked, required). */
+        val FIELDS: List<FieldSpec> = listOf(AuthFormViewModel.consentField())
+
+        /** A lost connection or a rate limit says so; anything else (a refused token, a setup problem) is one message. */
+        fun googleError(error: AppError): AuthFormError = when (error) {
+            AppError.Offline, AppError.RateLimited -> AuthFormError.Other(error)
+            else -> AuthFormError.GoogleFailed
         }
     }
 }

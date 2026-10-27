@@ -1,5 +1,6 @@
 package com.sledje.agentpro.testing
 
+import androidx.compose.runtime.Composable
 import com.sledje.agentpro.app.AppDependencies
 import com.sledje.agentpro.app.AppEvents
 import com.sledje.agentpro.app.DataSync
@@ -16,6 +17,8 @@ import com.sledje.agentpro.core.data.InMemoryKeyValueStore
 import com.sledje.agentpro.core.data.KeyValueStore
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.features.FeatureFlags
+import com.sledje.agentpro.core.platform.GoogleSignIn
+import com.sledje.agentpro.core.platform.GoogleSignInResult
 import com.sledje.agentpro.core.platform.LocaleChoice
 import com.sledje.agentpro.core.platform.LocaleController
 import com.sledje.agentpro.core.platform.NetworkMonitor
@@ -118,6 +121,18 @@ class FakeAuthRepository(initial: AuthState = AuthState.SignedOut) : AuthReposit
         return result
     }
 
+    var googleResult: AppResult<Unit> = Result.Ok(Unit)
+
+    /** The consent each Google sign-in carried (recorded with `record_consent` in the real call). */
+    val googleConsents = mutableListOf<NoticeConsent>()
+
+    override suspend fun signInWithGoogle(idToken: String, rawNonce: String, consent: NoticeConsent): AppResult<Unit> {
+        calls += "google:$idToken:$rawNonce"
+        googleConsents += consent
+        if (googleResult is Result.Ok) state.value = AuthState.SignedIn(TEST_USER, "ramesh@gmail.com")
+        return googleResult
+    }
+
     override suspend fun verifySignUpCode(email: String, code: String): AppResult<Unit> {
         calls += "verifySignUp:$email:$code"
         if (code != validCode) return Result.Err(AppError.Validation("code"))
@@ -176,6 +191,17 @@ class FakeConsentRepository(accepted: Boolean = false) : ConsentRepository {
         error?.let { return Result.Err(it) }
         return Result.Ok(Unit)
     }
+
+    /** A sign-up consent a Google sign-in left pending; recorded (and cleared) by [recordPendingSignupConsent]. */
+    var pendingSignup: NoticeConsent? = null
+
+    override suspend fun recordPendingSignupConsent(): AppResult<Unit> {
+        val c = pendingSignup ?: return Result.Ok(Unit)
+        calls += "signup:${c.noticeKey}:${c.version}:${c.hash}"
+        error?.let { return Result.Err(it) }
+        pendingSignup = null
+        return Result.Ok(Unit)
+    }
 }
 
 class FakeProfileRepository(initial: Profile? = null) : ProfileRepository {
@@ -189,7 +215,7 @@ class FakeProfileRepository(initial: Profile? = null) : ProfileRepository {
         updates += input
         updateError?.let { return Result.Err(it) }
         val updated = (profile.value ?: testProfile()).copy(
-            fullName = input.fullName, phone = input.phone, designation = input.designation, city = input.city,
+            fullName = input.fullName, phone = input.phone, city = input.city,
             agencyCode = input.agencyCode, branch = input.branch, photoUrl = input.photoUrl,
         )
         profile.value = updated
@@ -309,6 +335,15 @@ class FakeDataSync(var result: AppResult<Unit> = Result.Ok(Unit)) : DataSync {
     override suspend fun clearAll() { cleared++; status.value = SyncStatus.Idle }
 }
 
+/** Google sign-in that answers [next] at once (available unless [isAvailable] is set false). */
+class FakeGoogleSignIn(override val isAvailable: Boolean = true) : GoogleSignIn {
+    var next: GoogleSignInResult = GoogleSignInResult.Token("id-token", "raw-nonce")
+    var opened = 0
+
+    @Composable
+    override fun rememberGoogleSignIn(onResult: (GoogleSignInResult) -> Unit): () -> Unit = { opened++; onResult(next) }
+}
+
 /** The whole app wired with fakes (nav smoke and screenshot tests). */
 class FakeAppDependencies(
     override val auth: FakeAuthRepository = FakeAuthRepository(),
@@ -327,6 +362,8 @@ class FakeAppDependencies(
     override val customerDrafts: FakeCustomerDraftRepository = FakeCustomerDraftRepository(),
     override val customerDraftLive: FakeCustomerDraftLive = FakeCustomerDraftLive(),
     override val contactPicker: FakeContactPicker = FakeContactPicker(),
+    /** Off by default, so Welcome shows Create account; Google flows pass `FakeGoogleSignIn()`. */
+    override val googleSignIn: FakeGoogleSignIn = FakeGoogleSignIn(isAvailable = false),
     val fakeWebsite: FakeWebsite = FakeWebsite(),
     flags: FeatureFlags = FeatureFlags.Defaults,
     override val isConfigured: Boolean = true,

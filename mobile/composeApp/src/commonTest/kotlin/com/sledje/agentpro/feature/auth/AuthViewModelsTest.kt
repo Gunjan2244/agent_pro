@@ -2,6 +2,7 @@ package com.sledje.agentpro.feature.auth
 
 import app.cash.turbine.test
 import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.core.catalog.PrivacyNotice
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.ValidationError
@@ -14,6 +15,9 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormUiState
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.auth.ui.ResendEmailViewModel
 import com.sledje.agentpro.feature.auth.ui.VerifyCodeViewModel
+import com.sledje.agentpro.feature.auth.ui.WelcomeUiState
+import com.sledje.agentpro.feature.auth.ui.WelcomeViewModel
+import com.sledje.agentpro.core.platform.GoogleSignInResult
 import com.sledje.agentpro.feature.auth.ui.toAuthFormError
 import com.sledje.agentpro.testing.FakeAuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -319,5 +323,66 @@ class AuthViewModelsTest {
     @Test
     fun codeErrorMapping() {
         assertEquals(AuthFormError.WrongCode, AppError.Validation("code").toAuthFormError())
+    }
+
+    // ---- Welcome: Continue with Google (DECISIONS #112) -------------------------------------------------------------
+
+    @Test
+    fun googleNeedsTheConsentTickedFirst() = runTest {
+        val vm = WelcomeViewModel(auth)
+        assertFalse(vm.form.isValid, "the consent box starts unticked")
+        assertFalse(vm.startGoogle(), "the chooser doesn't open")
+        assertFalse(vm.state.value.signingIn)
+        vm.form.set(AuthFormViewModel.CONSENT, true)
+        assertTrue(vm.startGoogle())
+        assertTrue(vm.state.value.signingIn)
+        assertFalse(vm.startGoogle(), "not twice while it runs")
+    }
+
+    @Test
+    fun aGoogleTokenSignsInWithTheSignUpConsentInTheLanguageShown() = runTest {
+        val vm = WelcomeViewModel(auth)
+        vm.form.set(AuthFormViewModel.CONSENT, true)
+        vm.startGoogle()
+        vm.onGoogleResult(GoogleSignInResult.Token("tok", "nonce"), AppLocale.Hi)
+        runCurrent()
+        assertEquals(listOf("google:tok:nonce"), auth.calls)
+        assertEquals(PrivacyNotice.AgentSignup.consent(AppLocale.Hi), auth.googleConsents.single())
+        assertIs<AuthState.SignedIn>(auth.state.value, "the gate moves on by itself")
+        assertFalse(vm.state.value.signingIn)
+        assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun googleOutcomesThatDontSignIn() = runTest {
+        val vm = WelcomeViewModel(auth)
+        vm.form.set(AuthFormViewModel.CONSENT, true)
+        vm.startGoogle()
+        vm.onGoogleResult(GoogleSignInResult.Cancelled, AppLocale.En)
+        assertEquals(WelcomeUiState(), vm.state.value, "closing the chooser shows nothing")
+        vm.startGoogle()
+        vm.onGoogleResult(GoogleSignInResult.NoAccount, AppLocale.En)
+        assertEquals(AuthFormError.GoogleNoAccount, vm.state.value.error)
+        vm.startGoogle()
+        vm.onGoogleResult(GoogleSignInResult.Failed("bad client id"), AppLocale.En)
+        assertEquals(AuthFormError.GoogleFailed, vm.state.value.error)
+        assertTrue(auth.calls.isEmpty())
+    }
+
+    @Test
+    fun aRefusedGoogleTokenShowsOneMessageButOfflineSaysOffline() = runTest {
+        val vm = WelcomeViewModel(auth)
+        vm.form.set(AuthFormViewModel.CONSENT, true)
+        auth.googleResult = Result.Err(AppError.Validation("credentials"))
+        vm.startGoogle()
+        vm.onGoogleResult(GoogleSignInResult.Token("tok", "nonce"), AppLocale.En)
+        runCurrent()
+        assertEquals(AuthFormError.GoogleFailed, vm.state.value.error, "never \"Wrong email or password\"")
+        auth.googleResult = Result.Err(AppError.Offline)
+        vm.startGoogle()
+        vm.onGoogleResult(GoogleSignInResult.Token("tok", "nonce"), AppLocale.En)
+        runCurrent()
+        assertEquals(AuthFormError.Other(AppError.Offline), vm.state.value.error)
+        assertIs<AuthState.SignedOut>(auth.state.value)
     }
 }

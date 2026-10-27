@@ -17,8 +17,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * The first draft of a new site (DECISIONS #78), built from the generated [SiteSeed] (`shared/site-seed.json`)
  * and the agent's profile, so the site can be previewed and published straight from onboarding:
  * - text variants are picked deterministically from the agent's user id ([SiteSeed.pick]) and filled with the
- *   profile's name, first name, city and designation; a text that needs a blank city or designation uses its
- *   fallback ([SiteSeed.fill]);
+ *   profile's name, first name and city; a text that needs a blank city uses its fallback ([SiteSeed.fill]);
+ * - `about.designation` is the fixed seeded "Insurance agent" in the site's language (DECISIONS #114);
  * - every text is cut to its schema field's `maxLength`; blank values are left out (as `SiteContent.withSection` does);
  * - list items missing a required item field are dropped and lists are cut to `maxItems`, so the draft passes
  *   the publish rules whenever the profile has a name and a mobile;
@@ -78,20 +78,19 @@ object StarterContent {
         return JsonObject(content)
     }
 
-    /** The `{name}`, `{firstName}`, `{city}` and `{designation}` values; blank ones are left out. */
+    /** The `{name}`, `{firstName}` and `{city}` values; blank ones are left out. */
     fun placeholderValues(profile: Profile): Map<String, String> {
         val name = profile.fullName?.trim().orEmpty()
         return listOf(
             "name" to name,
             "firstName" to name.split(Regex("\\s+")).firstOrNull().orEmpty(),
             "city" to profile.city?.trim().orEmpty(),
-            "designation" to profile.designation?.trim().orEmpty(),
         ).filter { it.second.isNotEmpty() }.toMap()
     }
 
     /**
      * Whether [bio] (the draft's `about.bio`) is the agent's own text: not blank, and not any seeded bio variant
-     * in any language. A seeded bio stays recognised after the profile's city or designation changes, because
+     * in any language. A seeded bio stays recognised after the profile's city changes, because
      * the placeholders match any text. This drives Home's "Make your About section your own".
      */
     fun isOwnBio(bio: String?): Boolean {
@@ -204,7 +203,6 @@ object StarterContent {
         "firstName" -> placeholderValues(profile)["firstName"]
         "phone" -> profile.phone
         "email" -> profile.email
-        "designation" -> profile.designation
         "city" -> profile.city
         else -> null
     }?.trim()?.takeIf { it.isNotEmpty() }

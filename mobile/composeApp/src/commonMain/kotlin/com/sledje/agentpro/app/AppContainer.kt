@@ -15,6 +15,8 @@ import com.sledje.agentpro.core.data.remoteCall
 import com.sledje.agentpro.core.features.FeatureFlags
 import com.sledje.agentpro.core.features.FeatureFlagsRepository
 import com.sledje.agentpro.core.platform.ContactPicker
+import com.sledje.agentpro.core.platform.GoogleSignIn
+import com.sledje.agentpro.core.platform.NoGoogleSignIn
 import com.sledje.agentpro.core.platform.LocaleController
 import com.sledje.agentpro.core.platform.NoContactPicker
 import com.sledje.agentpro.core.platform.NetworkMonitor
@@ -92,6 +94,8 @@ class PlatformServices(
     val locale: LocaleController? = null,
     /** The system contact picker (Customers: "Pick from contacts"; no permission). */
     val contactPicker: ContactPicker = NoContactPicker,
+    /** "Continue with Google" (Welcome; DECISIONS #112). */
+    val googleSignIn: GoogleSignIn = NoGoogleSignIn,
 )
 
 /**
@@ -114,6 +118,7 @@ class AppContainer(platform: PlatformServices) : AppDependencies {
     override val network: NetworkMonitor = platform.network
     override val urlLauncher: UrlLauncher = platform.urlLauncher
     override val contactPicker: ContactPicker = platform.contactPicker
+    override val googleSignIn: GoogleSignIn = platform.googleSignIn
     override val locale: LocaleController = platform.locale ?: StoredLocaleController(store, scope)
 
     val syncEngine = SyncEngine(

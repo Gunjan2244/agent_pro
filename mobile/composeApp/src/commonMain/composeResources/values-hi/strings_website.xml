@@ -18,6 +18,7 @@
     <string name="website_hub_stats">आँकड़े</string>
     <string name="website_hub_stats_summary">इस हफ़्ते %1$d व्यूज़</string>
     <string name="website_preview">प्रीव्यू</string>
+    <string name="website_my_website">मेरी वेबसाइट →</string>
     <string name="website_publish">प्रकाशित करें</string>
     <string name="website_published">आपकी वेबसाइट लाइव है</string>
     <string name="website_publish_fix">प्रकाशित करने से पहले %1$d चीज़ें ठीक करें</string>

@@ -29,11 +29,13 @@ data class Profile(
     val firstName: String? get() = fullName?.trim()?.split(' ')?.firstOrNull { it.isNotBlank() }
 }
 
-/** What onboarding step 1 (and later Settings → Profile) writes. Blank optional values are stored as null. */
+/**
+ * What onboarding steps 1 and 4 (and later Settings → Profile) write. Blank optional values are stored as null.
+ * No designation: it is no longer asked or written; an older account's stays in the row (DECISIONS #114).
+ */
 data class ProfileInput(
     val fullName: String,
     val phone: String,
-    val designation: String? = null,
     val city: String? = null,
     val agencyCode: String? = null,
     val branch: String? = null,

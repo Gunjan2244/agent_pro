@@ -143,10 +143,11 @@ class CatalogKotlinGenerator(private val defs: SharedDefinitions) {
         val names = LinkedHashSet<String>()
         list.entries.forEach { e -> e.keys.filterTo(names) { it !in STANDARD_FIELDS } }
         return names.map { name ->
-            if (name == DESCRIPTION_KEY) {
-                // An i18n key, like labelKey: becomes `description: StringResource` (e.g. templateFamilies).
+            if (name.endsWith(KEY_SUFFIX)) {
+                // An i18n key, like labelKey: `descriptionKey` becomes `description: StringResource`, `bestForKey`
+                // becomes `bestFor` (e.g. templateFamilies).
                 require(list.entries.all { it.string(name) != null }) { "catalog.${list.jsonName}: every entry needs \"$name\" when one has it" }
-                return@map Extra(name, "description", "StringResource", false, Kind.RESOURCE)
+                return@map Extra(name, Naming.propertyName(name.removeSuffix(KEY_SUFFIX)), "StringResource", false, Kind.RESOURCE)
             }
             val values = list.entries.map { it[name] }
             val nullable = values.any { it == null || it is JsonNull }
@@ -201,8 +202,8 @@ class CatalogKotlinGenerator(private val defs: SharedDefinitions) {
 
     companion object {
         private val STANDARD_FIELDS = setOf("key", "labelKey", "icon", "tone", "order", "deprecated")
-        /** Extra entry field holding an i18n key; generated as `description: StringResource`. */
-        const val DESCRIPTION_KEY = "descriptionKey"
+        /** Any extra entry field named `<name>Key` holds an i18n key and is generated as `<name>: StringResource`. */
+        const val KEY_SUFFIX = "Key"
         private val RESERVED = setOf("name", "ordinal", "entries", "key", "label", "icon", "tone", "order", "deprecated")
 
         /** Writes a JSON object as nested Kotlin objects with `const val`s and `listOf(...)`s. */

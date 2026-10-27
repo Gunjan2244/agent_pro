@@ -8,6 +8,7 @@ import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.KeyValueStore
 import com.sledje.agentpro.core.data.Result
+import com.sledje.agentpro.core.data.StoreKeys
 import com.sledje.agentpro.core.data.SupabaseProvider
 import com.sledje.agentpro.core.data.remoteCall
 import io.github.jan.supabase.postgrest.postgrest
@@ -16,17 +17,21 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
  * Consents the agent gives in the app, recorded by the `record_consent` RPC (docs/PRIVACY.md,
- * sections 1 and 3, "P1-1 contract"). The sign-up consent travels in the sign-up metadata instead
- * (AuthRepository.signUp).
+ * sections 1 and 3, "P1-1 contract"). The email sign-up consent travels in the sign-up metadata instead
+ * (AuthRepository.signUp); a Google sign-up's is recorded here ([recordPendingSignupConsent]).
  */
 interface ConsentRepository {
     /** True once the agent accepted the current `agent_customer_duty` notice version on this account. */
@@ -40,6 +45,38 @@ interface ConsentRepository {
 
     /** Records `guardian_consent` for [customerId] (a customer under 18; in [locale]). */
     suspend fun recordGuardianConsent(customerId: String, locale: AppLocale): AppResult<Unit>
+
+    /**
+     * Records the sign-up consent a Google sign-in left pending ([StoreKeys.PENDING_SIGNUP_CONSENT]; DECISIONS #112).
+     * Ok when nothing is pending. Onboarding calls it before it asks for anything.
+     */
+    suspend fun recordPendingSignupConsent(): AppResult<Unit>
+}
+
+/** The pending sign-up consent as stored: `{notice_key, version, hash}` (pure, unit-tested). */
+fun encodePendingConsent(consent: NoticeConsent): String = recordConsentArgs(consent, null).toString()
+
+/** The stored pending consent, or null when there is none or it can't be read. */
+fun decodePendingConsent(value: String?): NoticeConsent? = runCatching {
+    val json = Json.parseToJsonElement(value ?: return null).jsonObject
+    NoticeConsent(json.getValue("notice_key").jsonPrimitive.content, json.getValue("version").jsonPrimitive.int, json.getValue("hash").jsonPrimitive.content)
+}.getOrNull()
+
+/** `record_consent` for the pending sign-up consent, then forgets it; Ok when nothing is pending. */
+internal suspend fun recordPendingSignupConsent(supabase: SupabaseProvider, store: KeyValueStore): AppResult<Unit> {
+    val consent = decodePendingConsent(store.get(StoreKeys.PENDING_SIGNUP_CONSENT)) ?: run {
+        store.put(StoreKeys.PENDING_SIGNUP_CONSENT, null)
+        return Result.Ok(Unit)
+    }
+    val call = remoteCall {
+        supabase.require().postgrest.rpc("record_consent", recordConsentArgs(consent, null)).decodeAs<JsonObject>()
+    }
+    val result = when (call) {
+        is Result.Ok -> parseRecordConsentResult(call.value)
+        is Result.Err -> call
+    }
+    if (result is Result.Ok) store.put(StoreKeys.PENDING_SIGNUP_CONSENT, null)
+    return result
 }
 
 /** `{ok:true}` → Ok; `{ok:false, error, field}` → `Validation(field, error)` (pure, unit-tested). */
@@ -87,6 +124,8 @@ class SupabaseConsentRepository(
 
     override suspend fun recordGuardianConsent(customerId: String, locale: AppLocale): AppResult<Unit> =
         record(PrivacyNotice.GuardianConsent.consent(locale), customerId)
+
+    override suspend fun recordPendingSignupConsent(): AppResult<Unit> = recordPendingSignupConsent(supabase, store)
 
     private suspend fun record(consent: NoticeConsent, customerId: String?): AppResult<Unit> {
         val result = remoteCall {

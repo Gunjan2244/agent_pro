@@ -6,6 +6,7 @@ import com.sledje.agentpro.core.data.AppDatabase
 import com.sledje.agentpro.core.platform.AndroidImageProcessor
 import com.sledje.agentpro.core.platform.AndroidMediaPicker
 import com.sledje.agentpro.core.platform.AndroidContactPicker
+import com.sledje.agentpro.core.platform.AndroidGoogleSignIn
 import com.sledje.agentpro.core.platform.AndroidNetworkMonitor
 import com.sledje.agentpro.core.platform.AndroidSitePreview
 import com.sledje.agentpro.core.platform.AndroidUrlLauncher
@@ -27,6 +28,7 @@ fun androidAppContainer(context: Context): AppContainer {
             secureSettings = KeystoreSecureSettings(app),
             locale = AppCompatLocaleController(),
             contactPicker = AndroidContactPicker(),
+            googleSignIn = AndroidGoogleSignIn(AppConfig.GOOGLE_WEB_CLIENT_ID),
         ),
     )
 }

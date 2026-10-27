@@ -30,6 +30,7 @@ import com.sledje.agentpro.resources.discard_title
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Reversible actions show Undo for 5 seconds (docs/UX.md, Global UX rule 2). */
@@ -137,12 +138,15 @@ fun BottomActionBar(
     secondaryText: String? = null,
     onSecondary: () -> Unit = {},
     secondaryEnabled: Boolean = true,
+    /** An icon after the label (PrimaryButton's trailingIcon), optionally nudging back and forth. */
+    trailingIcon: DrawableResource? = null,
+    nudgeTrailingIcon: Boolean = false,
 ) {
     Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.navigationBarsPadding()) {
             HairlineDivider()
             Column(Modifier.padding(Spacing.m)) {
-                PrimaryButton(text, onClick, Modifier.fillMaxWidth(), enabled = enabled)
+                PrimaryButton(text, onClick, Modifier.fillMaxWidth(), enabled = enabled, trailingIcon = trailingIcon, nudgeTrailingIcon = nudgeTrailingIcon)
                 if (secondaryText != null) {
                     TertiaryButton(secondaryText, onSecondary, Modifier.fillMaxWidth(), enabled = secondaryEnabled)
                 }

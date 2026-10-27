@@ -84,7 +84,7 @@ class PrivacyUiTest {
                 CompositionLocalProvider(LocalIsOnline provides true) { NoticeScreen(PrivacyNotice.AgentSignup, onBack = {}) }
             }
         }
-        onNodeWithText("Email and password (stored hashed by Supabase Auth)").assertExists()
+        onNodeWithText("Email, and either a password (stored hashed by Supabase Auth) or, if you continue with Google, your Google account's name and email").assertExists()
     }
 
     @Test

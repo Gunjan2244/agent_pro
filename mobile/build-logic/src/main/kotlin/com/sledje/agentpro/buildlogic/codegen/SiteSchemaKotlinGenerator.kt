@@ -160,7 +160,7 @@ class AppConfigKotlinGenerator(private val properties: Map<String, String>) {
     }
 
     companion object {
-        val KEYS = listOf("SUPABASE_URL", "SUPABASE_ANON_KEY", "SITE_BASE_URL")
+        val KEYS = listOf("SUPABASE_URL", "SUPABASE_ANON_KEY", "SITE_BASE_URL", "GOOGLE_WEB_CLIENT_ID")
     }
 }
 

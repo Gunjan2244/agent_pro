@@ -75,6 +75,7 @@ class AppDataSync(
         store.put(StoreKeys.LAST_USER_ID, null)
         store.put(StoreKeys.SITE_SHARED, null)
         store.put(StoreKeys.PORTAL_INVITED, null)
+        store.put(StoreKeys.PENDING_SIGNUP_CONSENT, null)
         _status.value = SyncStatus.Idle
     }
 }

@@ -142,11 +142,7 @@ class WebsiteScreenshotTest {
         "WebsiteAppearance" to {
             AppearanceScreen(AppearanceUiState(site = site), remember { SnackbarHostState() }, {}, {}, {}, {})
         },
-        // Website → Appearance → Template: the family cards come first.
-        "WebsiteTemplateFamily" to {
-            TemplatePickerScreen(Templates.all, "classic", saving = false, onBack = {}, onUse = {}, preview = {}, startOnFamilyCards = true)
-        },
-        // It opens on the current template's family, positioned on the current template.
+        // Website → Appearance → Template: one pager of the five templates, opened on the current one.
         "WebsiteTemplatePicker" to {
             TemplatePickerScreen(Templates.all, "spotlight", saving = false, onBack = {}, onUse = {}, preview = {})
         },

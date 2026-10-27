@@ -57,7 +57,6 @@ private fun String?.blankToNull(): String? = this?.trim()?.takeIf { it.isNotEmpt
 internal fun ProfileInput.toJson(): JsonObject = buildJsonObject {
     put("full_name", fullName.trim())
     put("phone", phone.trim())
-    put("designation", designation.blankToNull())
     put("city", city.blankToNull())
     put("agency_code", agencyCode.blankToNull())
     put("branch", branch.blankToNull())

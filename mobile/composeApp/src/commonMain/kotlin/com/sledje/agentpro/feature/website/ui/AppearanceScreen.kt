@@ -103,9 +103,9 @@ fun AppearanceScreen(
 }
 
 /**
- * Template picker (docs/UX.md): opens on the pager of the current template's family (positioned on the current template; Back returns to the two family cards where another style can be chosen): a full-height pager of the agent's
- * real draft rendered in each of that family's templates (SitePreview, injected as [preview]), the name and
- * description below, and **Use this template**. Back from the pager returns to the family cards.
+ * Template picker (docs/UX.md): a full-height pager of the agent's real draft rendered in each of the five templates
+ * (SitePreview, injected as [preview]), opened on the current one, with the name and description below and **Use
+ * this template**.
  */
 @Composable
 fun TemplatePickerScreen(
@@ -115,16 +115,11 @@ fun TemplatePickerScreen(
     onBack: () -> Unit,
     onUse: (String) -> Unit,
     preview: @Composable (TemplateSpec) -> Unit,
-    /** Opens on the family cards instead of the current template's pager (screenshots). */
-    startOnFamilyCards: Boolean = false,
 ) {
     val online = isOnline()
-    // Opens on the pager of the current template's family, positioned on the current template; Back returns to the cards.
-    val currentFamily = if (startOnFamilyCards) null else templates.firstOrNull { it.key == selectedKey }?.family
-    val chooser = rememberTemplateChooser(templates, selectedKey, currentFamily)
-    TemplateChooserBackHandler(chooser)
+    val chooser = rememberTemplateChooser(templates, selectedKey)
     AppScaffold(
-        topBar = { AppTopBar(title = stringResource(Res.string.website_template_picker_title), onBack = { if (!chooser.back()) onBack() }) },
+        topBar = { AppTopBar(title = stringResource(Res.string.website_template_picker_title), onBack = onBack) },
         offline = !online,
         bottomBar = {
             chooser.current?.let { current ->

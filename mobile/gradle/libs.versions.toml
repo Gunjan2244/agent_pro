@@ -24,6 +24,8 @@ androidx-navigation-mp = "2.9.2"   # org.jetbrains.androidx.navigation (multipla
 androidx-activity = "1.13.0"       # Android only (androidApp)
 androidx-work = "2.12.0"           # Android only (androidApp)
 androidx-appcompat = "1.8.0"       # Android only: per-app locales (DECISIONS #45); Google Maven, 2026-08-12
+androidx-credentials = "1.6.0"     # Android only: Google sign-in through Credential Manager (DECISIONS #112); Google Maven, 2026-04-08
+googleid = "1.2.1"                 # Android only: Sign in with Google credential types (DECISIONS #112); Google Maven, 2026-09-16
 supabase = "3.8.0"
 ktor = "3.6.0"
 room = "2.8.5"                     # Room KMP
@@ -87,6 +89,9 @@ qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidx-work" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidx-credentials" }
+androidx-credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 razorpay-checkout = { module = "com.razorpay:checkout", version.ref = "razorpay-checkout" }
 
 # Testing

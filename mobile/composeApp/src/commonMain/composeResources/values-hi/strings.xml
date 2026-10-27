@@ -123,6 +123,10 @@
     <string name="auth_create_account">खाता बनाएँ</string>
     <string name="auth_sign_in">साइन इन करें</string>
     <string name="auth_sign_in_instead">इसके बजाय साइन इन करें</string>
+    <string name="auth_continue_google">Google से जारी रखें</string>
+    <string name="auth_sign_up_email">ईमेल से खाता बनाएँ</string>
+    <string name="auth_error_google_no_account">इस फ़ोन पर कोई Google खाता नहीं है। फ़ोन की सेटिंग में खाता जोड़ें, या ईमेल से खाता बनाएँ।</string>
+    <string name="auth_error_google_failed">Google से साइन इन नहीं हो सका। फिर से कोशिश करें, या ईमेल से खाता बनाएँ।</string>
     <string name="auth_email">ईमेल</string>
     <string name="auth_password">पासवर्ड</string>
     <string name="auth_confirm_password">पासवर्ड दोबारा लिखें</string>
@@ -159,9 +163,23 @@
 
     <!-- Onboarding (feature/onboarding) -->
     <string name="onboarding_step_of">चरण %1$d / %2$d</string>
-    <string name="onboarding_profile_title">आपकी प्रोफ़ाइल</string>
+    <string name="onboarding_mobile_title">आपका मोबाइल नंबर</string>
+    <string name="onboarding_mobile_intro">ग्राहक आपकी वेबसाइट से इसी नंबर पर आपको कॉल और WhatsApp करेंगे।</string>
+    <string name="onboarding_intro_bar">आपकी वेबसाइट</string>
+    <string name="onboarding_intro_title">चलिए, अपनी वेबसाइट के लिए एक टेम्पलेट चुनें</string>
+    <string name="onboarding_intro_body">%1$d तैयार डिज़ाइन, हर एक में आपका नाम और शुरुआती टेक्स्ट। जो पसंद आए वह चुनें; इसे कभी भी बदल सकते हैं।</string>
+    <string name="onboarding_intro_auto">%1$d सेकंड में डिज़ाइन खुलेंगे</string>
+    <string name="onboarding_template_hint">यह शुरुआती टेक्स्ट के साथ आपकी वेबसाइट है। अगले चरण में आप अपनी कंपनियाँ जोड़ेंगे, और हर शब्द बाद में बदल सकते हैं।</string>
+    <string name="onboarding_details_title">आपका काम</string>
+    <string name="onboarding_details_intro">वे कंपनियाँ जोड़ें जिनके साथ आप काम करते हैं और हर एक के साथ कौन-सा बीमा बेचते हैं। आपकी वेबसाइट की सेवाएँ इन्हीं के हिसाब से होंगी।</string>
     <string name="onboarding_template_title">डिज़ाइन चुनें</string>
     <string name="onboarding_link_title">आपका लिंक</string>
+    <string name="onboarding_photo_title">आपकी फ़ोटो</string>
+    <string name="onboarding_photo_intro">ग्राहक उस चेहरे पर भरोसा करते हैं जिसे वे देख सकें। आपकी फ़ोटो आपकी वेबसाइट में सबसे ऊपर दिखेगी।</string>
+    <string name="onboarding_skip">छोड़ें</string>
+    <string name="onboarding_site_title">आपकी वेबसाइट</string>
+    <string name="onboarding_site_text">यह आपकी फ़ोटो और कंपनियों के साथ आपकी वेबसाइट है। स्क्रॉल करके देखें; आप बाद में कुछ भी बदल सकते हैं।</string>
+    <string name="onboarding_site_pending">हमारे पुष्टि करने के बाद कि आप उनके एजेंट हैं, आपकी कंपनियाँ आपकी लाइव वेबसाइट पर दिखेंगी।</string>
     <string name="onboarding_continue">आगे बढ़ें</string>
     <string name="onboarding_use_template">यह टेम्पलेट चुनें</string>
     <string name="onboarding_publish_now">अभी प्रकाशित करें</string>
@@ -170,9 +188,6 @@
     <string name="launch_install_title">इसे अपने फ़ोन में जोड़ें</string>
     <string name="launch_install_text">अपनी वेबसाइट को किसी ऐप की तरह, सीधे होम स्क्रीन से खोलें।</string>
     <string name="launch_not_now">अभी नहीं</string>
-    <string name="launch_preview_title">ग्राहकों को ऐसी दिखती है</string>
-    <string name="launch_preview_text">स्क्रॉल करके देखें। आप बाद में कुछ भी बदल सकते हैं।</string>
-    <string name="launch_next">आगे</string>
     <string name="launch_share_title">ग्राहकों के साथ साझा करें</string>
     <string name="launch_share_text">लिंक WhatsApp, SMS या किसी भी ऐप पर भेजें, या कोड स्कैन करवाएँ।</string>
     <string name="launch_done">हो गया</string>
@@ -183,11 +198,8 @@
     <string name="onboarding_link_preview">आपकी साइट: %1$s</string>
     <string name="onboarding_trial_started">आपका %1$d दिन का निःशुल्क ट्रायल शुरू हो गया है</string>
     <string name="onboarding_template_position">%2$d में से %1$d</string>
-    <string name="template_family_prompt">पहले एक शैली चुनें। इसे बाद में बदल सकते हैं।</string>
     <string name="onboarding_photo_tips">चेहरा और कंधे, कैमरे की ओर देखते हुए, खिड़की की दिन की रोशनी में।\nसादी पृष्ठभूमि और साफ़-सुथरे रोज़ के कपड़े।\nधूप का चश्मा, ग्रुप फ़ोटो, बीमा कंपनी की वर्दी या लोगो नहीं।</string>
     <string name="profile_mobile">मोबाइल</string>
-    <string name="profile_agency_code">एजेंसी कोड</string>
-    <string name="profile_branch">शाखा</string>
 
     <!-- Home and placeholder tabs (Phases 6–13 replace them) -->
     <string name="home_greeting">नमस्ते, %1$s</string>

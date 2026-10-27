@@ -18,6 +18,7 @@
     <string name="website_hub_stats">Stats</string>
     <string name="website_hub_stats_summary">%1$d views this week</string>
     <string name="website_preview">Preview</string>
+    <string name="website_my_website">My website →</string>
     <string name="website_publish">Publish</string>
     <string name="website_published">Your website is live</string>
     <string name="website_publish_fix">Fix %1$d things before publishing</string>

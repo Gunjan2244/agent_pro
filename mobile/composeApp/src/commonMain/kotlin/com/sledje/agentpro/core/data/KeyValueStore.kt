@@ -42,6 +42,13 @@ object StoreKeys {
 
     /** The highest "What's new" version the agent has seen (`WhatsNew.VERSION`); kept across sign-outs. */
     const val WHATS_NEW_SEEN = "whats_new_seen"
+
+    /**
+     * The sign-up consent ticked on Welcome before "Continue with Google", until `record_consent` has stored it
+     * (DECISIONS #112): a Google sign-in carries no sign-up metadata, and the session starts before the call returns.
+     * Cleared once recorded and on sign-out.
+     */
+    const val PENDING_SIGNUP_CONSENT = "pending_signup_consent"
 }
 
 /** Creates the app's DataStore at [path] (a platform file path; see each platform's AppContainer factory). */

@@ -8,17 +8,23 @@ import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.data.StoreKeys
 import com.sledje.agentpro.core.data.SupabaseProvider
 import com.sledje.agentpro.core.data.remoteCall
+import com.sledje.agentpro.feature.privacy.data.encodePendingConsent
+import com.sledje.agentpro.feature.privacy.data.recordPendingSignupConsent
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.parseSessionFromFragment
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -46,8 +52,8 @@ enum class SignUpOutcome {
 }
 
 /**
- * Email + password auth, with a one-time code from the email in place of links: sign-up is confirmed and a
- * forgotten password is reset by entering the code (DECISIONS #3, #84; docs/BACKEND.md, Auth).
+ * Google sign-in (DECISIONS #112), and email + password auth with a one-time code from the email in place of links:
+ * sign-up is confirmed and a forgotten password is reset by entering the code (DECISIONS #3, #84; docs/BACKEND.md, Auth).
  */
 interface AuthRepository {
     val state: StateFlow<AuthState>
@@ -61,6 +67,15 @@ interface AuthRepository {
      * it (docs/PRIVACY.md, section 1).
      */
     suspend fun signUp(account: NewAccount, consent: NoticeConsent): AppResult<SignUpOutcome>
+
+    /**
+     * "Continue with Google" (DECISIONS #112): signs in, or creates the account, with the Google ID token from
+     * the account chooser (`signInWith(IDToken)`, [rawNonce] the nonce whose hash the token carries). The signup
+     * trigger copies Google's name and email into `profiles`. A Google sign-in carries no sign-up metadata, so
+     * [consent] (the sign-up notice ticked on Welcome) is kept as pending and recorded with `record_consent` right
+     * after; if that call fails, onboarding records it before asking anything ([ConsentRepository.recordPendingSignupConsent]).
+     */
+    suspend fun signInWithGoogle(idToken: String, rawNonce: String, consent: NoticeConsent): AppResult<Unit>
 
     /**
      * Confirms the email with the code from the sign-up email; success starts the session, so the gate
@@ -170,6 +185,25 @@ class SupabaseAuthRepository(
         }
     }.let { result ->
         if (result is Result.Ok && result.value == SignUpOutcome.AccountExists) Result.Err(AppError.Conflict) else result
+    }
+
+    override suspend fun signInWithGoogle(idToken: String, rawNonce: String, consent: NoticeConsent): AppResult<Unit> {
+        // Kept first: the session starts (and the gate leaves Welcome) before record_consent returns.
+        store.put(StoreKeys.PENDING_SIGNUP_CONSENT, encodePendingConsent(consent))
+        val result = remoteCall {
+            supabase.require().auth.signInWith(IDToken) {
+                this.idToken = idToken
+                provider = Google
+                nonce = rawNonce
+            }
+        }
+        if (result is Result.Err) {
+            store.put(StoreKeys.PENDING_SIGNUP_CONSENT, null)
+            return result
+        }
+        // Not tied to the screen that asked: Welcome goes away as soon as the session starts.
+        withContext(NonCancellable) { recordPendingSignupConsent(supabase, store) }
+        return Result.Ok(Unit)
     }
 
     override suspend fun verifySignUpCode(email: String, code: String): AppResult<Unit> = remoteCall {

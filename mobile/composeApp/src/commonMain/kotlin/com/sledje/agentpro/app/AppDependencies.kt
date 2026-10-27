@@ -4,6 +4,7 @@ import com.sledje.agentpro.core.catalog.Pricing
 import com.sledje.agentpro.core.data.KeyValueStore
 import com.sledje.agentpro.core.features.FeatureFlags
 import com.sledje.agentpro.core.platform.ContactPicker
+import com.sledje.agentpro.core.platform.GoogleSignIn
 import com.sledje.agentpro.core.platform.LocaleController
 import com.sledje.agentpro.core.platform.NetworkMonitor
 import com.sledje.agentpro.core.platform.UrlLauncher
@@ -68,6 +69,8 @@ interface AppDependencies {
     val locale: LocaleController
     val urlLauncher: UrlLauncher
     val contactPicker: ContactPicker
+    /** "Continue with Google" on Welcome (DECISIONS #112). */
+    val googleSignIn: GoogleSignIn
     val onboarding: OnboardingSession
     val events: AppEvents
     val deepLinks: DeepLinks

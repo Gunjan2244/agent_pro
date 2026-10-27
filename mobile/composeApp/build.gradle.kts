@@ -75,6 +75,10 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             // LocaleController: AppCompatDelegate per-app locales (DECISIONS #45).
             implementation(libs.androidx.appcompat)
+            // Google sign-in (core/platform GoogleSignIn, DECISIONS #112).
+            implementation(libs.androidx.credentials)
+            implementation(libs.androidx.credentials.play.services)
+            implementation(libs.googleid)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

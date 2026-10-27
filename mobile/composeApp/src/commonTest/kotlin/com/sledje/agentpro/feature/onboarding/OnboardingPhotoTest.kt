@@ -7,6 +7,7 @@ import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.splitVisibleFields
 import com.sledje.agentpro.core.platform.ImageAspect
 import com.sledje.agentpro.core.platform.PickedImage
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.MOBILE
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel.Companion.NAME
@@ -32,7 +33,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Onboarding step 1's photo (docs/UX.md: under More details), through the Website media pipeline. */
+/** Onboarding step 5's photo (docs/UX.md: a screen of its own, skippable), through the Website media pipeline. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class OnboardingPhotoTest {
     private val profiles = FakeProfileRepository(testProfile(fullName = null, phone = null, designation = null, city = null))
@@ -45,13 +46,17 @@ class OnboardingPhotoTest {
     private fun vm() = OnboardingViewModel(profiles, FakeSiteRepository(), OnboardingSession(), AppEvents(), FakeCompanyRepository(listOf(testMembership())), photoUploader = website.services.imageUploader)
 
     @Test
-    fun photoIsAnOptionalSquareImageUnderMoreDetails() {
+    fun photoIsAnOptionalSquareImageOnItsOwnStep() {
         val spec = OnboardingViewModel.PROFILE_FIELDS.first { it.key == PHOTO }
         assertEquals(FieldType.Image, spec.type)
         assertEquals("1:1", spec.aspect)
-        val (visible, more) = splitVisibleFields(OnboardingViewModel.PROFILE_FIELDS, OnboardingViewModel.VISIBLE_PROFILE_KEYS)
-        assertTrue(more.any { it.key == PHOTO })
-        assertFalse(visible.any { it.key == PHOTO })
+        assertFalse(spec.required)
+        assertEquals(setOf(PHOTO), OnboardingViewModel.PHOTO_STEP_KEYS)
+        // Step 4 shows only the city, with nothing left over for a More details group.
+        val step4 = OnboardingViewModel.PROFILE_FIELDS.filterNot { it.key in OnboardingViewModel.MOBILE_STEP_KEYS + OnboardingViewModel.PHOTO_STEP_KEYS }
+        val (visible, more) = splitVisibleFields(step4, OnboardingViewModel.DETAILS_VISIBLE_KEYS)
+        assertEquals(listOf(OnboardingViewModel.CITY), visible.map { it.key })
+        assertTrue(more.isEmpty())
     }
 
     @Test
@@ -65,9 +70,10 @@ class OnboardingPhotoTest {
         assertEquals(listOf(MediaPaths.PROFILE_PHOTO), website.media.uploads)
         vm.profileForm.set(NAME, "Ramesh Kumar")
         vm.profileForm.set(MOBILE, "9876543210")
-        vm.saveProfile()
+        vm.savePhoto()
         runCurrent()
         assertTrue(profiles.updates.single().photoUrl!!.startsWith("https://"))
+        assertEquals(OnboardingStep.Preview, vm.state.value.navigateTo)
     }
 
     @Test

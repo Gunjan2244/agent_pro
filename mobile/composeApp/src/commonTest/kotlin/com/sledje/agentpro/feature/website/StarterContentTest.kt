@@ -84,7 +84,7 @@ class StarterContentTest {
             assertTrue(c.text("hero", "headline").isNotBlank(), locale)
             assertTrue(c.text("hero", "subheadline").isNotBlank(), locale)
             assertTrue(c.text("about", "bio").isNotBlank(), locale)
-            assertEquals("LIC Agent", c.text("about", "designation"))
+            assertEquals(if (locale == "hi") "बीमा एजेंट" else "Insurance agent", c.text("about", "designation"), "fixed, whatever the profile says (DECISIONS #114)")
             assertEquals(listOf(if (locale == "hi") "hindi" else "english"), c.section("about")["languagesSpoken"]!!.jsonArray.map { it.jsonPrimitive.content })
             // No declared types: WHEN_NONE (life) → term, endowment, child plan, pension (DECISIONS #93).
             assertEquals(4, c.section("services")["offered"]!!.jsonArray.size, locale)
@@ -112,18 +112,29 @@ class StarterContentTest {
     }
 
     @Test
-    fun blankCityOrDesignationUsesTheFallbackText() {
+    fun blankCityUsesTheFallbackText() {
         val noCity = starter(p = testProfile(city = null))
-        val noDesignation = starter(p = testProfile(designation = null))
         for (agent in (1..30).map { "agent-$it" }) {
-            val c = starter(p = testProfile(city = " ", designation = null), agentId = agent)
+            val c = starter(p = testProfile(city = " "), agentId = agent)
             listOf(c.text("hero", "subheadline"), c.text("about", "bio")).forEach { t ->
                 assertFalse(t.contains("{"), t)
                 assertFalse(t.contains("  "), "no gap where the value was: $t")
             }
         }
-        assertNull(noDesignation.section("about")["designation"], "no designation in the profile → none seeded")
         assertFalse(noCity.text("about", "bio").contains("Pune"))
+    }
+
+    @Test
+    fun theProfilesDesignationIsNeverUsed() {
+        // An older account's designation stays in its row, but the seed no longer reads it (DECISIONS #114).
+        val legacy = starter(p = testProfile(designation = "LIC Agent · Club Member"))
+        assertEquals("Insurance agent", legacy.text("about", "designation"))
+        assertFalse(legacy.text("about", "bio").contains("Club Member"))
+        assertEquals(legacy, starter(p = testProfile(designation = null)))
+        assertFalse("designation" in SiteSeed.PROFILE_FIELDS)
+        assertFalse("designation" in StarterContent.placeholderValues(profile))
+        // With a city, every bio names it: the designation no longer pushes it to the city-less fallback.
+        for (agent in (1..12).map { "a$it" }) assertTrue(starter(p = testProfile(designation = null), agentId = agent).text("about", "bio").contains("Pune"), agent)
     }
 
     @Test
@@ -185,7 +196,7 @@ class StarterContentTest {
             assertFalse(StarterContent.isOwnBio("  $bio\n"), "whitespace doesn't count as a change")
             assertTrue(StarterContent.isOwnBio("$bio I have 10 years of experience."))
         }
-        // Still recognised after the profile's city or designation changed.
+        // Still recognised after the profile's city changed.
         val noCity = starter(p = testProfile(city = null)).text("about", "bio")
         assertFalse(StarterContent.isOwnBio(noCity))
         assertFalse(StarterContent.isOwnBio(null))

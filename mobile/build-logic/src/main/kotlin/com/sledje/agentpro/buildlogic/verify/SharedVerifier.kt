@@ -862,7 +862,10 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         defs.catalogLists.forEach { list ->
             list.entries.forEach { e ->
                 e.string("labelKey")?.let { refs += "catalog.${list.jsonName}.${e.string("key")}" to it }
-                e.string("descriptionKey")?.let { refs += "catalog.${list.jsonName}.${e.string("key")}.descriptionKey" to it }
+                // descriptionKey, and any other extra i18n key field (templateFamilies.showsKey, bestForKey).
+                e.keys.filter { it != "labelKey" && it.endsWith("Key") }.forEach { k ->
+                    e.string(k)?.let { refs += "catalog.${list.jsonName}.${e.string("key")}.$k" to it }
+                }
             }
         }
         sections().forEach { s ->
@@ -970,7 +973,7 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         /** Values the seed texts are filled with for the maxLength check (a long but realistic profile). */
         val SAMPLE_PLACEHOLDERS = mapOf(
             "name" to "Ramesh Kumar Sharma", "firstName" to "Ramesh",
-            "city" to "Thiruvananthapuram", "designation" to "Insurance Advisor · Club Member",
+            "city" to "Thiruvananthapuram",
         )
         private val PLACEHOLDER = Regex("\\{[A-Za-z0-9_]+}")
 

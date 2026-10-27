@@ -22,10 +22,12 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.offers.ui.CompaniesViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.SLUG_FIELD
+import com.sledje.agentpro.feature.onboarding.ui.ONBOARDING_INTRO_CONTINUE_TAG
 import com.sledje.agentpro.testing.FakeAppDependencies
 import com.sledje.agentpro.testing.FakeAuthRepository
 import com.sledje.agentpro.testing.FakeCompanyRepository
 import com.sledje.agentpro.testing.FakeDataSync
+import com.sledje.agentpro.testing.FakeGoogleSignIn
 import com.sledje.agentpro.testing.FakeProfileRepository
 import com.sledje.agentpro.testing.TEST_USER
 import com.sledje.agentpro.testing.testMembership
@@ -101,12 +103,22 @@ class NavSmokeTest {
         )
         setContent { App(deps) }
 
-        // Step 1: profile.
-        awaitText("Your profile")
+        // Step 1: the name (no account name here) and the mobile; nothing else.
+        awaitText("Your mobile number")
         onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).performTextInput("Sunita Rao")
         onNodeWithTag(fieldTestTag(OnboardingViewModel.MOBILE)).performTextInput("9876543210")
+        onNodeWithTag(fieldTestTag(OnboardingViewModel.CITY)).assertDoesNotExist()
+        onNode(hasText("Add company")).assertDoesNotExist()
+        button("Continue").performClick()
 
-        // Your companies: Continue waits for one (DECISIONS #89). Add Alpha Insurance with its code and a type.
+        // Step 2: the template intro; step 3: one of the five designs (from the generated Templates), before any company.
+        awaitText("Let's select a template for your website")
+        onNodeWithTag(ONBOARDING_INTRO_CONTINUE_TAG).performClick()
+        awaitText("Pick a design")
+        button("Use this template").performClick()
+
+        // Step 4: your work. Continue waits for one company (DECISIONS #89). Add Alpha Insurance with its code and a type.
+        awaitText("Your work")
         onNode(hasText("Continue") and hasClickAction()).assertIsNotEnabled()
         awaitText("Add at least one company to continue")
         button("Add company").performScrollTo().performClick()
@@ -118,15 +130,18 @@ class NavSmokeTest {
         waitUntil(timeoutMillis = 5_000) { onAllNodes(hasContentDescription("Waiting for approval")).fetchSemanticsNodes().isNotEmpty() }
         onNode(hasText("Add at least one company to continue")).assertDoesNotExist()
         assertEquals("AG123", deps.companies.requests.single().agencyCode)
+        onNode(hasText("More details")).assertDoesNotExist()
+        onNode(hasText("Branch")).assertDoesNotExist()
         button("Continue").performClick()
 
-        // Step 2: template (from the generated Templates).
-        awaitText("Pick a design")
-        onNodeWithTag(com.sledje.agentpro.feature.website.ui.templateFamilyTag(com.sledje.agentpro.core.catalog.TemplateFamily.Personal)).performClick()
-        awaitText("Use this template")
-        button("Use this template").performClick()
+        // Step 5: the photo, skipped; step 6: the finished website, with the pending company explained.
+        awaitText("Your photo")
+        button("Skip").performClick()
+        awaitText("This is your website with your photo and companies. Scroll to look around; you can change anything later.")
+        awaitText("Your companies show on your live website once we confirm you're their agent.")
+        button("Continue").performClick()
 
-        // Step 3: the link is suggested from the name and checked after the pause.
+        // Step 7: the link is suggested from the name and checked after the pause.
         awaitText("Your link")
         onNodeWithTag(fieldTestTag(SLUG_FIELD)).assertExists()
         ShadowLooper.idleMainLooper(OnboardingViewModel.SLUG_DEBOUNCE_MILLIS + 50, TimeUnit.MILLISECONDS)
@@ -134,11 +149,9 @@ class NavSmokeTest {
         assertTrue("sunita-rao" in deps.sites.availabilityChecks)
         button("Publish now").performClick()
 
-        // Live: Add to phone → Preview → Share, then Done.
+        // Live: Add to phone → Share, then Done.
         awaitText("Add it to your phone")
         button("Not now").performClick()
-        awaitText("This is what customers see")
-        button("Next").performClick()
         awaitText("Share it with customers")
         button("Done").performClick()
 
@@ -151,7 +164,34 @@ class NavSmokeTest {
     }
 
     @Test
-    fun createAccountSignsInAndStep1DoesNotAskForTheNameAndMobileAgain() = runComposeUiTest {
+    fun continueWithGoogleAsksOnlyForTheMobileThenTheTemplates() = runComposeUiTest {
+        val auth = FakeAuthRepository()
+        val profiles = FakeProfileRepository(null)
+        // The signup trigger creates the profile from Google's name and email; there is no mobile yet.
+        val sync = FakeDataSync().apply {
+            onRefresh = { profiles.profile.value = testProfile(fullName = "Sunita Rao", phone = null, designation = null, city = null) }
+        }
+        val google = FakeGoogleSignIn()
+        setContent { App(FakeAppDependencies(auth = auth, profiles = profiles, dataSync = sync, googleSignIn = google)) }
+
+        awaitText("Continue with Google")
+        onNode(hasText("Continue with Google") and hasClickAction()).assertIsNotEnabled()
+        onNode(isToggleable()).performClick()
+        button("Continue with Google").performClick()
+
+        awaitText("Your mobile number")
+        awaitText("Sunita Rao")
+        onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertDoesNotExist()
+        onNodeWithTag(fieldTestTag(OnboardingViewModel.MOBILE)).performTextInput("9876543210")
+        button("Continue").performClick()
+        awaitText("Let's select a template for your website")
+        assertEquals(1, google.opened)
+        assertEquals(listOf("google:id-token:raw-nonce"), auth.calls)
+        assertEquals("+919876543210", profiles.updates.single().phone)
+    }
+
+    @Test
+    fun createAccountSignsInAndStep1DoesNotAskForTheNameAgain() = runComposeUiTest {
         val auth = FakeAuthRepository().apply { signUpResult = Result.Ok(SignUpOutcome.SignedIn) }
         val profiles = FakeProfileRepository(null)
         // The signup trigger creates the profile from the sign-up metadata; the first sync brings it.
@@ -174,14 +214,14 @@ class NavSmokeTest {
         onNode(isToggleable()).performScrollTo().performClick()
         button("Create account").performClick()
 
-        // Signed in straight away: step 1 shows the name and mobile with Edit, not their fields.
-        awaitText("Your profile")
+        // Signed in straight away: step 1 shows the name with Edit, not its field; the mobile is prefilled.
+        awaitText("Your mobile number")
         awaitText("Sunita Rao")
         onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertDoesNotExist()
         button("Edit").performClick()
         onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertExists()
         button("Continue").performClick()
-        awaitText("Pick a design")
+        awaitText("Let's select a template for your website")
         assertEquals("+919876543210", profiles.updates.single().phone)
     }
 

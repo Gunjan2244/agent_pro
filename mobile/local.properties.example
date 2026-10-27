@@ -1,7 +1,10 @@
 # Copy to local.properties (git-ignored) and fill in. Never commit the real file.
-# build-logic turns the SUPABASE_* and SITE_BASE_URL values into the generated AppConfig object;
+# build-logic turns the SUPABASE_*, SITE_BASE_URL and GOOGLE_WEB_CLIENT_ID values into the generated AppConfig object;
 # a missing key becomes an empty string (the build never fails for a missing key).
 sdk.dir=/home/<user>/Android/Sdk
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<anon-public-key>
 SITE_BASE_URL=https://<renderer-domain>
+# Google sign-in (DECISIONS #112): the OAuth "Web application" client ID from Google Cloud, also entered in
+# Supabase → Authentication → Providers → Google. Empty hides "Continue with Google" (email sign-up stays).
+GOOGLE_WEB_CLIENT_ID=<id>.apps.googleusercontent.com

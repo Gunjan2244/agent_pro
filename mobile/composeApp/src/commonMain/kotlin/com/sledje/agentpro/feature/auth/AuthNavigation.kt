@@ -27,16 +27,20 @@ import com.sledje.agentpro.feature.auth.ui.SetNewPasswordScreen
 import com.sledje.agentpro.feature.auth.ui.SetNewPasswordViewModel
 import com.sledje.agentpro.feature.auth.ui.VerifyCodeViewModel
 import com.sledje.agentpro.feature.auth.ui.WelcomeScreen
+import com.sledje.agentpro.feature.auth.ui.WelcomeViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-/** Signed-out routes (docs/UX.md: Welcome → Sign in ⇄ Create account → Check your email; Forgot password → Enter the code → Set new password). */
+/**
+ * Signed-out routes (docs/UX.md: Welcome → Continue with Google, or Sign in ⇄ Create account → Check your email;
+ * Forgot password → Enter the code → Set new password).
+ */
 object AuthRoutes {
     @Serializable data object Welcome
     @Serializable data object SignIn
     @Serializable data object SignUp
 
-    /** The in-app privacy notice, opened from the Create account consent line. */
+    /** The in-app privacy notice, opened from the consent line on Welcome or Create account. */
     @Serializable data object Notice
     /** [sendNow]: opened from Sign in for an unconfirmed email, so the confirmation is sent on open. */
     @Serializable data class CheckEmail(val email: String, val sendNow: Boolean = false)
@@ -58,11 +62,25 @@ fun AuthNavHost(deps: AppDependencies, onRecoveryVerified: () -> Unit) {
     val scope = rememberCoroutineScope()
     SharedAxisNavHost(nav, startDestination = AuthRoutes.Welcome) {
         composable<AuthRoutes.Welcome> {
+            val welcome = viewModel { WelcomeViewModel(deps.auth) }
+            val welcomeState by welcome.state.collectAsState()
+            val locale = currentAppLocale()
+            val google = deps.googleSignIn
+            val openChooser = google.rememberGoogleSignIn { result -> welcome.onGoogleResult(result, locale) }
             WelcomeScreen(
-                currentLocale = currentAppLocale(),
+                currentLocale = locale,
                 onSwitchLocale = { scope.launch { deps.locale.set(it) } },
                 onCreateAccount = { nav.navigate(AuthRoutes.SignUp) },
                 onSignIn = { nav.navigate(AuthRoutes.SignIn) },
+                consentForm = welcome.form.takeIf { google.isAvailable },
+                state = welcomeState,
+                onGoogle = if (google.isAvailable) ({ if (welcome.startGoogle()) openChooser() }) else null,
+                onLink = { key ->
+                    when (key) {
+                        AuthFormViewModel.LINK_NOTICE -> nav.navigate(AuthRoutes.Notice)
+                        AuthFormViewModel.LINK_TERMS -> PrivacyLinks.terms()?.let { deps.urlLauncher.openUrl(it) } ?: nav.navigate(AuthRoutes.Notice)
+                    }
+                },
             )
         }
         composable<AuthRoutes.SignIn> {

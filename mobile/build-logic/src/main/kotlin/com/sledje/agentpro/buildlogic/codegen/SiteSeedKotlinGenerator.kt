@@ -43,8 +43,11 @@ object SiteSeedJson {
     const val ITEM_INTEREST = "interest"
     const val ITEM_DESCRIPTION = "description"
 
-    /** Profile values a seed may read (`fromProfile`, `placeholders`): the app's Profile, plus the derived first name. */
-    val PROFILE_FIELDS = listOf("fullName", "firstName", "phone", "email", "designation", "city")
+    /**
+     * Profile values a seed may read (`fromProfile`, `placeholders`): the app's Profile, plus the derived first name.
+     * Not `designation`: the agent no longer enters one, and the site's is fixed (DECISIONS #114).
+     */
+    val PROFILE_FIELDS = listOf("fullName", "firstName", "phone", "email", "city")
 
     fun form(element: JsonElement, allowItems: Boolean = true, allowMix: Boolean = true): SeedForm {
         val obj = element as? JsonObject ?: return SeedForm.Invalid("must be an object with one of ${FORMS.joinToString()}")

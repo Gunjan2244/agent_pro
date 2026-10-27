@@ -51,7 +51,7 @@ import com.sledje.agentpro.resources.website_add_to_home
 import com.sledje.agentpro.resources.website_copy_link
 import com.sledje.agentpro.resources.website_none
 import com.sledje.agentpro.resources.website_open
-import com.sledje.agentpro.resources.website_preview
+import com.sledje.agentpro.resources.website_my_website
 import com.sledje.agentpro.resources.website_publish
 import com.sledje.agentpro.resources.website_share
 import com.sledje.agentpro.resources.website_show_qr
@@ -68,7 +68,7 @@ const val HUB_PUBLISH_BAR_TAG = "website_publish_bar"
 /**
  * The Website tab (docs/UX.md, Website tab (hub)): one status card (address, status pill, Share, and
  * an overflow with Copy link, Open, Add to home screen (once published) and Show QR code), the NavRows
- * from the registry, and a sticky bar with Preview and Publish whenever the draft differs from what's live.
+ * from the registry, and a sticky bar that is always there: "My website →" (the preview) and Publish (enabled only while the draft differs from what's live).
  */
 @Composable
 fun WebsiteHubScreen(
@@ -93,13 +93,13 @@ fun WebsiteHubScreen(
         offline = !online,
         snackbarHostState = snackbar,
         bottomBar = {
-            if (content != null && content.hasUnpublishedChanges) {
+            if (content != null) {
                 BottomActionBar(
                     text = stringResource(Res.string.website_publish),
                     onClick = onPublish,
-                    enabled = online && !publishing,
+                    enabled = online && !publishing && content.hasUnpublishedChanges,
                     helperText = if (!online) stringResource(Res.string.needs_internet) else null,
-                    secondaryText = stringResource(Res.string.website_preview),
+                    secondaryText = stringResource(Res.string.website_my_website),
                     onSecondary = onPreview,
                     modifier = Modifier.testTag(HUB_PUBLISH_BAR_TAG),
                 )

@@ -2,6 +2,9 @@ package com.sledje.agentpro.core.platform
 
 import android.annotation.SuppressLint
 import android.content.res.AssetManager
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -12,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import java.io.ByteArrayInputStream
 import java.io.IOException
+import kotlin.math.abs
 
 /**
  * [SitePreview] on Android: a WebView on the renderer files that `agentpro.site-preview` bundles as
@@ -22,6 +26,10 @@ import java.io.IOException
  * by [AssetSiteClient], which answers every request from the assets and never touches the network
  * except for Google Fonts (the CSS link in index.html). The preview never submits enquiries or records
  * views (WEB_RENDERER.md, Resolution 0), and taps on links don't navigate away.
+ *
+ * Inside the template pager a vertical scroll used to be taken over by the pager as soon as the finger drifted
+ * sideways, so the page stopped or jumped to the next template. [VerticalScrollLock] keeps a drag that starts
+ * vertical with the WebView until the finger lifts; a sideways drag still swipes the pager.
  */
 class AndroidSitePreview : SitePreview {
     @SuppressLint("SetJavaScriptEnabled")
@@ -38,6 +46,7 @@ class AndroidSitePreview : SitePreview {
                     val client = AssetSiteClient(context.assets)
                     webViewClient = client
                     tag = client
+                    setOnTouchListener(VerticalScrollLock(ViewConfiguration.get(context).scaledTouchSlop))
                     loadUrl(ORIGIN + SitePreviewScript.PAGE_PATH)
                 }
             },
@@ -48,6 +57,36 @@ class AndroidSitePreview : SitePreview {
 
     private companion object {
         const val ORIGIN = "https://${AssetSiteClient.HOST}"
+    }
+}
+
+/**
+ * Once a drag has moved [touchSlop] mostly vertically, asks the parents not to intercept it. Compose's AndroidView
+ * passes that on to its pointer interop, so an enclosing pager or scrollable no longer sees the rest of the gesture.
+ */
+@SuppressLint("ClickableViewAccessibility") // Observes only; the WebView still handles every event (returns false).
+internal class VerticalScrollLock(private val touchSlop: Int) : View.OnTouchListener {
+    private var downX = 0f
+    private var downY = 0f
+    private var decided = false
+
+    override fun onTouch(view: View, event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                decided = false
+            }
+            MotionEvent.ACTION_MOVE -> if (!decided) {
+                val dx = abs(event.x - downX)
+                val dy = abs(event.y - downY)
+                if (dx > touchSlop || dy > touchSlop) {
+                    decided = true
+                    if (dy > dx) view.parent?.requestDisallowInterceptTouchEvent(true)
+                }
+            }
+        }
+        return false
     }
 }
 

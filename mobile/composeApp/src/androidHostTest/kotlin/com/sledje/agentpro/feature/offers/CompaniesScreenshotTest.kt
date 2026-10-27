@@ -32,7 +32,7 @@ import com.sledje.agentpro.feature.offers.ui.CompanyFormContent
 import com.sledje.agentpro.feature.offers.ui.CompanyPickerContent
 import com.sledje.agentpro.feature.offers.ui.CompanySheet
 import com.sledje.agentpro.feature.offers.ui.CompanyTarget
-import com.sledje.agentpro.feature.onboarding.ui.OnboardingProfileScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingDetailsScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingUiState
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.settings.ProfileScreen
@@ -88,11 +88,11 @@ class CompaniesScreenshotTest {
 
     private val screens: List<Pair<String, @Composable () -> Unit>> = listOf(
         "OnboardingCompaniesEmpty" to {
-            OnboardingProfileScreen(profileForm(), OnboardingUiState(contactSummary = true), onContinue = {}, companies = CompaniesUiState(loading = false))
+            OnboardingDetailsScreen(profileForm(), OnboardingUiState(), onContinue = {}, onBack = {}, companies = CompaniesUiState(loading = false))
         },
         "OnboardingCompanies" to {
-            OnboardingProfileScreen(
-                profileForm(), OnboardingUiState(contactSummary = true), onContinue = {},
+            OnboardingDetailsScreen(
+                profileForm(), OnboardingUiState(), onContinue = {}, onBack = {},
                 companies = CompaniesUiState(memberships = allStatuses.take(3), loading = false),
             )
         },

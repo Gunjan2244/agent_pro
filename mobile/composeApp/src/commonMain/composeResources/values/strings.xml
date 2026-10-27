@@ -126,6 +126,10 @@
     <string name="auth_create_account">Create account</string>
     <string name="auth_sign_in">Sign in</string>
     <string name="auth_sign_in_instead">Sign in instead</string>
+    <string name="auth_continue_google">Continue with Google</string>
+    <string name="auth_sign_up_email">Sign up with email</string>
+    <string name="auth_error_google_no_account">There's no Google account on this phone. Add one in your phone's settings, or sign up with email.</string>
+    <string name="auth_error_google_failed">We couldn't sign you in with Google. Try again, or sign up with email.</string>
     <string name="auth_email">Email</string>
     <string name="auth_password">Password</string>
     <string name="auth_confirm_password">Confirm password</string>
@@ -162,9 +166,23 @@
 
     <!-- Onboarding (feature/onboarding) -->
     <string name="onboarding_step_of">Step %1$d of %2$d</string>
-    <string name="onboarding_profile_title">Your profile</string>
+    <string name="onboarding_mobile_title">Your mobile number</string>
+    <string name="onboarding_mobile_intro">Customers will call and WhatsApp you on this number from your website.</string>
+    <string name="onboarding_intro_bar">Your website</string>
+    <string name="onboarding_intro_title">Let's select a template for your website</string>
+    <string name="onboarding_intro_body">%1$d ready designs, each filled with your name and starter text. Pick the one you like; you can change it any time.</string>
+    <string name="onboarding_intro_auto">Opening the designs in %1$d s</string>
+    <string name="onboarding_template_hint">This is your website with starter text. You'll add your companies next, and you can change every word later.</string>
+    <string name="onboarding_details_title">Your work</string>
+    <string name="onboarding_details_intro">Add the companies you work with and the insurance you sell with each. Your website's services will match them.</string>
     <string name="onboarding_template_title">Pick a design</string>
     <string name="onboarding_link_title">Your link</string>
+    <string name="onboarding_photo_title">Your photo</string>
+    <string name="onboarding_photo_intro">Customers trust a face they can see. Your photo goes at the top of your website.</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_site_title">Your website</string>
+    <string name="onboarding_site_text">This is your website with your photo and companies. Scroll to look around; you can change anything later.</string>
+    <string name="onboarding_site_pending">Your companies show on your live website once we confirm you're their agent.</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_use_template">Use this template</string>
     <string name="onboarding_publish_now">Publish now</string>
@@ -173,9 +191,6 @@
     <string name="launch_install_title">Add it to your phone</string>
     <string name="launch_install_text">Open your website like any app, straight from your home screen.</string>
     <string name="launch_not_now">Not now</string>
-    <string name="launch_preview_title">This is what customers see</string>
-    <string name="launch_preview_text">Scroll to look around. You can change anything later.</string>
-    <string name="launch_next">Next</string>
     <string name="launch_share_title">Share it with customers</string>
     <string name="launch_share_text">Send the link on WhatsApp, SMS or any app, or let someone scan the code.</string>
     <string name="launch_done">Done</string>
@@ -186,11 +201,8 @@
     <string name="onboarding_link_preview">Your site: %1$s</string>
     <string name="onboarding_trial_started">Your %1$d-day free trial has started</string>
     <string name="onboarding_template_position">%1$d of %2$d</string>
-    <string name="template_family_prompt">Choose a style first. You can change it later.</string>
     <string name="onboarding_photo_tips">Face and shoulders, looking at the camera, in daylight by a window.\nPlain background and smart everyday clothes.\nNo sunglasses, group photos, insurer uniform or logos.</string>
     <string name="profile_mobile">Mobile</string>
-    <string name="profile_agency_code">Agency code</string>
-    <string name="profile_branch">Branch</string>
 
     <!-- Home and placeholder tabs (Phases 6–13 replace them) -->
     <string name="home_greeting">Namaste, %1$s</string>

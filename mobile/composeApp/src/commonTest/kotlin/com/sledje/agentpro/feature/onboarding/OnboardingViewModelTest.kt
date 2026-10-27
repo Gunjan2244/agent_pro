@@ -4,7 +4,9 @@ import app.cash.turbine.test
 import com.sledje.agentpro.app.AppEvents
 import com.sledje.agentpro.app.AppMessage
 import com.sledje.agentpro.app.OnboardingSession
+import com.sledje.agentpro.core.catalog.AppLocale
 import com.sledje.agentpro.core.catalog.Pricing
+import com.sledje.agentpro.core.catalog.PrivacyNotice
 import com.sledje.agentpro.core.catalog.ReservedSlugs
 import com.sledje.agentpro.core.catalog.Templates
 import com.sledje.agentpro.core.data.AppError
@@ -22,6 +24,7 @@ import com.sledje.agentpro.feature.website.data.PublishError
 import com.sledje.agentpro.feature.website.data.PublishOutcome
 import com.sledje.agentpro.feature.website.data.StarterContent
 import com.sledje.agentpro.testing.FakeCompanyRepository
+import com.sledje.agentpro.testing.FakeConsentRepository
 import com.sledje.agentpro.testing.FakeProfileRepository
 import com.sledje.agentpro.testing.testMembership
 import com.sledje.agentpro.testing.TEST_USER
@@ -49,20 +52,21 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class OnboardingViewModelTest {
     private val profiles = FakeProfileRepository(testProfile(fullName = null, phone = null, designation = null, city = null))
+    private val consents = FakeConsentRepository()
     private val sites = FakeSiteRepository()
     private val session = OnboardingSession().apply { start() }
     private val events = AppEvents()
-    /** Step 1 needs one company link (DECISIONS #89); most tests start with it already added. */
+    /** Step 4 needs one company link (DECISIONS #89); most tests start with it already added. */
     private val companies = FakeCompanyRepository(listOf(testMembership()))
 
     @BeforeTest fun setUp() = Dispatchers.setMain(StandardTestDispatcher())
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
-    private fun vm() = OnboardingViewModel(profiles, sites, session, events, companies)
+    private fun vm() = OnboardingViewModel(profiles, sites, session, events, companies, consents = consents)
 
     @Test
-    fun profileStepSavesAndMovesToTheTemplateStep() = runTest {
+    fun mobileStepSavesAndMovesToTheStyleStep() = runTest {
         val vm = vm()
         runCurrent()
         assertFalse(vm.profileForm.isValid, "name and mobile are required")
@@ -70,41 +74,100 @@ class OnboardingViewModelTest {
         vm.profileForm.set(MOBILE, "98765 43210")
         vm.state.test {
             awaitItem()
-            vm.saveProfile()
+            vm.saveMobile()
             assertTrue(awaitItem().saving)
             var saved = awaitItem()
             while (saved.navigateTo == null) saved = awaitItem()
-            assertEquals(OnboardingStep.Template, saved.navigateTo)
+            assertEquals(OnboardingStep.Intro, saved.navigateTo)
             assertEquals("ramesh-kumar", saved.slug, "the link is suggested from the name")
             cancelAndIgnoreRemainingEvents()
         }
         val input = profiles.updates.single()
         assertEquals("+919876543210", input.phone, "mobile normalised to +91")
-        assertEquals(null, input.designation, "blank optional fields are null")
+        assertEquals(null, input.city, "blank optional fields are null")
     }
 
     @Test
-    fun nameAndMobileFromSignUpShowAsASummaryWithEdit() = runTest {
+    fun theNameFromGoogleShowsAsASummaryWithTheEmailAndOnlyTheMobileIsAsked() = runTest {
+        // A Google sign-up: the trigger saved Google's name and email; there is no mobile yet.
+        profiles.profile.value = testProfile(fullName = "Ramesh Kumar", phone = null, designation = null, city = null)
+        val vm = vm()
+        runCurrent()
+        assertTrue(vm.state.value.contactSummary, "the name isn't asked again")
+        assertEquals("ramesh@example.com", vm.state.value.email)
+        assertFalse(vm.profileForm.isValid, "the mobile is still needed")
+        vm.profileForm.set(MOBILE, "91234 56789")
+        vm.saveMobile()
+        runCurrent()
+        assertEquals("Ramesh Kumar", profiles.updates.single().fullName)
+        assertEquals("+919123456789", profiles.updates.single().phone)
+        assertEquals(OnboardingStep.Intro, vm.state.value.navigateTo, "no company is needed yet")
+    }
+
+    @Test
+    fun editOnTheSummaryShowsTheNameField() = runTest {
         profiles.profile.value = testProfile(fullName = "Ramesh Kumar", phone = "+919876543210", designation = null, city = null)
         val vm = vm()
         runCurrent()
-        assertTrue(vm.state.value.contactSummary, "not asked again")
-        assertTrue(vm.profileForm.isValid, "Continue works straight away; the rest is optional")
+        assertTrue(vm.profileForm.isValid, "Continue works straight away")
         vm.editContact()
         assertFalse(vm.state.value.contactSummary)
-        vm.profileForm.set(MOBILE, "91234 56789")
-        vm.saveProfile()
+        vm.profileForm.set(NAME, "Ramesh K. Kumar")
+        vm.saveMobile()
         runCurrent()
-        assertEquals("Ramesh Kumar", profiles.updates.single().fullName)
-        assertEquals("+919123456789", profiles.updates.single().phone, "the edit is saved")
+        assertEquals("Ramesh K. Kumar", profiles.updates.single().fullName, "the edit is saved")
     }
 
     @Test
-    fun noSummaryWithoutAValidMobile() = runTest {
-        profiles.profile.value = testProfile(fullName = "Ramesh Kumar", phone = null)
+    fun noSummaryWithoutAName() = runTest {
+        profiles.profile.value = testProfile(fullName = null, phone = null)
         val vm = vm()
         runCurrent()
         assertFalse(vm.state.value.contactSummary)
+    }
+
+    @Test
+    fun aPendingGoogleSignUpConsentIsRecordedBeforeTheMobileIsSaved() = runTest {
+        consents.pendingSignup = PrivacyNotice.AgentSignup.consent(AppLocale.En)
+        consents.error = AppError.Offline
+        val vm = vm()
+        runCurrent()
+        vm.profileForm.set(NAME, "Ramesh Kumar")
+        vm.profileForm.set(MOBILE, "98765 43210")
+        vm.saveMobile()
+        runCurrent()
+        assertEquals(AppError.Offline, vm.state.value.error)
+        assertTrue(profiles.updates.isEmpty(), "nothing is saved before the consent is recorded")
+
+        consents.error = null
+        vm.saveMobile()
+        runCurrent()
+        assertEquals(null, consents.pendingSignup)
+        assertEquals(2, consents.calls.count { it.startsWith("signup:agent_signup:") }, "the failed try, then the recorded one")
+        assertEquals(1, profiles.updates.size)
+        assertEquals(OnboardingStep.Intro, vm.state.value.navigateTo)
+    }
+
+    @Test
+    fun theIntroOpensTheTemplatesOnThePickSoFar() = runTest {
+        val vm = vm()
+        vm.openTemplates()
+        assertEquals(OnboardingStep.Template, vm.state.value.navigateTo)
+        vm.onNavigated()
+        vm.selectTemplate("spotlight")
+        vm.openTemplates()
+        assertEquals("spotlight", vm.state.value.templateKey, "coming back keeps the design picked")
+    }
+
+    @Test
+    fun theDesignsArePreviewedBeforeAnyCompanyIsAdded() = runTest {
+        profiles.profile.value = testProfile()
+        val vm = OnboardingViewModel(profiles, sites, session, events, FakeCompanyRepository())
+        runCurrent()
+        assertEquals(emptyList(), vm.insuranceTypes())
+        val content = vm.starterContent(Templates.fromKey("classic")!!)!!
+        val offered = content["services"]!!.jsonObject["offered"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertEquals(listOf("term", "endowment", "child", "pension"), offered, "the seed's default (life) until step 4")
     }
 
     @Test
@@ -122,7 +185,7 @@ class OnboardingViewModelTest {
         val vm = vm()
         vm.profileForm.set(NAME, "Ramesh")
         vm.profileForm.set(MOBILE, "9876543210")
-        vm.saveProfile()
+        vm.saveMobile()
         runCurrent()
         assertEquals(AppError.Offline, vm.state.value.error)
         assertEquals(null, vm.state.value.navigateTo)
@@ -135,7 +198,7 @@ class OnboardingViewModelTest {
         val last = Templates.all.last()
         vm.selectTemplate(last.key)
         assertEquals(last.key, vm.state.value.templateKey)
-        assertEquals(OnboardingStep.Link, vm.state.value.navigateTo)
+        assertEquals(OnboardingStep.Details, vm.state.value.navigateTo, "the companies come after the design")
         vm.selectTemplate("no-such-template")
         assertEquals(last.key, vm.state.value.templateKey)
     }
@@ -164,7 +227,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun theSiteIsSeededFromTheInsuranceTypesOfStep1sCompanies() = runTest {
+    fun theSiteIsSeededFromTheInsuranceTypesOfStep4sCompanies() = runTest {
         profiles.profile.value = testProfile()
         companies.request("c2", null, "AG9", listOf("motor", "health"))
         val vm = vm()
@@ -234,13 +297,13 @@ class OnboardingViewModelTest {
         assertEquals("+919876543210", created.draftContent["contact"]!!.jsonObject["phone"]!!.jsonPrimitive.content)
         assertEquals(1, sites.publishCalls)
         assertEquals(SiteLaunch("ramesh-k", LaunchStep.AddToPhone), vm.state.value.launch)
-        assertFalse(vm.state.value.finished, "Add to phone, Preview and Share come before Home")
+        assertFalse(vm.state.value.finished, "Add to phone and Share come before Home")
         assertTrue(session.active.value)
         assertEquals(null, events.message.value)
     }
 
     @Test
-    fun theLaunchScreensGoAddToPhonePreviewShareThenHome() = runTest {
+    fun theLaunchScreensGoAddToPhoneShareThenHome() = runTest {
         profiles.profile.value = testProfile()
         val vm = vm()
         vm.onSlugChange("ramesh-k")
@@ -250,11 +313,9 @@ class OnboardingViewModelTest {
         vm.launchBack()
         assertEquals(LaunchStep.AddToPhone, vm.state.value.launch?.step, "no screen before the first")
         vm.launchNext()
-        assertEquals(LaunchStep.Preview, vm.state.value.launch?.step)
-        vm.launchNext()
         assertEquals(LaunchStep.Share, vm.state.value.launch?.step)
         vm.launchBack()
-        assertEquals(LaunchStep.Preview, vm.state.value.launch?.step)
+        assertEquals(LaunchStep.AddToPhone, vm.state.value.launch?.step)
         vm.launchNext()
         assertTrue(session.active.value)
         vm.finishLaunch()
@@ -365,30 +426,30 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun profileStepChecksTheServerForASiteBeforeTheSiteSteps() = runTest {
+    fun mobileStepChecksTheServerForASiteBeforeTheSiteSteps() = runTest {
         // The profile was incomplete, so onboarding opened; the agent already has a site on the server.
         sites.serverSite = testSite("gunjan23")
         val vm = vm()
         runCurrent()
         vm.profileForm.set(NAME, "Gunjan")
         vm.profileForm.set(MOBILE, "98765 43210")
-        vm.saveProfile()
+        vm.saveMobile()
         runCurrent()
         assertEquals(1, sites.fetches)
         assertTrue(vm.state.value.finished, "straight to Main with the existing site")
-        assertEquals(null, vm.state.value.navigateTo, "no Pick a design, no Your link")
+        assertEquals(null, vm.state.value.navigateTo, "no template intro, no Your link")
         assertFalse(session.active.value)
         assertTrue(sites.created.isEmpty())
     }
 
     @Test
-    fun profileStepStaysPutWhenTheServerCantBeAsked() = runTest {
+    fun mobileStepStaysPutWhenTheServerCantBeAsked() = runTest {
         sites.fetchError = AppError.Offline
         val vm = vm()
         runCurrent()
         vm.profileForm.set(NAME, "Gunjan")
         vm.profileForm.set(MOBILE, "98765 43210")
-        vm.saveProfile()
+        vm.saveMobile()
         runCurrent()
         assertEquals(AppError.Offline, vm.state.value.error)
         assertEquals(null, vm.state.value.navigateTo, "never on to the site steps without knowing")
@@ -396,13 +457,68 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun profileStepWaitsForAtLeastOneCompany() = runTest {
+    fun detailsStepSavesTheCityAndMovesToThePhoto() = runTest {
+        profiles.profile.value = testProfile(city = null)
+        val vm = vm()
+        runCurrent()
+        vm.profileForm.set(OnboardingViewModel.CITY, "Pune")
+        vm.saveDetails()
+        runCurrent()
+        assertEquals("Pune", profiles.updates.single().city)
+        assertEquals(OnboardingStep.Photo, vm.state.value.navigateTo)
+        assertEquals(0, sites.fetches, "the site check was step 1's")
+    }
+
+    @Test
+    fun noAgencyCodeOrBranchIsAskedAndSavedValuesAreKept() = runTest {
+        assertEquals(listOf(NAME, MOBILE, OnboardingViewModel.CITY, OnboardingViewModel.PHOTO), OnboardingViewModel.PROFILE_FIELDS.map { it.key })
+        profiles.profile.value = testProfile().copy(agencyCode = "AG9", branch = "Kothrud")
+        val vm = vm()
+        runCurrent()
+        vm.saveDetails()
+        runCurrent()
+        assertEquals("AG9", profiles.updates.single().agencyCode)
+        assertEquals("Kothrud", profiles.updates.single().branch)
+    }
+
+    @Test
+    fun skippingThePhotoWithoutOneSavedGoesStraightToTheWebsite() = runTest {
+        profiles.profile.value = testProfile().copy(photoUrl = null)
+        val vm = vm()
+        runCurrent()
+        vm.skipPhoto()
+        runCurrent()
+        assertTrue(profiles.updates.isEmpty(), "nothing to save")
+        assertEquals(OnboardingStep.Preview, vm.state.value.navigateTo)
+    }
+
+    @Test
+    fun skippingRemovesAPhotoSavedEarlier() = runTest {
+        profiles.profile.value = testProfile().copy(photoUrl = "https://example.com/me.webp")
+        val vm = vm()
+        runCurrent()
+        vm.skipPhoto()
+        runCurrent()
+        assertEquals(null, profiles.updates.single().photoUrl)
+        assertEquals(OnboardingStep.Preview, vm.state.value.navigateTo)
+    }
+
+    @Test
+    fun theWebsiteStepContinuesToTheLink() = runTest {
+        val vm = vm()
+        runCurrent()
+        vm.openLink()
+        assertEquals(OnboardingStep.Link, vm.state.value.navigateTo)
+    }
+
+    @Test
+    fun detailsStepWaitsForAtLeastOneCompany() = runTest {
         val noCompanies = FakeCompanyRepository()
         val vm = OnboardingViewModel(profiles, sites, session, events, noCompanies)
         runCurrent()
         vm.profileForm.set(NAME, "Ramesh Kumar")
         vm.profileForm.set(MOBILE, "98765 43210")
-        vm.saveProfile()
+        vm.saveDetails()
         runCurrent()
         assertTrue(profiles.updates.isEmpty(), "nothing is saved without a company")
         assertEquals(AppError.Validation("companies", "required"), vm.state.value.error)
@@ -416,7 +532,7 @@ class OnboardingViewModelTest {
         runCurrent()
         vm.profileForm.set(NAME, "Ramesh Kumar")
         vm.profileForm.set(MOBILE, "98765 43210")
-        vm.saveProfile()
+        vm.saveDetails()
         runCurrent()
         assertTrue(profiles.updates.isEmpty())
     }

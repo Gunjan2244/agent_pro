@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -166,7 +167,9 @@ fun AppScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
-        modifier = modifier,
+        // Edge-to-edge: the window no longer resizes for the keyboard, so lift the whole frame (and the
+        // sticky bottom bar with it) above it; the content then scrolls its focused field into view.
+        modifier = modifier.imePadding(),
         topBar = {
             Column {
                 topBar()

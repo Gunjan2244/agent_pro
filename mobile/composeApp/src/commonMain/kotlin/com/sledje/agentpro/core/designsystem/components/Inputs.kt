@@ -5,11 +5,15 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -35,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -49,7 +54,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.delay
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -234,10 +243,16 @@ fun FieldFrame(
     error: String? = null,
     helper: String? = null,
     trailingHelper: String? = null,
+    /** True while the field inside has focus: the label takes the accent colour. */
+    focused: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val labelColor by animateColorAsState(
+        if (focused && error == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        Motion.stateChange(),
+    )
     Column(modifier.fillMaxWidth()) {
-        Text(label, style = AgentProTheme.text.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = AgentProTheme.text.label, color = labelColor)
         Spacer(Modifier.height(Spacing.s))
         content()
         if (error != null || helper != null || trailingHelper != null) {
@@ -254,7 +269,12 @@ fun FieldFrame(
     }
 }
 
-/** An outlined text field (radius 8) inside a [FieldFrame]. [onFocusLost] drives validate-on-blur. */
+/**
+ * An outlined text field (radius 8) inside a [FieldFrame]. [onFocusLost] drives validate-on-blur.
+ * The focused field is highlighted (accent label, accent-tinted fill) and, once the keyboard is up,
+ * scrolled into view with room for the next field below it, so that one can be tapped.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppTextField(
     value: String,
@@ -280,8 +300,27 @@ fun AppTextField(
     inputModifier: Modifier = Modifier,
 ) {
     var wasFocused by remember { mutableStateOf(false) }
+    var frameHeight by remember { mutableStateOf(0) }
+    val requester = remember { BringIntoViewRequester() }
+    // Room kept visible under the focused field: the next field (about this frame's height) and a gap.
+    val below = frameHeight + with(LocalDensity.current) { Spacing.m.roundToPx() }
+    LaunchedEffect(wasFocused) {
+        if (wasFocused) {
+            // Wait for the keyboard to finish opening, so the scroll lands in the final layout.
+            delay(KEYBOARD_SETTLE_MILLIS)
+            requester.bringIntoView(Rect(0f, 0f, 0f, frameHeight.toFloat() + below))
+        }
+    }
     val style = if (tabular) AgentProTheme.text.body.copy(fontFeatureSettings = TABULAR_FIGURES) else AgentProTheme.text.body
-    FieldFrame(label, modifier, error, helper, counter) {
+    val focusedFill by animateColorAsState(
+        if (wasFocused && enabled) MaterialTheme.colorScheme.primary.copy(alpha = FOCUS_FILL_ALPHA) else Color.Transparent,
+        Motion.stateChange(),
+    )
+    FieldFrame(
+        label,
+        modifier.bringIntoViewRequester(requester).onSizeChanged { frameHeight = it.height },
+        error, helper, counter, focused = wasFocused,
+    ) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -292,6 +331,10 @@ fun AppTextField(
                     if (wasFocused && !it.isFocused) onFocusLost()
                     wasFocused = it.isFocused
                 },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = focusedFill,
+                unfocusedContainerColor = focusedFill,
+            ),
             textStyle = style,
             placeholder = placeholder?.let { { Text(it, style = AgentProTheme.text.body, color = AgentProTheme.colors.muted) } },
             prefix = prefix?.let { { Text(it, style = style) } },
@@ -308,6 +351,9 @@ fun AppTextField(
         )
     }
 }
+
+private const val KEYBOARD_SETTLE_MILLIS = 250L
+private const val FOCUS_FILL_ALPHA = 0.06f
 
 /** Shows a digits[.dd] string with Indian grouping (1,25,000.50) while editing. */
 class IndianGroupingTransformation : VisualTransformation {

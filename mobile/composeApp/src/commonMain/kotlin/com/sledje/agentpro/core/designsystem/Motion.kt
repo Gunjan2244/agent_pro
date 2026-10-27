@@ -40,6 +40,9 @@ object Motion {
     /** One skeleton shimmer cycle. */
     const val SHIMMER_MILLIS: Int = 1200
 
+    /** One way of the "Continue →" arrow's nudge (forward, then back over the same time). */
+    const val NUDGE_MILLIS: Int = 600
+
     fun <T> stateChange(): FiniteAnimationSpec<T> = tween(SHORT_MILLIS, easing = StandardEasing)
 
     fun <T> navigation(): FiniteAnimationSpec<T> = tween(MEDIUM_MILLIS, easing = StandardEasing)

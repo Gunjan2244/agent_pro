@@ -56,13 +56,24 @@ object SitePreviewPayload {
         }
     }
 
-    /** The payload with the `preview_site_offers` answer ([previewOffers] = `{companies, company, offers}`) merged in; null = none. */
-    fun buildWithPreviewOffers(site: Site, profile: Profile?, content: JsonObject, templateKey: String, previewOffers: JsonObject?, portalEnabled: Boolean = false): JsonObject =
+    /**
+     * The payload with the `preview_site_offers` answer ([previewOffers] = `{companies, company, offers}`) merged in; null = none.
+     * [companies] replaces the answer's list (onboarding step 6 also shows the links still waiting for confirmation).
+     */
+    fun buildWithPreviewOffers(
+        site: Site,
+        profile: Profile?,
+        content: JsonObject,
+        templateKey: String,
+        previewOffers: JsonObject?,
+        portalEnabled: Boolean = false,
+        companies: JsonArray? = null,
+    ): JsonObject =
         build(
             site, profile, content, templateKey,
             offers = previewOffers?.get("offers") as? JsonObject,
             company = previewOffers?.get("company") as? JsonObject,
-            companies = previewOffers?.get("companies") as? JsonArray,
+            companies = companies ?: previewOffers?.get("companies") as? JsonArray,
             portalEnabled = portalEnabled,
         )
 
@@ -73,5 +84,6 @@ object SitePreviewPayload {
         templateKey: String = site.templateKey,
         previewOffers: JsonObject? = null,
         portalEnabled: Boolean = false,
-    ): String = RowJson.encodeToString(JsonObject.serializer(), buildWithPreviewOffers(site, profile, content, templateKey, previewOffers, portalEnabled))
+        companies: JsonArray? = null,
+    ): String = RowJson.encodeToString(JsonObject.serializer(), buildWithPreviewOffers(site, profile, content, templateKey, previewOffers, portalEnabled, companies))
 }
