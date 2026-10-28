@@ -41,6 +41,7 @@ import com.sledje.agentpro.feature.customers.CustomerFormRoute
 import com.sledje.agentpro.feature.settings.ProfileRoute
 import com.sledje.agentpro.feature.website.WebsiteContentRoute
 import com.sledje.agentpro.feature.website.WebsiteLinkRoute
+import com.sledje.agentpro.feature.website.WebsitePreviewRoute
 import com.sledje.agentpro.feature.website.WebsiteSectionRoute
 import com.sledje.agentpro.feature.website.WebsiteTemplatesRoute
 import com.sledje.agentpro.feature.website.data.Site
@@ -154,6 +155,7 @@ internal fun FeatureHost.openWhatsNewItem(item: WhatsNewItem) {
         WhatsNewItem.CustomerLogin -> openTab("customers")
         WhatsNewItem.ForMyCustomers -> if (openTab("website")) nav.navigate(WebsiteContentRoute)
         WhatsNewItem.NewTemplates -> if (openTab("website")) nav.navigate(WebsiteTemplatesRoute)
+        WhatsNewItem.MultiPageWebsite -> if (openTab("website")) nav.navigate(WebsitePreviewRoute)
     }
 }
 

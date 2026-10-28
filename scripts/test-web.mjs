@@ -151,7 +151,7 @@ import { readdirSync } from "node:fs";
 const dist = new URL("../web/dist/", import.meta.url).pathname;
 try {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(d + e.name + "/") : [d + e.name]));
-  const shared = ["app.js", "client.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
+  const shared = ["app.js", "client.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/pages.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
   // Server-rendered page (DECISIONS #75): first paint needs only CSS; this is the deferred JS that wires behaviour.
   {
     const css = ["tokens.css", "styles/base.css", "styles/fonts.css", `templates/${TEMPLATE_KEYS[0]}/style.css`];
@@ -164,11 +164,18 @@ try {
       // 2026-10-22 redesign: one layout system (grid, rhythm, accordion, companies, the family's hero) took base.css
       // from 11 KB to 15 KB raw; first paint is 21-24 KB raw but under 7 KB gzip, which is what the network carries.
       // 26 -> 34 KB raw, 7 -> 9 KB gzip: the lively redesign (DECISIONS #117: top bar, sliders, tickers, dark bands)
-      assert.ok(size(c) < 34 * 1024, tpl + ": SSR first-paint CSS over 34KB raw");
+      // 34 -> 36 KB raw: multi-page sites (DECISIONS #122: the menu's current page, Home's teasers and contact band, each
+      // template's skin of the inner pages); the inner pages' shared layouts are in styles/pages.css, not on Home
+      assert.ok(size(c) < 36 * 1024, tpl + ": SSR first-paint CSS over 36KB raw");
       assert.ok(gz(c) < 9 * 1024, tpl + ": SSR first-paint CSS over 9KB gzip");
+      // an inner page (Insurance, a plan type, About, Contact) also loads styles/pages.css (DECISIONS #122)
+      const ci = [...c.slice(0, 3), "styles/pages.css", c[3]];
+      console.log(`SIZE SSR first paint ${tpl} inner page: ${(size(ci) / 1024).toFixed(1)} KB raw, ${(gz(ci) / 1024).toFixed(1)} KB gzip`);
+      assert.ok(size(ci) < 44 * 1024, tpl + ": inner-page first-paint CSS over 44KB raw");
+      assert.ok(gz(ci) < 11 * 1024, tpl + ": inner-page first-paint CSS over 11KB gzip");
     }
     console.log(`SIZE SSR hydration JS (deferred): ${(size(hydrateJs) / 1024).toFixed(1)} KB raw, ${(gz(hydrateJs) / 1024).toFixed(1)} KB gzip; + install.js ${(size([...hydrateJs, "install.js"]) / 1024).toFixed(1)} KB raw; + privacy.js on the privacy page ${(size([...hydrateJs, "privacy.js"]) / 1024).toFixed(1)} KB raw`);
-    assert.ok(size(css) < 34 * 1024, "SSR first-paint CSS over 34KB");
+    assert.ok(size(css) < 36 * 1024, "SSR first-paint CSS over 36KB");
     assert.ok(size([...hydrateJs, "install.js"]) < 30 * 1024, "SSR hydration JS over 30KB");
   }
   // a template's own modules: render.js plus any template partials (parts.js, DECISIONS #85)
@@ -182,16 +189,16 @@ try {
     // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip); WP5c's template partials (modern/minimal parts.js and
     // their layouts, DECISIONS #85) add up to ~6KB; the 2026-10-22 redesign (one layout system in base.css, the companies
     // partials) another ~7KB, so the cap is 100KB (unminified, commented source); the SSR path keeps its own caps above.
-    assert.ok(raw < 124 * 1024, tpl + " over 124KB"); // 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB; 106 -> 124KB: the lively redesign (DECISIONS #117: ui.js, template parts, top bar / slider / ticker CSS), ~14KB
+    assert.ok(raw < 170 * 1024, tpl + " over 170KB"); // 124 -> 170KB: multi-page sites (DECISIONS #122: sections/pages.js, links.js, the page model in index.js, styles/pages.css, route.js page helpers), ~41KB of commented source; 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB; 106 -> 124KB: the lively redesign (DECISIONS #117: ui.js, template parts, top bar / slider / ticker CSS), ~14KB
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
     const later = [...shared, ...own(tpl), `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 131 * 1024, tpl + " + install modules over 131KB"); // 113 -> 131KB: DECISIONS #117 // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
+    assert.ok(later < 177 * 1024, tpl + " + install modules over 177KB"); // 131 -> 177KB: DECISIONS #122, same reason; 113 -> 131KB: DECISIONS #117 // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
-      assert.ok(sz < 112 * 1024, extra + " page over 112KB"); // 102 -> 112KB: DECISIONS #117 (sections/ui.js and base.css's lively parts); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
+      assert.ok(sz < 158 * 1024, extra + " page over 158KB"); // 112 -> 158KB: DECISIONS #122 (the count includes every sections/ file and pages.css); 102 -> 112KB: DECISIONS #117 (sections/ui.js and base.css's lively parts); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
     }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);
@@ -205,7 +212,7 @@ ok("wrangler.jsonc: SPA static assets; the Worker runs first only for pages, the
   assert.equal(w.name, "agentpro-sites"); assert.equal(w.assets.directory, "./dist");
   assert.equal(w.assets.not_found_handling, "single-page-application");
   assert.equal(w.main, "./worker.js"); assert.equal(w.assets.binding, "ASSETS");
-  assert.deepEqual(w.assets.run_worker_first, ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
+  assert.deepEqual(w.assets.run_worker_first, ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
   assert.ok(!w.routes && !w.vars, "no routes yet; no keys in the config");
 });
 if (existsSync(dist + "index.html")) ok("dist: _headers present, no vercel.json, no secrets in _headers", () => {
@@ -407,14 +414,14 @@ import { spawnSync } from "node:child_process";
   ok("routing: /a/<slug>, /a/<slug>/privacy, ?s&page, /privacy + /terms platform, custom domain", () => {
     const L = (host, pathname, search = "") => ({ host, hostname: host.split(":")[0], pathname, search });
     const P = "x.dev", g = (l) => resolveTarget(l, new URLSearchParams(l.search), P);
-    assert.deepEqual(g(L(P, "/a/demo")), { slug: "demo", page: undefined });
-    assert.deepEqual(g(L(P, "/a/demo/")), { slug: "demo", page: undefined });
+    assert.deepEqual(g(L(P, "/a/demo")), { slug: "demo", page: undefined, path: "" });
+    assert.deepEqual(g(L(P, "/a/demo/")), { slug: "demo", page: undefined, path: "" });
     assert.deepEqual(g(L(P, "/a/demo/privacy")), { slug: "demo", page: "privacy" });
     assert.deepEqual(g(L(P, "/", "?s=demo&page=privacy")), { slug: "demo", page: "privacy" });
     assert.deepEqual(g(L(P, "/privacy")), { platform: "privacy" }); assert.deepEqual(g(L(P, "/terms/")), { platform: "terms" });
     assert.equal(g(L(P, "/")), null);
     assert.deepEqual(g(L("asha.in", "/privacy")), { host: "asha.in", page: "privacy" });
-    assert.deepEqual(g(L("asha.in", "/")), { host: "asha.in", page: undefined });
+    assert.deepEqual(g(L("asha.in", "/")), { host: "asha.in", page: undefined, path: "" });
     assert.deepEqual(siteLinks({ slug: "demo" }, L(P, "/a/demo")), { home: "/a/demo/", privacy: "/a/demo/privacy" });
     assert.deepEqual(siteLinks({ host: "asha.in" }, L("asha.in", "/")), { home: "/", privacy: "/privacy" });
     const loc = siteLinks({ slug: "demo" }, L(P, "/", "?mock=1&s=demo"));
@@ -438,7 +445,9 @@ await import("./test-web-templates.mjs").then((m) => m.run({ ok, R, dicts, catal
 await import("./test-web-companies.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-promo.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-types.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-pages.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-ssr.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 await import("./test-web-portal.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
+await import("./test-web-callbar.mjs").then((m) => m.run({ ok }));
 await import("./test-web-join.mjs").then((m) => m.run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }));
 console.log(`\n${n} checks passed`);

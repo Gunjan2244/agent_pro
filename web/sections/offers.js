@@ -41,7 +41,9 @@ export function offers(d, ctx) {
   const title = esc(textOr(ctx, "offers", "title", d.title));
   if (ctx.family !== "offers") {
     if (!o.grid.length) return "";
-    return `<h2>${title}</h2><ul class="offers">${o.grid.map((x) => offerCard(x, ctx)).join("")}</ul>${disclaimer(ctx)}`;
+    // the shared inner pages (DECISIONS #122) show the offers' pictures on every template, as the Home sliders do
+    const pg = Boolean(ctx.page);
+    return `<h2>${title}</h2><ul class="offers${pg ? " stg" : ""}">${o.grid.map((x) => offerCard(x, ctx, { image: pg })).join("")}</ul>${disclaimer(ctx)}`;
   }
   if (ctx.layout === "needs") {
     const groups = needGroups(ctx);

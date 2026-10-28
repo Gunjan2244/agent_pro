@@ -17,21 +17,28 @@ const shown = (c, key) => (key === "companies" || !Array.isArray(c.sectionOrder)
 // (with the trailing slash for /a/<slug>/). Optional `t`, `catalog`, `schema` add the translated labels used by the
 // Service and knowsLanguage JSON-LD; `noindex` is for ?preview/?install pages.
 // `images` (web/images/manifest.json) and `family` give the bundled share image (og-<family>) when there is no photo.
-export function headData(site, { origin, path = "/", canonicalHost = null, noindex = false, t = null, catalog = null, schema = null, images = null, family = "personal" }) {
+// `page` (sections/index.js pageMeta; DECISIONS #122) describes an inner page: its own title ("About me — Asha
+// Verma"), description, canonical (the site's base + page.path) and og:url; the FAQPage and Service entries only where
+// the page shows them. The agency and the agent keep the site's home URL as their @id on every page. No page: Home.
+export function headData(site, { origin, path = "/", canonicalHost = null, noindex = false, t = null, catalog = null, schema = null, images = null, family = "personal", page = null }) {
   const c = site.content || {}, p = site.profile || {}, h = c.hero || {}, a = c.about || {}, k = c.contact || {};
   const desig = a.designation || p.designation || "";
   const fbKey = has(p.city) ? "site.seo_title_fallback" : "site.seo_title_fallback_nocity";
   const fallbackDesig = !has(desig) && t && t(fbKey, { city: p.city || "" }) !== fbKey ? t(fbKey, { city: p.city || "" }) : "";
-  const title = [p.full_name, has(desig) ? [desig, p.city].filter(has).join(", ") : fallbackDesig].filter(has).join(" — ") || h.headline || "Agent PRO";
-  const description = trimWords(h.subheadline || a.bio || h.headline || "");
-  const canonical = canonicalHost ? `https://${canonicalHost}/` : origin + path;
+  const siteTitle = [p.full_name, has(desig) ? [desig, p.city].filter(has).join(", ") : fallbackDesig].filter(has).join(" — ") || h.headline || "Agent PRO";
+  const pageTitle = page && has(page.title) ? (t && t("site.page_title") !== "site.page_title" ? t("site.page_title", { page: page.title, name: p.full_name || siteTitle }) : `${page.title} — ${p.full_name || siteTitle}`) : "";
+  const title = pageTitle || siteTitle;
+  const description = trimWords((page && page.description) || h.subheadline || a.bio || h.headline || "");
+  const home = canonicalHost ? `https://${canonicalHost}/` : origin + path;
+  const canonical = home + (page && page.path ? page.path : "");
+  const on = (key) => (page ? page.sections.includes(key) : shown(c, key));
   const photoRaw = (h.photo || p.photo_url || "");
   const image = /^https?:\/\//i.test(photoRaw) ? photoRaw : "";
   const phone10 = tenDigits(k.phone || p.phone);
-  const agencyId = canonical + "#agency", personId = canonical + "#agent";
+  const agencyId = home + "#agency", personId = home + "#agent";
 
   // The agency is the agent's own practice (never named after an insurer), and there is no Offer markup (OFFERS.md).
-  const agency = { "@type": "InsuranceAgency", "@id": agencyId, name: p.full_name || title, url: canonical };
+  const agency = { "@type": "InsuranceAgency", "@id": agencyId, name: p.full_name || siteTitle, url: home };
   if (description) agency.description = description;
   if (image) agency.image = image;
   if (phone10) agency.telephone = "+91" + phone10;
@@ -49,7 +56,7 @@ export function headData(site, { origin, path = "/", canonicalHost = null, noind
     if (has(desig)) person.jobTitle = desig;
     if (image) person.image = image;
     if (phone10) person.telephone = agency.telephone;
-    person.url = canonical;
+    person.url = home;
     // The insurers the agent represents (DECISIONS #90), as on the page: an agent is affiliated with them, not
     // employed (so not worksFor) and not a member (memberOf). Names only, like the companies section.
     const cos = arr(site.companies).filter((x) => x && has(x.name));
@@ -59,12 +66,17 @@ export function headData(site, { origin, path = "/", canonicalHost = null, noind
     graph.push(person);
   }
   const faq = arr((c.faq || {}).items).filter((i) => i && has(i.question) && has(i.answer));
-  if (faq.length && shown(c, "faq")) graph.push({ "@type": "FAQPage", "@id": canonical + "#faq", mainEntity: faq.map((i) => ({ "@type": "Question", name: i.question, acceptedAnswer: { "@type": "Answer", text: i.answer } })) });
-  if (catalog && t && shown(c, "services")) {
+  if (faq.length && on("faq")) graph.push({ "@type": "FAQPage", "@id": canonical + "#faq", mainEntity: faq.map((i) => ({ "@type": "Question", name: i.question, acceptedAnswer: { "@type": "Answer", text: i.answer } })) });
+  // Services: on Home (and a one-page site) as the services section lists them; on Insurance every plan type with a
+  // page, on a plan page that one type.
+  const pageServices = page && page.services && page.services.length ? page.services : null;
+  if (catalog && t && (pageServices || on("services"))) {
     const sv = c.services || {}, ctx = { catalog, t };
     const items = arr(sv.items).filter((i) => i && interestLabel(ctx, i.interest));
     const done = new Set(items.map((i) => i.interest));
-    const listed = [...items, ...arr(sv.offered).filter((x) => !done.has(x) && interestLabel(ctx, x)).map((x) => ({ interest: x }))];
+    const listed = pageServices
+      ? pageServices.filter((x) => interestLabel(ctx, x)).map((x) => items.find((i) => i.interest === x) || { interest: x })
+      : [...items, ...arr(sv.offered).filter((x) => !done.has(x) && interestLabel(ctx, x)).map((x) => ({ interest: x }))];
     for (const i of listed) {
       const s = { "@type": "Service", name: interestLabel(ctx, i.interest), provider: { "@id": agencyId } };
       if (has(i.description)) s.description = i.description;

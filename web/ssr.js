@@ -4,7 +4,8 @@
 import { TEMPLATES, familyOf } from "./templates/index.js";
 import { headData } from "./head.js";
 import { makeT, localeKeys, pickLocale } from "./i18n.js";
-import { siteLinks } from "./route.js";
+import { siteLinks, matchPage } from "./route.js";
+import { pageMeta } from "./sections/index.js";
 import { manifestHref, appBase, appNames, swatchFor, iconPath } from "./manifest.js";
 import { privacyHtml } from "./privacy.js";
 import { esc } from "./sections/util.js";
@@ -55,7 +56,27 @@ ${body}
 
 const asNotices = (n) => (n && n.notices) || n || {};
 
-// -> full HTML string for a published site (home or privacy page). shared = { schema, catalog, templates, images? }.
+// The render tokens of a site page (the same as client.js show() builds).
+function siteTokens(site, target, shared, notices) {
+  const { schema, catalog, templates } = shared;
+  const key = pickTemplate(templates, site.template_key);
+  const links = siteLinks(target, { pathname: target.slug ? "/a/" + encodeURIComponent(target.slug) : "/", search: "" });
+  const swatch = swatchFor(catalog, site.accent);
+  const family = familyOf(templates, key), images = shared.images || {};
+  const tokens = { accent: swatch ? swatch.hex : "var(--c-primary)", schema, catalog, notice: asNotices(notices).enquiry_form, privacyHref: links.privacy, family, images, seed: target.slug || target.host || "", sitePages: shared.pages };
+  return { key, swatch, family, images, links, tokens };
+}
+
+// The pages a published site has (DECISIONS #122), for the sitemap: [{key, path, plan?}] ("" = home).
+export function sitePageList({ site, target, dict, shared }) {
+  const { key, tokens } = siteTokens(site, target, shared, null);
+  if (!key || !shared.pages) return [{ key: "home", path: "" }];
+  return TEMPLATES[key](site, makeT(dict), { ...tokens, pagesOnly: true });
+}
+
+// -> full HTML string for a published site (a site page or the privacy page), or null when the site has no such page
+// (target.path names no page, or a page this site doesn't have: the Worker answers 404).
+// shared = { schema, catalog, templates, images?, pages? (shared/site-pages.json) }.
 export function renderDocument({ site, target, url, dict, shared, notices, config = {} }) {
   const { schema, catalog, templates } = shared;
   const keys = localeKeys(catalog), locale = pickLocale(keys, site.locale);
@@ -73,7 +94,11 @@ export function renderDocument({ site, target, url, dict, shared, notices, confi
   const name = (site.profile || {}).full_name || "";
   const contactPhone = (site.profile || {}).phone || ((site.content || {}).contact || {}).phone || "";
   // name and phone are what wireForm's thank-you message needs; they are already visible in the page.
-  const boot = { slug: target.slug || null, host: target.host || null, locale, template: key, page: target.page || null, name, phone: contactPhone };
+  // the site page (DECISIONS #122): route.js matchPage over shared/site-pages.json; without it, the one page
+  const sitePage = target.page === "privacy" ? null : shared.pages ? matchPage(shared.pages, target.path || "") : null;
+  if (shared.pages && target.page !== "privacy" && !sitePage) return null;
+  const bootPage = target.page === "privacy" ? "privacy" : sitePage && sitePage.key !== "home" ? sitePage.key : null;
+  const boot = { slug: target.slug || null, host: target.host || null, locale, template: key, page: bootPage, name, phone: contactPhone };
 
   const bootScript = `<script type="application/json" id="boot">${safeJson(boot)}</script>
 <script src="/config.js"></script>
@@ -90,18 +115,19 @@ export function renderDocument({ site, target, url, dict, shared, notices, confi
     });
   }
 
-  const swatch = swatchFor(catalog, site.accent);
-  const family = familyOf(templates, key), images = shared.images || {};
-  const tokens = { accent: swatch ? swatch.hex : "var(--c-primary)", schema, catalog, notice: nf.enquiry_form, privacyHref: links.privacy, family, images, seed: target.slug || target.host || "" };
+  const { swatch, family, images, tokens } = siteTokens(site, target, shared, notices);
+  if (sitePage) tokens.page = sitePage;
   const inner = TEMPLATES[key](site, t, tokens);
-  const d = headData(site, { origin, path: base, canonicalHost, noindex, t, catalog, schema, images, family });
+  if (!inner) return null;
+  const d = headData(site, { origin, path: base, canonicalHost, noindex, t, catalog, schema, images, family, page: pageMeta(site, t, tokens, sitePage) });
   // What installable() adds client-side in the fallback render: manifest, icons, apple title (DECISIONS #65).
   const extra = [`<link rel="manifest" href="${attr(manifestHref(target))}">`];
   if (swatch) extra.push(`<link rel="icon" href="${attr(iconPath(swatch.key, 192))}">`, `<link rel="apple-touch-icon" href="${attr(iconPath(swatch.key, 192))}">`);
   extra.push(`<meta name="apple-mobile-web-app-title" content="${attr(appNames(site).short)}">`);
   return page({
     locale,
-    headHtml: head({ locale, ...d, extra, css: [`/templates/${key}/style.css`] }),
+    // the inner pages' shared layouts (DECISIONS #122) only where they are used; Home's first paint stays as it was
+    headHtml: head({ locale, ...d, extra, css: [...(sitePage && sitePage.key !== "home" ? ["/styles/pages.css"] : []), `/templates/${key}/style.css`] }),
     body: `<main id="root" data-ssr>${inner}</main>\n${bootScript}`,
   });
 }

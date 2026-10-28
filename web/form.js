@@ -24,6 +24,16 @@ export function consentFor(notices, locale) {
   return { notice_key: "enquiry_form", version: n.version, hash: n.hash[locale] || n.hash.en };
 }
 
+// The contact page reached from an "Enquire" link elsewhere (DECISIONS #122: contact?interest=<key>#enq): preselect that
+// interest, only when it is an active catalog interest and the form offers it. Returns whether it was set.
+export function preselectInterest(root, key, catalog) {
+  const sel = root && root.querySelector("#f-interest");
+  const known = ((catalog && catalog.interests) || []).some((i) => i.key === key && !i.deprecated);
+  if (!sel || !key || !known || ![...(sel.options || [])].some((o) => o.value === key)) return false;
+  sel.value = key;
+  return true;
+}
+
 export function wireForm(root, ctx) {
   const form = root.querySelector("#enq");
   if (!form) return;

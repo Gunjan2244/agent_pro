@@ -48,6 +48,8 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   reset();
   const res = await get("https://sites.test/a/demo/");
   const html = await res.text();
+  const contactHtml = await (await get("https://sites.test/a/demo/contact")).text();
+  rpcs = rpcs.slice(0, 1); // keep the Home request's RPC for the check below
   const site = fx("sample-en");
   ok("SSR /a/<slug>/: 200 html with the agent's content, lang, root marker, no-cache", () => {
     assert.equal(res.status, 200); assert.match(res.headers.get("content-type"), /^text\/html/); assert.equal(res.headers.get("cache-control"), "no-cache");
@@ -81,7 +83,10 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.equal(agency.address.addressLocality, "Pune"); assert.deepEqual(agency.knowsLanguage, ["English", "Hindi", "Marathi"]);
     assert.equal(agency.openingHours, "Mon–Sat, 10am–6pm"); assert.ok(agency.image);
     assert.equal(person.name, "Asha Verma"); assert.equal(person.worksFor["@id"], agency["@id"]); assert.equal(agency.founder["@id"], person["@id"]);
-    const faq = by("FAQPage")[0];
+    // the FAQ is on the Contact page (DECISIONS #122): FAQPage only there
+    assert.equal(by("FAQPage").length, 0, "no FAQPage on Home");
+    const faq = ld(contactHtml)["@graph"].find((x) => x["@type"] === "FAQPage");
+    assert.equal(faq["@id"], "https://sites.test/a/demo/contact#faq");
     assert.equal(faq.mainEntity.length, site.content.faq.items.length); assert.equal(faq.mainEntity[0].name, site.content.faq.items[0].question);
     assert.equal(faq.mainEntity[0].acceptedAnswer.text, site.content.faq.items[0].answer);
     const svc = by("Service").map((s) => s.name);
@@ -219,26 +224,44 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.ok((await (await get("https://asha.in/robots.txt")).text()).includes("Sitemap: https://asha.in/sitemap.xml"));
     assert.equal((await get("https://sites.test/robots.txt", { method: "POST" })).status, 405);
   });
-  await okA("sitemap.xml (primary host): <SITE_BASE_URL>/a/<slug>/ for every list_public_sites() row, lastmod, bad slugs and XML escaped", async () => {
+  await okA("sitemap.xml (primary host): a sitemap index, <SITE_BASE_URL>/a/<slug>/sitemap.xml for every list_public_sites() row, lastmod, bad slugs and XML escaped", async () => {
     reply.list_public_sites = [{ slug: "ramesh-kumar-pune", published_at: PUBLISHED }, { slug: "asha", published_at: null }, { slug: "bad<slug>", published_at: PUBLISHED }];
     reset();
     const r = await get("https://sites.test/sitemap.xml");
     const x = await r.text();
     assert.equal(r.status, 200); assert.match(r.headers.get("content-type"), /^application\/xml/);
     assert.deepEqual(rpcs.map((q) => q.name), ["list_public_sites"]);
-    assert.ok(x.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'));
-    assert.ok(x.includes("<url><loc>https://sites.test/a/ramesh-kumar-pune/</loc><lastmod>2026-10-01T10:00:00.000Z</lastmod></url>"));
-    assert.ok(x.includes("<url><loc>https://sites.test/a/asha/</loc></url>")); assert.ok(!x.includes("bad"));
+    assert.ok(x.includes('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'));
+    assert.ok(x.includes("<sitemap><loc>https://sites.test/a/ramesh-kumar-pune/sitemap.xml</loc><lastmod>2026-10-01T10:00:00.000Z</lastmod></sitemap>"));
+    assert.ok(x.includes("<sitemap><loc>https://sites.test/a/asha/sitemap.xml</loc></sitemap>")); assert.ok(!x.includes("bad"));
     reply.list_public_sites = () => new Response("{}", { status: 500 });
     const f = await get("https://sites.test/sitemap.xml");
     assert.equal(f.status, 503); assert.equal(f.headers.get("cache-control"), "no-store");
     reply.list_public_sites = { not: "an array" };
     assert.equal((await get("https://sites.test/sitemap.xml")).status, 503);
   });
-  await okA("sitemap.xml (custom domain): / and /privacy with lastmod = published_at; unknown domain 404; backend error 503", async () => {
+  await okA("/a/<slug>/sitemap.xml: every page the site has (Home, Insurance, each plan type, About, Contact) and its privacy page; unknown site 404; bad slug 404 without RPC", async () => {
+    reply.get_public_site = [row()]; reset();
+    const r = await get("https://sites.test/a/demo/sitemap.xml");
+    const x = await r.text();
+    assert.equal(r.status, 200); assert.match(r.headers.get("content-type"), /^application\/xml/);
+    const locs = [...x.matchAll(/<loc>([^<]+)<\/loc><lastmod>2026-10-01T10:00:00.000Z<\/lastmod>/g)].map((m) => m[1].replace("https://sites.test/a/demo/", ""));
+    assert.deepEqual(locs, ["", "insurance", "insurance/term", "insurance/health", "insurance/child", "insurance/pension", "insurance/endowment", "about", "contact", "privacy"]);
+    // every listed page is served (200) and has its own canonical
+    for (const p of locs) {
+      const pr = await get("https://sites.test/a/demo/" + p);
+      assert.equal(pr.status, 200, p);
+      assert.ok((await pr.text()).includes(`<link rel="canonical" href="https://sites.test/a/demo/${p}">`), p);
+    }
+    reply.get_public_site = null; assert.equal((await get("https://sites.test/a/gone/sitemap.xml")).status, 404);
+    reset(); assert.equal((await get("https://sites.test/a/Bad%20Slug/sitemap.xml")).status, 404); assert.equal(rpcs.length, 0);
+    reply.get_public_site = [row()];
+  });
+  await okA("sitemap.xml (custom domain): every page and /privacy with lastmod = published_at; unknown domain 404; backend error 503", async () => {
     reply.get_public_site_by_host = [row("sample-hi")]; reset();
     const x = await (await get("https://asha.in/sitemap.xml")).text();
     assert.ok(x.includes("<loc>https://asha.in/</loc><lastmod>2026-10-01T10:00:00.000Z</lastmod>") && x.includes("<loc>https://asha.in/privacy</loc><lastmod>2026-10-01T10:00:00.000Z</lastmod>"));
+    for (const p of ["insurance", "about", "contact"]) assert.ok(x.includes(`<loc>https://asha.in/${p}</loc>`), p);
     assert.deepEqual(rpcs.map((q) => q.name), ["get_public_site_by_host"]);
     reply.get_public_site_by_host = null; assert.equal((await get("https://asha.in/sitemap.xml")).status, 404);
     reply.get_public_site_by_host = () => new Response("{}", { status: 500 });

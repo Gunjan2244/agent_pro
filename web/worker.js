@@ -1,22 +1,25 @@
 // Cloudflare Worker for agentpro-sites (DECISIONS #65, #75). It runs only for the paths in wrangler.jsonc
 // `run_worker_first`: /manifest.webmanifest, and the page routes /, /a/*, /privacy plus /robots.txt and /sitemap.xml.
 // Everything else (fonts, CSS, JS, JSON) is served straight from static assets without invoking it.
-//   page      GET|HEAD  server-side render (web/ssr.js); 301 /a/<slug> -> /a/<slug>/; 404 + noindex when unavailable;
+//   page      GET|HEAD  server-side render (web/ssr.js) of a site page (DECISIONS #122: Home, /insurance,
+//                       /insurance/<type>, /about, /contact; shared/site-pages.json) or the privacy page; 301 /a/<slug> ->
+//                       /a/<slug>/ and …/about/ -> …/about; 404 + noindex when unavailable or not a page of the site;
 //                       backend error -> the static shell (index.html), so the browser retries; platform pages pass through
+//   sitemap   /sitemap.xml (primary host: an index of /a/<slug>/sitemap.xml; custom domain: its pages) and /a/<slug>/sitemap.xml
 //   manifest  the agent's web app manifest (a lapsed or unpublished site is never installable)
 //   portal    the customer login at /a/<slug>/my/* (custom domain /my/*), GET|HEAD|POST, server-rendered, never cached (DECISIONS #98)
 //   join      the customer sign-up page at /a/<slug>/join/* (custom domain /join/*), GET|HEAD|POST, server-rendered, never cached (DECISIONS #108)
 //   robots.txt, sitemap.xml  see docs/WEB_RENDERER.md
 import { manifestFor, parseConfig, MANIFEST_PATH } from "./manifest.js";
 import { portalServiceWorker } from "./portal-sw.js";
-import { resolveTarget, portalLinks } from "./route.js";
+import { resolveTarget, portalLinks, matchPage } from "./route.js";
 import { portalToken, portalCookie, clearPortalCookie, inviteToken, inviteCookie, clearInviteCookie, isInviteToken, joinToken, joinCookie, clearJoinCookie } from "./cookies.js";
 import * as portal from "./portal.js";
 import * as join from "./join.js";
 import { JOIN_KEYS, joinLinks } from "./join.js";
 import { normalizeSite } from "./api.js";
 import { loadDictWith, localeKeys, makeT, pickLocale } from "./i18n.js";
-import { renderDocument, unavailableDocument } from "./ssr.js";
+import { renderDocument, unavailableDocument, sitePageList } from "./ssr.js";
 import { SECURITY_HEADERS } from "./headers.js";
 
 // A cheap guard before the RPC, not the slug rule (that lives in SQL and the app).
@@ -60,8 +63,9 @@ async function loadConfig(env, url) {
 }
 // web/images/manifest.json is optional: without it the page simply has no bundled illustrations.
 const loadImages = (env, url) => json(env, url, "/images/manifest.json").then((m) => (m && typeof m === "object" && !Array.isArray(m) ? m : {})).catch(() => ({}));
-const loadShared = (env, url) => Promise.all([json(env, url, "/shared/site-schema.json"), json(env, url, "/shared/catalog.json"), json(env, url, "/shared/templates/index.json"), loadImages(env, url)])
-  .then(([schema, catalog, templates, images]) => ({ schema, catalog, templates, images }));
+const loadPages = (env, url) => json(env, url, "/shared/site-pages.json"); // the page model (DECISIONS #122)
+const loadShared = (env, url) => Promise.all([json(env, url, "/shared/site-schema.json"), json(env, url, "/shared/catalog.json"), json(env, url, "/shared/templates/index.json"), loadImages(env, url), loadPages(env, url)])
+  .then(([schema, catalog, templates, images, pages]) => ({ schema, catalog, templates, images, pages }));
 const loadNotices = (env, url) => json(env, url, "/shared/generated/privacy-notices.json").catch(() => ({ notices: {} }));
 const loadDict = (env, url, locale) => cached(env, "dict:" + locale, () => loadDictWith((p) => asset(env, url, p), locale, [locale]));
 
@@ -119,12 +123,22 @@ export async function handlePage(request, env) {
   try { cfg = await loadConfig(env, url); } catch (e) { console.error("page config", e && e.message); return shell(request, env); }
   const target = resolveTarget(url, q, primaryHostOf(cfg, url));
   if (!target || target.platform) return shell(request, env); // platform pages (/terms, /privacy on the primary host) and "/" with no slug
-  // A custom domain serves its site at / and /privacy only.
-  if (target.host && !/^\/(privacy\/?)?$/.test(url.pathname)) return shell(request, env);
+  // The site's pages (DECISIONS #122): which paths are pages is shared/site-pages.json.
+  let defs;
+  try { defs = await loadPages(env, url); } catch (e) { console.error("page defs", e && e.message); return shell(request, env); }
+  const path = target.path || "";
+  const clean = path.replace(/\/+$/, "");
+  const known = target.page === "privacy" || Boolean(matchPage(defs, clean));
+  // A custom domain serves its site's pages and /privacy; any other path passes through to the assets.
+  if (target.host && !known) return shell(request, env);
   if (target.slug && !SLUG.test(target.slug)) return unavailablePage(request, env, url).catch(() => shell(request, env));
-  // One URL form: /a/<slug>/ (the manifest scope and the canonical URL).
+  // One URL form: /a/<slug>/ for Home (the manifest scope and the canonical URL), and no trailing slash on the other
+  // pages (/a/<slug>/about, /about); the other form 301s, query kept, before any backend call.
   const bare = url.pathname.match(/^\/a\/([^/]+)$/);
   if (bare) return new Response(null, { status: 301, headers: headers({ location: `${url.origin}${url.pathname}/${url.search}`, "cache-control": "public, max-age=300" }) });
+  if (target.page !== "privacy" && clean && clean !== path && known) return new Response(null, { status: 301, headers: headers({ location: `${url.origin}${url.pathname.replace(/\/+$/, "")}${url.search}`, "cache-control": "public, max-age=300" }) });
+  // An unknown page of a site: 404 without a backend call.
+  if (!known) return unavailablePage(request, env, url).catch(() => shell(request, env));
 
   let site;
   try {
@@ -135,12 +149,15 @@ export async function handlePage(request, env) {
   try {
     const lm = lastModified(site, cfg);
     const extra = lm == null ? {} : { "last-modified": new Date(lm).toUTCString() };
-    const ims = Date.parse(request.headers.get("if-modified-since") || "");
-    if (lm != null && !Number.isNaN(ims) && ims >= lm) return new Response(null, { status: 304, headers: htmlHeaders(extra) });
     const shared = await loadShared(env, url);
     const locale = pickLocale(localeKeys(shared.catalog), site.locale);
     const [dict, notices] = await Promise.all([loadDict(env, url, locale), loadNotices(env, url)]);
-    const body = renderDocument({ site, target, url, dict, shared, notices, config: cfg });
+    // Rendered before the If-Modified-Since check: whether a page exists (a plan type the agent offers, a page with
+    // content) is only known from the render, and a page that no longer exists must 404, never 304.
+    const body = renderDocument({ site, target: { ...target, path: clean }, url, dict, shared, notices, config: cfg });
+    if (body == null) return unavailablePage(request, env, url);
+    const ims = Date.parse(request.headers.get("if-modified-since") || "");
+    if (lm != null && !Number.isNaN(ims) && ims >= lm) return new Response(null, { status: 304, headers: htmlHeaders(extra) });
     return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: htmlHeaders(extra) });
   } catch (e) {
     console.error("render", e && e.message);
@@ -524,38 +541,66 @@ export function handleRobots(request) {
   return text(body, "text/plain; charset=utf-8", "public, max-age=3600");
 }
 
+const urlset = (entries) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map(([loc, lm]) => `<url><loc>${xml(loc)}</loc>${lm ? `<lastmod>${lm}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
+const XML = "application/xml; charset=utf-8";
+
+// One site's sitemap entries: every page it has (DECISIONS #122: Home, Insurance, each plan type, About, Contact, as
+// the renderer decides) and its privacy page, all with lastmod = published_at. base ends with "/".
+async function sitePageEntries(env, url, site, target, base) {
+  const shared = await loadShared(env, url);
+  const dict = await loadDict(env, url, pickLocale(localeKeys(shared.catalog), site.locale)).catch(() => ({}));
+  const lm = iso(site.published_at);
+  return [...sitePageList({ site, target, dict, shared }).map((p) => [base + p.path, lm]), [base + "privacy", lm]];
+}
+
+// /sitemap.xml: on a custom domain the urlset of that site's pages; on the primary host a sitemap index (one entry per
+// published site, from list_public_sites()) pointing at each site's own /a/<slug>/sitemap.xml (handleSiteSitemap),
+// because which pages a site has is only known from its content.
 export async function handleSitemap(request, env) {
   const url = new URL(request.url);
   const cfg = await loadConfig(env, url);
-  const urlset = (entries) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map(([loc, lm]) => `<url><loc>${xml(loc)}</loc>${lm ? `<lastmod>${lm}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
   if (url.host !== primaryHostOf(cfg, url)) {
-    // A custom domain lists its own two pages.
     const site = normalizeSite(await rpc(cfg, "get_public_site_by_host", { host: url.hostname }));
     if (!site) return missing();
-    const lm = iso(site.published_at), base = `https://${url.hostname}`;
-    return text(urlset([[base + "/", lm], [base + "/privacy", lm]]), "application/xml; charset=utf-8", "public, max-age=300");
+    return text(urlset(await sitePageEntries(env, url, site, { host: url.hostname }, `https://${url.hostname}/`)), XML, "public, max-age=300");
   }
   const rows = await rpc(cfg, "list_public_sites", {});
   if (!Array.isArray(rows)) throw new Error("list_public_sites: not an array");
   const base = (cfg.SITE_BASE_URL || url.origin).replace(/\/+$/, "");
-  const entries = rows.filter((r) => r && typeof r.slug === "string" && SLUG.test(r.slug)).slice(0, SITEMAP_MAX).map((r) => [`${base}/a/${r.slug}/`, iso(r.published_at)]);
-  return text(urlset(entries), "application/xml; charset=utf-8", "public, max-age=300");
+  const entries = rows.filter((r) => r && typeof r.slug === "string" && SLUG.test(r.slug)).slice(0, SITEMAP_MAX).map((r) => [`${base}/a/${r.slug}/sitemap.xml`, iso(r.published_at)]);
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map(([loc, lm]) => `<sitemap><loc>${xml(loc)}</loc>${lm ? `<lastmod>${lm}</lastmod>` : ""}</sitemap>`).join("\n")}\n</sitemapindex>\n`;
+  return text(body, XML, "public, max-age=300");
+}
+
+// /a/<slug>/sitemap.xml (primary host): the urlset of one site's pages, with the canonical base (SITE_BASE_URL).
+export async function handleSiteSitemap(request, env) {
+  const url = new URL(request.url);
+  const cfg = await loadConfig(env, url);
+  const slug = decodeURIComponent(url.pathname.split("/")[2] || "");
+  if (url.host !== primaryHostOf(cfg, url) || !SLUG.test(slug)) return missing();
+  const site = normalizeSite(await rpc(cfg, "get_public_site", { slug }));
+  if (!site) return missing();
+  const base = (cfg.SITE_BASE_URL || url.origin).replace(/\/+$/, "") + `/a/${slug}/`;
+  return text(urlset(await sitePageEntries(env, url, site, { slug }, base)), XML, "public, max-age=300");
 }
 
 const PORTAL_PATH = /^(\/a\/[^/]+)?\/my(\/.*)?$/;
 const JOIN_PATH = /^(\/a\/[^/]+)?\/join(\/.*)?$/;
-const PAGE_PATH = /^\/(a\/.*|privacy\/?)?$/;
+// Page routes: /a/<slug>/…, and on a custom domain / and its page paths (shared/site-pages.json; which ones reach the
+// Worker at all is wrangler.jsonc run_worker_first). A path with a dot (a file) is never a page.
+const PAGE_PATH = /^\/(a\/.*|[a-z][a-z0-9_/-]*)?$/;
+const SITE_SITEMAP = /^\/a\/[^/]+\/sitemap\.xml$/;
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
     const isGetHead = request.method === "GET" || request.method === "HEAD";
-    if (path === MANIFEST_PATH || path === "/robots.txt" || path === "/sitemap.xml") {
+    if (path === MANIFEST_PATH || path === "/robots.txt" || path === "/sitemap.xml" || SITE_SITEMAP.test(path)) {
       if (!isGetHead) return new Response(null, { status: 405, headers: headers({ allow: "GET, HEAD" }) });
       try {
         if (path === "/robots.txt") return handleRobots(request);
-        return await (path === "/sitemap.xml" ? handleSitemap : handleManifest)(request, env);
+        return await (path === "/sitemap.xml" ? handleSitemap : SITE_SITEMAP.test(path) ? handleSiteSitemap : handleManifest)(request, env);
       } catch (e) {
         console.error(path, e && e.message);
         return unavailable503();

@@ -3,7 +3,7 @@
 // chips, Add to home screen, and the view count. The head links (manifest, icons, apple title) are already in the HTML.
 import * as api from "./api.js";
 import { loadDict, makeT } from "./i18n.js";
-import { wireForm, consentFor } from "./form.js";
+import { wireForm, consentFor, preselectInterest } from "./form.js";
 
 const json = async (p) => (await fetch(p)).json();
 
@@ -38,6 +38,8 @@ export async function hydrate({ doc = document, loc = location, backend = api, f
   const profile = { full_name: boot.name || "", phone: boot.phone || "" };
   wireForm(root, { t, profile, site: { content: {} }, catalog, slug: target.slug, host: target.host, consent: consentFor(nf.notices, boot.locale), submit: backend.submitEnquiry });
   wireChips(root);
+  // Arrived from an "Enquire" link on another page (contact?interest=<key>#enq, DECISIONS #122): preselect it.
+  preselectInterest(root, q.get("interest"), catalog);
   // Never breaks the page. ?install=1 (the app's Website tab) opens the install sheet and isn't a visitor's view.
   import("./install.js").then((m) => m.wireInstall({ t, name: boot.name || "", forced: q.get("install") === "1" })).catch(() => {});
   if (q.get("install") !== "1") api.recordViewOnce(target, backend);

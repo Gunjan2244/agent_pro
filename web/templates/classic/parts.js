@@ -11,6 +11,7 @@ import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
 import { slider, ticker, numbers, bigNumber, topBar } from "../../sections/ui.js";
+import { planOrEnquire } from "../../sections/pages.js";
 
 const scene = (ctx) => `hero-scene-${(fnv1a32(ctx.seed || ctx.agentName || "") % 3) + 1}`;
 
@@ -83,7 +84,7 @@ export function services(d, ctx) {
   const rows = [...items, ...extra.map((k) => ({ interest: k }))];
   if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
-<ul class="plans stg">${rows.map((i) => `<li class="plan-c lift zoom">${interestPic(ctx, i.interest, { sizes: "(min-width: 1024px) 340px, (min-width: 720px) 50vw, 100vw" })}<div class="plan-b"><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}<a class="lnk ask" href="#contact" data-interest="${esc(i.interest)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></li>`).join("")}</ul>`;
+<ul class="plans stg">${rows.map((i) => `<li class="plan-c lift zoom">${interestPic(ctx, i.interest, { sizes: "(min-width: 1024px) 340px, (min-width: 720px) 50vw, 100vw" })}<div class="plan-b"><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}${planOrEnquire(ctx, i.interest, "lnk ask")}</div></li>`).join("")}</ul>`;
 }
 
 // Why choose me: the highlights as icon cards, three per view, sliding one card at a time.

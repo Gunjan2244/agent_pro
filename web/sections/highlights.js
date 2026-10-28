@@ -8,9 +8,9 @@ export function highlights(d, ctx) {
   if (ctx.family === "offers") {
     const st = stats((ctx.site.content || {}).about || {}, ctx);
     if (!items.length && !st.length) return "";
-    return `${head}<ul class="trust">${st.map((s) => `<li class="stat">${s}</li>`).join("")}${items.map((i) => `<li>${icon(i.icon)}<span>${esc(i.title)}</span></li>`).join("")}</ul>`;
+    return `${head}<ul class="trust">${st.map((s) => `<li class="stat">${s.replace("<strong>", '<strong class="cu">')}</li>`).join("")}${items.map((i) => `<li>${icon(i.icon)}<span>${esc(i.title)}</span></li>`).join("")}</ul>`;
   }
   if (!items.length) return "";
-  return `${head}<ul class="cards hl">${items
+  return `${head}<ul class="cards hl stg">${items
     .map((i) => `<li class="card">${icon(i.icon)}<h3>${esc(i.title)}</h3>${has(i.text) ? `<p>${esc(i.text)}</p>` : ""}</li>`).join("")}</ul>`;
 }

@@ -10,7 +10,9 @@ import { pic, interestPic, fnv1a32 } from "../../sections/media.js";
 import { icon } from "../../sections/icons.js";
 import { offerCard, planCard } from "../../sections/offer.js";
 import { planList } from "../../sections/offers.js";
-import { slider, tr } from "../../sections/ui.js";
+import { slider, tr, topBar } from "../../sections/ui.js";
+import { tagList } from "../../sections/services.js";
+import { pageHead, planOrEnquire } from "../../sections/pages.js";
 
 const HERO_MAX = 4;
 const heroList = (ctx) => (ctx.visible.has("offers") ? ctx.offers.all : ctx.offers.hero ? [ctx.offers.hero] : []).slice(0, HERO_MAX);
@@ -21,21 +23,29 @@ export function hero(d, ctx) {
   const side = list.length
     ? slider(list.map((o) => offerCard(o, ctx, { tag: "div", image: true, button: true, ttl: true })), ctx, { label: tr(ctx, "section.offers"), cls: "sl-hero", auto: 5500 })
     : pic(ctx, `hero-scene-${(fnv1a32(ctx.seed || ctx.agentName || "") % 3) + 1}`, { cls: "scene", sizes: "(min-width: 1024px) 440px, 100vw", eager: true });
-  // the trust bar: years and clients (counting), then the highlight titles with their icons
-  const c = ctx.site.content || {};
-  const st = stats(c.about || {}, ctx).map((s) => `<li class="stat">${s.replace("<strong>", '<strong class="cu">')}</li>`);
-  const hl = arr((c.highlights || {}).items).filter((i) => i && has(i.title)).map((i) => `<li>${icon(i.icon)}<span>${esc(i.title)}</span></li>`);
-  const bar = st.length || hl.length ? `<ul class="tbar">${[...st, ...hl].join("")}</ul>` : "";
+  // On a multi-page site the dark top bar above carries the name, the menu and the login (DECISIONS #122).
+  const top = ctx.pages ? "" : `<div class="hero-top"><div class="hero-id">${x.face}${x.who}</div>${x.login}</div>\n`;
   return `<div class="hero-band"><div class="hero-in">
-<div class="hero-top"><div class="hero-id">${x.face}${x.who}</div>${x.login}</div>
-<div class="hero-text enter">
+${top}<div class="hero-text enter">
 ${x.h1}
 ${x.lead}
 ${list.length ? chips(ctx, d) : x.button + x.chips}
 </div>
 <div class="hero-side">${side}</div>
-</div></div>${bar}`;
+</div></div>${trustBar(ctx)}`;
 }
+
+// The trust bar on the dark band's lower edge: years and clients (counting), then the highlight titles with icons.
+function trustBar(ctx) {
+  const c = ctx.site.content || {};
+  const st = stats(c.about || {}, ctx).map((s) => `<li class="stat">${s.replace("<strong>", '<strong class="cu">')}</li>`);
+  const hl = arr((c.highlights || {}).items).filter((i) => i && has(i.title)).map((i) => `<li>${icon(i.icon)}<span>${esc(i.title)}</span></li>`);
+  return st.length || hl.length ? `<ul class="tbar">${[...st, ...hl].join("")}</ul>` : "";
+}
+
+// Inner pages: the shared page header on the dark band, with the trust bar on its edge (every page, DECISIONS #122).
+export const pagehead = (ctx) => `<div class="hero-band">${pageHead(ctx)}</div>${trustBar(ctx)}`;
+export const before = (ctx) => topBar(ctx);
 
 // The offer wall: every offer but the featured one; the first spans two columns. With no offers, plan cards.
 export function offers(d, ctx) {
@@ -54,8 +64,8 @@ export function services(d, ctx) {
   const rows = [...items, ...extra.map((k) => ({ interest: k }))];
   if (!rows.length) return "";
   const head = `<h2>${esc(ctx.t("site.services_heading"))}</h2>`;
-  if (ctx.plansShown) return `${head}<ul class="tags">${rows.map((i) => `<li>${esc(interestLabel(ctx, i.interest))}</li>`).join("")}</ul>`;
-  return `${head}<ul class="tiles stg">${rows.map((i) => `<li class="tile zoom">${interestPic(ctx, i.interest, { sizes: "(min-width: 1024px) 260px, 50vw" })}<h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}<a class="lnk" href="#contact" data-interest="${esc(i.interest)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></li>`).join("")}</ul>`;
+  if (ctx.plansShown) return `${head}${tagList(rows.map((i) => i.interest), ctx)}`;
+  return `${head}<ul class="tiles stg">${rows.map((i) => `<li class="tile zoom">${interestPic(ctx, i.interest, { sizes: "(min-width: 1024px) 260px, 50vw" })}<h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}${planOrEnquire(ctx, i.interest)}</li>`).join("")}</ul>`;
 }
 
 // Why choose me: icon cards (the trust bar already carries the numbers and titles; these add the text).

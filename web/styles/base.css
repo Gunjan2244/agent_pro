@@ -190,8 +190,11 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 /* ---- bundled illustrations (docs/IMAGES.md) ---- */
 .scene{width:100%;max-width:400px;margin:calc(var(--space-l)*2) auto 0}
 
-/* ---- sticky Call / WhatsApp bar on phones. Fixed from the first paint; .has-bar reserves its height (CLS 0) ---- */
+/* ---- sticky Call / WhatsApp bar on phones. Fixed from the first paint; .has-bar reserves its height (CLS 0). callbar.js adds .cb-off (slid away, unfocusable) by the 70% / scroll-up rule; without it the bar stays visible ---- */
 .callbar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--space-s);padding:var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom));border-top:1px solid var(--c-outlineVariant);background:var(--c-surface)}
+.callbar.cb-ready{transition:transform var(--motion-medium) ease-out}
+.callbar.cb-off{transform:translateY(100%);visibility:hidden}
+.callbar.cb-ready.cb-off{transition:transform var(--motion-medium) ease-out,visibility 0s linear var(--motion-medium)}
 .tpl.has-bar{padding-bottom:calc(var(--space-l)*2 + var(--space-m) + env(safe-area-inset-bottom))}
 @media(min-width:720px){.callbar{display:none}.tpl.has-bar{padding-bottom:0}}
 
@@ -264,6 +267,15 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 @keyframes fade{from{opacity:0;transform:scale(1.03)}}
 .cu{font-variant-numeric:tabular-nums}
 .ask{margin-top:auto;padding-top:var(--space-s)}
+
+/* ---- pages (DECISIONS #122): the menu's current page; Home's teaser links and contact band. The inner pages'
+   shared layouts are in styles/pages.css, loaded only on those pages ---- */
+.tb-links a[aria-current],.tb-menu a[aria-current]{color:var(--accent);font-weight:600}
+.tb-links a[aria-current=page]{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:8px}
+.ph-act,.cb-acts{display:flex;flex-wrap:wrap;gap:var(--space-s)}
+.more-l{margin-top:var(--space-l)}
+.cband{display:grid;justify-items:start;gap:var(--space-m)}
+.cband .lead{margin:0}
 
 /* ---- platform and privacy pages ---- */
 .doc{max-width:720px;margin:0 auto;padding:var(--space-l) var(--space-m);display:grid;gap:var(--space-m);--accent:var(--c-primary);--on-accent:var(--c-onPrimary)}

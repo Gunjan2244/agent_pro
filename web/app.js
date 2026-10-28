@@ -13,4 +13,5 @@ if (root && root.hasAttribute("data-ssr")) {
   import("./hydrate.js").then((m) => m.hydrate());
   import("./reveal.js").then((m) => m.revealSections()).catch(() => {}); // cosmetic: never breaks the page
   import("./motion.js").then((m) => m.wireMotion()).catch(() => {}); // sliders, count-up, top bar (DECISIONS #117)
+  import("./callbar.js").then((m) => m.wireCallbar()).catch(() => {}); // sticky bar: past 70% or on scroll up (DECISIONS #123)
 } else if (q.get("preview") !== "1") import("./client.js").then((m) => m.boot());

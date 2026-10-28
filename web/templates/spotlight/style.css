@@ -68,3 +68,22 @@
 /* contact on the pale accent band */
 .tpl-spotlight .sec-contact{background:var(--tint);box-shadow:0 0 0 100vmax var(--tint)}
 .tpl-spotlight .foot{background:var(--tint);border-top:1px solid color-mix(in srgb,var(--accent) 20%,#fff)}
+
+/* pages (DECISIONS #122): the dark top bar runs into the dark band on every page (Home's hero, the inner pages'
+   header); the trust bar rides on the band's lower edge; light text on the ink */
+.tpl-spotlight .topbar{background:var(--ink)}
+.tpl-spotlight .topbar.up{border-color:#1F2937}
+.tpl-spotlight .tb-id{color:#fff}
+.tpl-spotlight .tb-links a{color:#CBD5E1}
+.tpl-spotlight .tb-links .tb-login a{color:var(--c-surface)}
+.tpl-spotlight .tb-links a:hover,.tpl-spotlight .tb-links a[aria-current]{color:#fff}
+.tpl-spotlight .tb-menu summary span,.tpl-spotlight .tb-menu summary span::before,.tpl-spotlight .tb-menu summary span::after{background:#fff}
+.tpl-spotlight .tb-menu[open] summary span{background:transparent}
+.tpl-spotlight .sec-ph{max-width:none;padding:0}
+.tpl-spotlight .ph-in{max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto;padding:0 var(--gutter)}
+.tpl-spotlight .sec-ph .crumb,.tpl-spotlight .sec-ph .crumb [aria-current]{color:#94A3B8}
+.tpl-spotlight .sec-ph .lead,.tpl-spotlight .sec-ph .prose,.tpl-spotlight .sec-ph .facts,.tpl-spotlight .sec-ph .ph-nums span,.tpl-spotlight .sec-ph .fact-k{color:#CBD5E1}
+.tpl-spotlight .sec-ph .kicker,.tpl-spotlight .sec-ph .ph-nums strong{color:#fff}
+.tpl-spotlight .sec-ph .btn.ghost,.tpl-spotlight .sec-ph .chip{background:transparent;border-color:rgb(255 255 255/.5);color:#fff}
+.tpl-spotlight .sec-ph .ph-photo.mono{background:rgb(255 255 255/.08);color:#fff}
+.tpl-spotlight .help{background:var(--tint)}

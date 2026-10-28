@@ -2,6 +2,15 @@
 
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
+## 2026-10-28 — Multi-page agent sites, a scroll-aware call bar and a bigger template preview (DECISIONS #122, #123; user request)
+- **Why:** the user asked for real multi-page sites (like an agent's Google Site: Home, Insurance, About, Contact, Login, a page per plan), for sharing pages across templates, for the Call / WhatsApp bar to appear only past 70% or on scroll up, and for more room for the template preview in the app (PRODUCT.md, 2026-10-28). Page wireframes (site map, Insurance, plan, About, Contact, five skins) were drawn on the shared design canvas first.
+- **Multi-page sites (#122):** `shared/site-pages.json` (the page model), `web/sections/pages.js` + `web/sections/links.js` + `web/styles/pages.css` (shared inner pages, skinned per template), routing in `route.js` / `worker.js` / `ssr.js` / `head.js` (per-page SSR, titles, canonicals, 301/404, a sitemap index of per-site sitemaps), `client.js` / `hydrate.js` / `form.js` (the fallback and preview page navigation, `?interest=` preselect), menus with `aria-current` in all five templates, `wrangler.jsonc` `run_worker_first` for the custom-domain page paths. New i18n keys (EN + HI) `site.page_*`, `site.plan_*`, `site.see_plan`, `site.more_about`, `site.contact_band_lead`, `site.contact_ways`, `site.help_*`. Budgets: Home first-paint CSS 34 → 36 KB raw; inner pages 44 KB raw / 11 KB gzip (new); client render 124 → 170 KB, with install 131 → 177 KB, privacy/legal 112 → 158 KB.
+- **Call bar (#123):** `web/callbar.js` (loaded by `app.js` and `client.js`; re-wiring removes the previous listeners), `.callbar` rules in `base.css`, `scripts/test-web-callbar.mjs`.
+- **App:** `TemplatePreviewBody` shows only the live preview (the name stays in the top bar); What's new item `MultiPageWebsite` (since 3, important, Show me → the website preview) with `whats_new_pages` / `whats_new_pages_body` (EN + HI); `HomeTest`, `WhatsNewWalkthroughUiTest`, `HomeScreenshotTest` updated. **Not compiled here (no Android SDK):** a Gradle build, the app tests and re-recorded baselines (`screens/OnboardingTemplate`, `OnboardingTemplateOffers`, `website/WebsiteTemplatePreview`, `home/WhatsNewWalkthrough*`, new `home/WhatsNewWalkthroughMultiPage`, all 4 variants) are still to run.
+- **Pictures:** `preview.webp` and the template page strips (now 15, Home only) regenerated.
+- **Verified:** web suite 746 checks, CSS lint, seed check; a browser sweep of all 5 pages × 5 templates × 390 / 1280 px (one `<h1>`, no horizontal overflow, no console errors, the current page marked); preview page navigation and the call bar checked in Chromium by the agents.
+- **Files:** see the commits on `feature/pages-callbar-preview`; docs PRODUCT, DECISIONS #122–#123, WEB_RENDERER, SHARED_DEFINITIONS, DESIGN_SYSTEM, ARCHITECTURE, UX, TESTING, STATUS.
+
 
 
 ## 2026-10-28 — Existing agents are walked through important news; first: the new templates (DECISIONS #121; user request)

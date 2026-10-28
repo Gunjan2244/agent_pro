@@ -25,5 +25,5 @@ export function about(d, ctx) {
     code ? `<li>${esc(code)}</li>` : "",
   ].join("");
   return `<h2>${esc(ctx.t("section.about"))}</h2>
-<div class="about-b">${has(d.designation) ? `<p class="kicker">${esc(d.designation)}</p>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}${st.length ? `<ul class="stats">${st.map((s) => `<li>${s}</li>`).join("")}</ul>` : ""}${facts ? `<ul class="facts">${facts}</ul>` : ""}</div>`;
+<div class="about-b">${has(d.designation) ? `<p class="kicker">${esc(d.designation)}</p>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}${st.length ? `<ul class="stats">${st.map((s) => `<li>${s.replace("<strong>", '<strong class="cu">')}</li>`).join("")}</ul>` : ""}${facts ? `<ul class="facts">${facts}</ul>` : ""}</div>`;
 }

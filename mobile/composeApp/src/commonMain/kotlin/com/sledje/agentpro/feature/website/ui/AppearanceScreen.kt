@@ -163,6 +163,6 @@ fun TemplatePreviewScreen(
             )
         },
     ) { padding ->
-        TemplatePreviewBody(template, Modifier.padding(padding), preview)
+        TemplatePreviewBody(Modifier.padding(padding), preview)
     }
 }

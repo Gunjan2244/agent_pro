@@ -43,11 +43,13 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
   ok("classic: top bar (face, name, links to rendered sections, one Call button, a phone menu); banner with the scene, dark panel (56 px photo, name, <h1>, one button + WhatsApp, chips); trust ticker", () => {
     const h = html(en, "classic"), top = topOf(h), hero = heroOf(h);
     assert.ok(top.startsWith('<div class="tpl tpl-classic fam-personal has-bar" style="--accent:#') && top.includes('<div class="topbar"><div class="tb-in"><a class="tb-id" href="#hero"><img class="tb-ph"'));
-    assert.deepEqual([...top.matchAll(/<ul class="tb-links">([\s\S]*?)<\/ul>/g)].length, 1);
-    const links = [...top.match(/<ul class="tb-links">([\s\S]*?)<\/ul>/)[1].matchAll(/href="#([a-z]+)"/g)].map((m) => m[1]);
-    assert.deepEqual(links, ["about", "services", "offers", "testimonials", "faq", "contact"]);
-    for (const k of links) assert.ok(h.includes(`id="${k}"`), k);
-    assert.ok(top.includes(`<a class="btn tb-cta" href="tel:+919876543210">${dicts.en["site.call"]}</a>`) && top.includes('<details class="tb-menu"><summary aria-label="' + dicts.en["site.menu"] + '">'));
+    // one page (no tokens.sitePages): no page links, no section anchors (the menu is the site's pages, DECISIONS #122)
+    assert.ok(!/href="#(about|services|offers|faq|contact)"/.test(top));
+    const mp = topOf(html(en, "classic", "en", { sitePages: R("shared/site-pages.json"), privacyHref: "/a/demo/privacy" }));
+    assert.deepEqual([...mp.matchAll(/<ul class="tb-links">([\s\S]*?)<\/ul>/g)].length, 1);
+    const links = [...mp.match(/<ul class="tb-links">([\s\S]*?)<\/ul>/)[1].matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(links, ["/a/demo/", "/a/demo/insurance", "/a/demo/about", "/a/demo/contact", "/a/demo/my/login"]);
+    assert.ok(mp.includes(`<a class="btn tb-cta" href="tel:+919876543210">${dicts.en["site.call"]}</a>`) && mp.includes('<details class="tb-menu"><summary aria-label="' + dicts.en["site.menu"] + '">'));
     assert.ok(/^id="hero"><div class="banner"><img class="bn-img fade" src="\/images\/hero-scene-\d-800\.webp"/.test(hero));
     assert.ok(/<div class="bn-panel enter">\n<div class="hero-id"><img class="hero-photo" src="[^"]+" width="56" height="56"[^>]*fetchpriority="high"[^>]*><p class="who"><strong>Asha Verma<\/strong>/.test(hero));
     assert.equal(count(hero, /class="btn"/g), 1); assert.ok(hero.includes('<a class="btn ghost" href="https://wa.me/919876543210" rel="noopener">'));
@@ -169,7 +171,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
     const s = fx("sample-empty"), ctx = makeCtx(s, t, tok(s, "classic"), "classic");
     ctx.rendered = ["hero", "contact"];
     const bar = topBar(ctx);
-    assert.ok(!bar.includes('href="#about"') && bar.includes('<li><a href="#contact">'));
+    assert.ok(!bar.includes('href="#about"') && !bar.includes('class="tb-links"'), "one page: no menu links");
   });
   ok("motion.js: under prefers-reduced-motion nothing autoplays or counts; a slider of one slide is left alone", async () => {
     const { wireMotion } = await import("../web/motion.js");

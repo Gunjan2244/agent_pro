@@ -14,8 +14,10 @@
     "binding": "ASSETS",
     // every unknown path serves /index.html with 200: the shell the Worker falls back to, and /terms
     "not_found_handling": "single-page-application",
-    // an explicit list, so static assets never invoke the Worker
-    "run_worker_first": ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]
+    // an explicit list, so static assets never invoke the Worker. The site pages of a custom domain (/insurance,
+    // /insurance/<type>, /about, /contact, each also with a trailing slash for the 301) follow shared/site-pages.json
+    // (DECISIONS #122; test-web-pages.mjs checks that every page path is listed).
+    "run_worker_first": ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]
   },
   // Throttles the portal's POSTs per client IP (10 per 60 s); worker.js skips the check when the binding is absent.
   // namespace_id is any unique integer string in the account. Unverified against the wrangler schema (see the changelog).

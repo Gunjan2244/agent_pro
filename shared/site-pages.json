@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "teaserItems": 6,
+  "pages": [
+    {
+      "key": "home",
+      "path": "",
+      "labelKey": "site.page_home",
+      "sections": ["hero", "offers", "services", "about", "highlights", "contact"],
+      "teasers": ["services", "about", "contact"]
+    },
+    {
+      "key": "insurance",
+      "path": "insurance",
+      "labelKey": "site.page_insurance",
+      "titleKey": "site.page_insurance_title",
+      "leadKey": "site.page_insurance_lead",
+      "sections": ["services", "offers"],
+      "helpBand": true
+    },
+    {
+      "key": "plan",
+      "path": "insurance/{interest}",
+      "parent": "insurance",
+      "sections": ["offers", "plans"],
+      "helpBand": true
+    },
+    {
+      "key": "about",
+      "path": "about",
+      "labelKey": "site.page_about",
+      "titleKey": "site.page_about",
+      "headerSection": "about",
+      "sections": ["about", "companies", "highlights", "achievements", "testimonials"],
+      "helpBand": true
+    },
+    {
+      "key": "contact",
+      "path": "contact",
+      "labelKey": "site.page_contact",
+      "titleKey": "site.page_contact_title",
+      "leadKey": "site.page_contact_lead",
+      "sections": ["contact", "faq", "portal"],
+      "order": "page",
+      "pair": ["faq", "portal"]
+    }
+  ]
+}

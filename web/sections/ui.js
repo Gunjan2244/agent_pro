@@ -5,6 +5,8 @@
 import { esc, has, tel } from "./util.js";
 import { initials } from "./media.js";
 import { portalLogin } from "./portal-promo.js";
+import { pageHref, contactHref } from "./links.js";
+import { pageUrl } from "../route.js";
 
 // A translation, or "" while the dictionary lacks it (never a raw key on a site).
 export const tr = (ctx, key, p) => { const s = ctx.t(key, p); return s && s !== key ? s : ""; };
@@ -32,28 +34,36 @@ export function ticker(items, { cls = "", label = "" } = {}) {
   return `<div class="ticker${cls ? " " + cls : ""}" style="--tk:${secs}s"${label ? ` role="region" aria-label="${esc(label)}"` : ""}><ul class="tk-run">${run}</ul><ul class="tk-run" aria-hidden="true">${run}</ul></div>`;
 }
 
-// The sections a top bar may link to, in page order; only sections that rendered get a link (ctx.rendered, compose).
-const NAV = [["about", "section.about"], ["services", "section.services"], ["offers", "section.offers"], ["testimonials", "section.testimonials"], ["faq", "section.faq"], ["contact", "section.contact"]];
+// The page menu (DECISIONS #122): one link per page of the site that has a menu label (Home, Insurance, About me,
+// Contact; plan-type pages are reached from Insurance), the current page marked aria-current="page" (its parent
+// "true" on a plan page), then "Customer login" while the portal is on. One page (no ctx.pages): the login only.
+export function menuItems(ctx, { login = true } = {}) {
+  const li = (ctx.pages || []).filter((p) => !p.plan && tr(ctx, p.def.labelKey)).map((p) => {
+    const cur = ctx.page && ctx.page.key === p.key ? ' aria-current="page"' : ctx.page && ctx.page.def.parent === p.key ? ' aria-current="true"' : "";
+    return `<li><a href="${esc(pageUrl(ctx.links, p.path))}"${cur}>${esc(tr(ctx, p.def.labelKey))}</a></li>`;
+  }).join("");
+  const href = portalLogin(ctx), label = tr(ctx, "site.header_portal");
+  return li + (login && href && label ? `<li class="tb-login"><a href="${esc(href)}" rel="nofollow">${esc(label)}</a></li>` : "");
+}
+// The phone menu: a <details> button that drops the same list down (motion.js closes it after a tap).
+export const phoneMenu = (ctx, items, cls = "tb-menu") =>
+  items ? `<details class="${cls}"><summary aria-label="${esc(tr(ctx, "site.menu") || ctx.t("site.cta_default"))}"><span></span></summary><ul>${items}</ul></details>` : "";
 
-// The top bar: the agent's face and name (a link to the top), section links (a row from 1024 px, a menu on phones),
-// "Customer login" when the portal is on, and one Call button. opts.links = false: no section links (guide).
-export function topBar(ctx, { links = true, cta = "call" } = {}) {
+// The top bar: the agent's face and name (a link to Home), the page menu (a row from 1024 px, a menu button on
+// phones) and one button: Call, or (cta "contact", or no phone) the way to the contact form.
+export function topBar(ctx, { cta = "call" } = {}) {
   const { t, profile: p } = ctx;
   const ini = initials(p.full_name);
   const face = ctx.photo
     ? `<img class="tb-ph" src="${ctx.photo}" width="36" height="36" alt="" decoding="async">`
     : ini ? `<span class="tb-ph mono" aria-hidden="true">${esc(ini)}</span>` : "";
-  const order = [...(ctx.rendered || [])];
-  const items = links ? NAV.filter(([k]) => order.includes(k)).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])) : [];
-  const li = items.map(([k, key]) => `<li><a href="#${k}">${esc(t(key))}</a></li>`).join("");
-  const login = portalLogin(ctx), loginLabel = tr(ctx, "site.header_portal");
-  const loginLi = login && loginLabel ? `<li class="tb-login"><a href="${esc(login)}" rel="nofollow">${esc(loginLabel)}</a></li>` : "";
+  const items = menuItems(ctx);
   const call = tel(ctx.phone);
   const btn = cta === "call" && call
     ? `<a class="btn tb-cta" href="${call}">${esc(t("site.call"))}</a>`
-    : ctx.visible.has("contact") ? `<a class="btn tb-cta" href="#contact">${esc(t("site.cta_default"))}</a>` : "";
-  const menu = li || loginLi ? `<details class="tb-menu"><summary aria-label="${esc(tr(ctx, "site.menu") || t("site.cta_default"))}"><span></span></summary><ul>${li}${loginLi}</ul></details>` : "";
-  return `<div class="topbar"><div class="tb-in"><a class="tb-id" href="#hero">${face}<span>${esc(p.full_name || "")}</span></a>${li || loginLi ? `<ul class="tb-links">${li}${loginLi}</ul>` : ""}${btn}${menu}</div></div>`;
+    : ctx.allVisible.has("contact") ? `<a class="btn tb-cta" href="${esc(contactHref(ctx))}">${esc(t("site.cta_default"))}</a>` : "";
+  const home = ctx.pages ? pageHref(ctx, "home") || "#top" : "#hero";
+  return `<div class="topbar"><div class="tb-in"><a class="tb-id" href="${esc(home)}">${face}<span>${esc(p.full_name || "")}</span></a>${items ? `<ul class="tb-links">${items}</ul>` : ""}${btn}${phoneMenu(ctx, items)}</div></div>`;
 }
 
 // Years and clients as {n, label} (only when set; never invented, DECISIONS #78). label is the translated text

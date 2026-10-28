@@ -39,6 +39,7 @@ import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.PrimaryButton
 import com.sledje.agentpro.resources.Res
 import com.sledje.agentpro.resources.ic_arrow_forward
+import com.sledje.agentpro.resources.ic_description
 import com.sledje.agentpro.resources.ic_person
 import com.sledje.agentpro.resources.ic_savings
 import com.sledje.agentpro.resources.ic_web
@@ -48,6 +49,8 @@ import com.sledje.agentpro.resources.whats_new_got_it
 import com.sledje.agentpro.resources.whats_new_next
 import com.sledje.agentpro.resources.whats_new_not_now
 import com.sledje.agentpro.resources.whats_new_page
+import com.sledje.agentpro.resources.whats_new_pages
+import com.sledje.agentpro.resources.whats_new_pages_body
 import com.sledje.agentpro.resources.whats_new_show_me
 import com.sledje.agentpro.resources.whats_new_templates
 import com.sledje.agentpro.resources.whats_new_templates_body
@@ -108,6 +111,9 @@ enum class WhatsNewItem(
 
     /** The redesigned templates (#117) changed every site's look; the grid (#120) lets the agent pick another. */
     NewTemplates(2, FeatureId.SiteBuilder, Res.string.whats_new_templates, Res.drawable.ic_web, walkthrough = true, body = Res.string.whats_new_templates_body),
+
+    /** Every public website became multi-page (#122): Home, Insurance with a page per plan type, About me, Contact. */
+    MultiPageWebsite(3, FeatureId.SiteBuilder, Res.string.whats_new_pages, Res.drawable.ic_description, walkthrough = true, body = Res.string.whats_new_pages_body),
 }
 
 /** The sheet's body (the frame, with its "What's new" title, is the shared bottom sheet). */

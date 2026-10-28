@@ -100,3 +100,27 @@
 .tpl-classic .foot{background:var(--ink);color:#9CA3AF;padding-top:calc(var(--space-l)*2);padding-bottom:calc(var(--space-l)*2)}
 .tpl-classic .foot p:first-child{color:#fff;font-weight:600}
 .tpl-classic .foot a{color:#E5E7EB}
+
+/* pages (DECISIONS #122): a tinted, centred page header with the short accent rule (the split headers, plan and
+   About, stay left-aligned); soft cards; the help band on the deep accent */
+.tpl-classic .sec-ph{max-width:none;padding:calc(var(--space-l)*2) var(--gutter);background:var(--tint)}
+.tpl-classic .ph-in{max-width:var(--wrap);margin:0 auto;text-align:center}
+.tpl-classic .ph-in .crumb,.tpl-classic .ph-in .qr,.tpl-classic .ph-act{justify-content:center}
+.tpl-classic .ph-in .lead{margin-inline:auto}
+.tpl-classic .sec-ph h1::after{content:"";display:block;width:40px;height:3px;margin:var(--space-m) auto 0;border-radius:2px;background:var(--accent)}
+.tpl-classic .ph-split{text-align:left}
+.tpl-classic .ph-split .crumb,.tpl-classic .ph-split .ph-act{justify-content:flex-start}
+.tpl-classic .ph-split h1::after{margin-left:0}
+.tpl-classic .help{justify-items:center;text-align:center;background:var(--deep);color:#E5E7EB}
+.tpl-classic .help h2{color:#fff}
+.tpl-classic .help .lead{color:#E5E7EB;margin-inline:auto}
+.tpl-classic .help .btn.ghost,.tpl-classic .sec-ph .ph-split .btn.ghost{background:transparent;border-color:#fff;color:#fff}
+.tpl-classic .sec-ph .ph-split .btn.ghost{border-color:var(--accent);color:var(--accent)}
+.tpl-classic .ptype a,.tpl-classic .icards .card{border:0;border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
+.tpl-classic .help .btn:not(.ghost){border-color:#fff;background:#fff;color:var(--accent)}
+.tpl-classic .note{margin-inline:auto}
+.tpl-classic .pchips{justify-content:safe center}
+.tpl-classic .cp-info h2{text-align:left}
+.tpl-classic .cp-info h2::after{margin-left:0}
+.tpl-classic .cband,.tpl-classic .more-l{justify-items:center;text-align:center}
+.tpl-classic .cband .lead{margin-inline:auto}

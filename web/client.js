@@ -5,10 +5,10 @@
 import * as api from "./api.js";
 import { loadDict, makeT, localeKeys, pickLocale } from "./i18n.js";
 import { headData, applyHead } from "./head.js";
-import { wireForm, consentFor } from "./form.js";
+import { wireForm, consentFor, preselectInterest } from "./form.js";
 import { recordViewOnce, normalizeOffers, normalizeCompanies } from "./api.js";
-import { resolveTarget as resolve, siteLinks } from "./route.js";
-import { makeCtx } from "./sections/index.js";
+import { resolveTarget as resolve, siteLinks, matchPage, previewHash } from "./route.js";
+import { makeCtx, pageMeta } from "./sections/index.js";
 import { esc } from "./sections/util.js";
 
 const cfg = window.AGENTPRO_CONFIG || {};
@@ -46,14 +46,15 @@ async function unavailable(wanted, generic) {
 let notices;
 const loadNotices = () => (notices ||= json("/shared/generated/privacy-notices.json").catch(() => ({ notices: {} })));
 let shared;
-const loadShared = () => (shared ||= Promise.all([json("/shared/site-schema.json"), json("/shared/catalog.json"), json("/shared/templates/index.json")]));
+const loadShared = () => (shared ||= Promise.all([json("/shared/site-schema.json"), json("/shared/catalog.json"), json("/shared/templates/index.json"), json("/shared/site-pages.json")]));
 // web/images/manifest.json: optional; the renderer draws only the illustrations listed there.
 let images;
 const loadImages = () => (images ||= json("/images/manifest.json").then((m) => (m && typeof m === "object" && !Array.isArray(m) ? m : {})).catch(() => ({})));
 const familyOf = (templates, key) => ((templates.templates || []).find((x) => x.key === key) || {}).family || "personal";
 
-export async function show(site, target = {}) {
-  const [schema, catalog, templates] = await loadShared();
+// page: route.js matchPage() result (DECISIONS #122; default Home). Returns null when the site has no such page.
+export async function show(site, target = {}, page = null) {
+  const [schema, catalog, templates, pages] = await loadShared();
   const tkeys = templates.templates.slice().sort((a, b) => a.order - b.order).map((x) => x.key);
   const key = tkeys.includes(site.template_key) ? site.template_key : tkeys[0];
   const swatch = (catalog.accentSwatches || []).find((s) => s.key === site.accent) || (catalog.accentSwatches || [])[0];
@@ -64,13 +65,16 @@ export async function show(site, target = {}) {
   const notice = (nf.notices || {}).enquiry_form;
   const links = target.slug || target.host ? siteLinks(target) : { privacy: "#" };
   const family = familyOf(templates, key);
-  const tokens = { accent: swatch ? swatch.hex : "var(--c-primary)", schema, catalog, notice, privacyHref: links.privacy, family, images: imgs, seed: target.slug || target.host || "" };
+  const tokens = { accent: swatch ? swatch.hex : "var(--c-primary)", schema, catalog, notice, privacyHref: links.privacy, family, images: imgs, seed: target.slug || target.host || "", sitePages: pages, page: page || matchPage(pages, "") };
+  const html = mod.render(site, t, tokens);
+  if (!html) return null;
   document.documentElement.lang = locale;
-  root.innerHTML = mod.render(site, t, tokens);
+  root.innerHTML = html;
   root.removeAttribute("aria-busy");
   import("./motion.js").then((m) => m.wireMotion()).catch(() => {}); // sliders, count-up, top bar: cosmetic, never blocks
   import("./reveal.js").then((m) => m.revealSections()).catch(() => {});
-  const ctx = Object.assign(makeCtx(site, t, tokens, key), { slug: target.slug, host: target.host, consent: consentFor(nf.notices, locale), images: imgs, family });
+  import("./callbar.js").then((m) => m.wireCallbar()).catch(() => {}); // DECISIONS #123
+  const ctx = Object.assign(makeCtx(site, t, tokens, key), { slug: target.slug, host: target.host, consent: consentFor(nf.notices, locale), images: imgs, family, meta: pageMeta(site, t, tokens, tokens.page) });
   return ctx;
 }
 
@@ -109,11 +113,15 @@ async function boot() {
   } catch { return unavailable(lang, true); }
   if (!site) return unavailable(lang);
   if (target.page === "privacy") return showPrivacy(site, target).catch(() => unavailable(site.locale || lang, true));
-  const ctx = await show(site, target);
+  // The site page (DECISIONS #122): an unknown path, or a page this site doesn't have, is "This page isn't available".
+  const page = matchPage((await loadShared())[3], String(target.path || "").replace(/\/+$/, ""));
+  const ctx = page && (await show(site, target, page));
+  if (!ctx) return unavailable(site.locale || lang);
   // One URL form: /a/<slug>/ (the same as the Worker's 301, the canonical URL and the manifest scope).
-  const path = target.slug ? "/a/" + encodeURIComponent(target.slug) + "/" : location.pathname;
-  applyHead(headData(site, { origin: location.origin, path, canonicalHost: target.host || site.canonical_host || null, noindex: q.get("install") === "1", t: ctx.t, catalog: ctx.catalog, schema: ctx.schema, images: ctx.images, family: ctx.family }));
+  const path = target.slug ? "/a/" + encodeURIComponent(target.slug) + "/" : "/";
+  applyHead(headData(site, { origin: location.origin, path, canonicalHost: target.host || site.canonical_host || null, noindex: q.get("install") === "1", t: ctx.t, catalog: ctx.catalog, schema: ctx.schema, images: ctx.images, family: ctx.family, page: ctx.meta }));
   wireForm(root, Object.assign(ctx, { submit: backend.submitEnquiry }));
+  preselectInterest(root, q.get("interest"), ctx.catalog);
   installable(site, target, ctx.t).catch(() => {}); // never breaks the page
   // ?install=1 is the agent coming from the app (Website tab: Add to home screen), so it isn't a visitor's view.
   if (q.get("install") !== "1") recordView(target);
@@ -135,10 +143,27 @@ async function installable(site, target, t) {
 const recordView = (target) => recordViewOnce(target, backend);
 
 // In-app preview (WebView): ?preview=1 skips resolution; the app calls renderSite(draftJson) (defined by app.js).
+// Its page links are "#p=<path>[&interest=<key>]" (route.js linksFrom("#")): a hash change re-renders the stored draft
+// on that page, with no network fetch (DECISIONS #122); the app calling renderSite again keeps the page in view. Any
+// other hash (an in-page anchor such as #need-term) is left to the browser.
+let draft = null, previewWired = false;
+async function showDraft() {
+  if (!draft) return;
+  const want = previewHash(location.hash) || { path: "", interest: "" };
+  const pages = (await loadShared())[3];
+  let ctx = await show(draft, {}, matchPage(pages, want.path) || matchPage(pages, ""));
+  if (!ctx) ctx = await show(draft, {}, matchPage(pages, "")); // the page went away with the edit: Home
+  if (!ctx) return;
+  wireForm(root, Object.assign(ctx, { submit: async () => ({ status: "ok" }) }));
+  if (want.interest) preselectInterest(root, want.interest, ctx.catalog);
+  const enq = want.interest && document.getElementById("enq");
+  if (enq) enq.scrollIntoView(); else if (previewHash(location.hash)) window.scrollTo(0, 0);
+}
 export async function renderSite(input) {
   const site = typeof input === "string" ? JSON.parse(input) : input;
   const company = site.company && typeof site.company.disclaimer === "string" ? { disclaimer: site.company.disclaimer } : null;
-  const ctx = await show({ ...site, profile: site.profile || {}, offers: normalizeOffers(site.offers), company, companies: normalizeCompanies(site.companies) });
-  wireForm(root, Object.assign(ctx, { submit: async () => ({ status: "ok" }) }));
+  draft = { ...site, profile: site.profile || {}, offers: normalizeOffers(site.offers), company, companies: normalizeCompanies(site.companies) };
+  if (!previewWired) { previewWired = true; window.addEventListener("hashchange", () => { if (previewHash(location.hash)) showDraft(); }); }
+  await showDraft();
 }
 export { boot };

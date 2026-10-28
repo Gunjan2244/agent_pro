@@ -76,3 +76,29 @@
 .tpl-minimal .contact-info .actions{display:none}
 .tpl-minimal .pp{padding:var(--space-l);border-radius:var(--shape-lg);background:var(--c-surface);border:1px solid var(--c-outlineVariant)}
 .tpl-minimal .foot{margin-top:calc(var(--space-l)*2);padding-left:0;padding-right:0;background:transparent;border-top:1px solid var(--c-outlineVariant)}
+
+/* pages (DECISIONS #122): the profile card holds the page menu (a list in the pinned card, the current page bold; a
+   row of tabs under the card on phones); inner pages read as text rows, their header in the résumé column */
+.tpl-minimal .sec-ph{padding:0;border:0}
+.tpl-minimal .sec-ph .intro{padding-bottom:var(--sec-y)}
+.tpl-minimal .pc-nav{display:flex;gap:var(--space-m);overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-minimal .pc-nav a{display:block;padding:var(--space-s) 0;border-bottom:2px solid transparent;color:var(--c-onSurfaceVariant);font-weight:500;text-decoration:none;white-space:nowrap}
+.tpl-minimal .pc-nav a[aria-current]{border-color:var(--accent);color:var(--c-onSurface);font-weight:700}
+.tpl-minimal .ptypes{grid-template-columns:1fr;gap:0}
+.tpl-minimal .ptype a{padding:var(--space-m) 0;border:0;border-bottom:1px solid var(--c-outlineVariant);border-radius:0;background:none}
+.tpl-minimal .pt-b{padding:0}
+.tpl-minimal .icards{grid-template-columns:1fr}
+.tpl-minimal .icards .card{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:var(--space-m);padding:0;border:0;background:none}
+.tpl-minimal .icards .ico{grid-row:span 2;margin:0}
+.tpl-minimal .tline{display:block;border:0}
+.tpl-minimal .tline li{grid-template-columns:72px minmax(0,1fr);gap:var(--space-m);padding:var(--space-m) 0;border-bottom:1px solid var(--c-outlineVariant)}
+.tpl-minimal .tline li::before{display:none}
+.tpl-minimal .help{border:1px solid var(--c-outlineVariant);background:var(--c-surface)}
+.tpl-minimal .cp-grid{grid-template-columns:1fr}
+@media(max-width:1023px){.tpl-minimal .pc-nav{grid-column:1/-1;order:9}}
+@media(min-width:1024px){
+  .tpl-minimal .sec-ph{display:contents}
+  .tpl-minimal .pc-nav{display:grid;gap:0;border:0;border-top:1px solid var(--c-outlineVariant)}
+  .tpl-minimal .pc-nav a{border:0;border-bottom:1px solid var(--c-outlineVariant)}
+  .tpl-minimal .duo{grid-column:2;display:block;padding:0}
+}

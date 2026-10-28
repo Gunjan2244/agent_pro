@@ -66,3 +66,15 @@
 .tpl-guide .bigq blockquote::before{content:"\201C";display:block;color:var(--accent);font-size:var(--text-xl);line-height:var(--line-l);font-weight:700}
 .tpl-guide .bigq figcaption{margin-top:var(--space-m);color:var(--c-muted)}
 @media(min-width:1024px){.tpl-guide .bigq blockquote{font-size:var(--text-l);line-height:var(--line-l)}}
+
+/* pages (DECISIONS #122): a tinted, centred page header (the split headers stay left-aligned); the green trust
+   ticker before the footer of every inner page */
+.tpl-guide .sec-ph{max-width:none;padding:calc(var(--space-l)*2) var(--gutter);background:var(--tint)}
+.tpl-guide .ph-in{max-width:var(--wrap);margin:0 auto;text-align:center}
+.tpl-guide .ph-in .crumb,.tpl-guide .ph-in .qr,.tpl-guide .ph-act{justify-content:center}
+.tpl-guide .ph-in .lead{margin-inline:auto}
+.tpl-guide .ph-split{text-align:left}
+.tpl-guide .ph-split .crumb,.tpl-guide .ph-split .ph-act{justify-content:flex-start}
+.tpl-guide .ph-photo.mono{background:var(--c-surface)}
+.tpl-guide .g-trust{margin-top:var(--sec-y)}
+.tpl-guide .need-h .lnk{display:inline-block;margin-top:var(--space-s)}

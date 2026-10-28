@@ -220,6 +220,8 @@
     <string name="whats_new_got_it">Got it</string>
     <string name="whats_new_templates">5 new website designs</string>
     <string name="whats_new_templates_body">Your website has a fresh new look. See all five designs and pick the one you like.</string>
+    <string name="whats_new_pages">Your website now has pages</string>
+    <string name="whats_new_pages_body">Home, Insurance (with a page for each plan), About me and Contact. Your menu links them, and each page can be found on Google.</string>
     <string name="whats_new_show_me">Show me</string>
     <string name="whats_new_next">Next</string>
     <string name="whats_new_not_now">Not now</string>

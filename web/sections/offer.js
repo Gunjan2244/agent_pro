@@ -2,6 +2,7 @@
 // `offers` ({featured, items}); the public payload has no company name or logo, and this file never reads one.
 import { esc, has, arr, tel, httpsUrl, interestLabel } from "./util.js";
 import { pic, interestPic } from "./media.js";
+import { contactHref } from "./links.js";
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 // Today in Asia/Kolkata as YYYY-MM-DD (a tab left open over midnight hides an offer that has just ended).
@@ -42,7 +43,7 @@ export function offerCta(o, ctx, cls = "lnk") {
   if (c.kind === "enquire") {
     const k = c.interest ?? o.interest;
     const di = interestLabel(ctx, k) ? ` data-interest="${esc(k)}"` : "";
-    return `<a class="${cls}" href="#contact"${di}>${esc(t("site.offer_cta_enquire"))}</a>`;
+    return `<a class="${cls}" href="${esc(contactHref(ctx, di ? k : ""))}"${di}>${esc(t("site.offer_cta_enquire"))}</a>`;
   }
   if (c.kind === "call") {
     const href = tel(ctx.phone);
@@ -94,5 +95,5 @@ export function planCard(key, desc, ctx, opts = {}) {
   if (!label) return "";
   const img = interestPic(ctx, key, { sizes: "(min-width: 1024px) 280px, (min-width: 720px) 420px, 100vw" });
   return `<li class="offer plan">${img}<div class="offer-b">${opts.noTitle ? "" : `<h3>${esc(label)}</h3>`}${!opts.noDesc && has(desc) ? `<p class="sum">${esc(desc)}</p>` : ""}
-<a class="lnk" href="#contact" data-interest="${esc(key)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></li>`;
+<a class="lnk" href="${esc(contactHref(ctx, key))}" data-interest="${esc(key)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></li>`;
 }

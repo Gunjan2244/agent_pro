@@ -6,21 +6,25 @@ import { initials, pic, fnv1a32 } from "./media.js";
 import { offerCard } from "./offer.js";
 import { needGroups } from "./offers.js";
 import { heroLogin } from "./portal-promo.js";
+import { contactHref, planHref, pageHref } from "./links.js";
 
 const MAX_CHIPS = 4;
+// A guide need group: its anchor on the page, or (multi-page) its plan type's page; "other" stays the anchor.
+export const needHref = (ctx, key) => planHref(ctx, key) || (ctx.pages ? pageHref(ctx, "insurance", { anchor: "offers" }) || "#need-" + key : "#need-" + key);
 
 export function chips(ctx, d) {
   const { t } = ctx;
   // Guide: "What would you like to protect?" jumps to the anchored groups of the offers section (no JS needed).
+  // On a multi-page site (DECISIONS #122) a group links to its plan type's page instead.
   if (ctx.layout === "needs" && ctx.visible.has("offers")) {
     const g = needGroups(ctx);
-    if (g.length) return `<p class="qr-h">${esc(t("site.guide_question"))}</p><ul class="qr">${g.map((x) => `<li><a class="chip" href="#need-${esc(x.key)}">${esc(interestLabel(ctx, x.key))}</a></li>`).join("")}</ul>`;
+    if (g.length) return `<p class="qr-h">${esc(t("site.guide_question"))}</p><ul class="qr">${g.map((x) => `<li><a class="chip" href="${esc(needHref(ctx, x.key))}">${esc(interestLabel(ctx, x.key))}</a></li>`).join("")}</ul>`;
   }
   const sv = (ctx.site.content || {}).services || {};
   const keys = [...new Set(arr(sv.offered))].filter((k) => interestLabel(ctx, k)).slice(0, MAX_CHIPS);
   if (!keys.length) return "";
-  // Without JS they just jump to the form; hydrate.js also preselects the interest.
-  return `<p class="qr-h">${esc(t("site.quick_reply_heading"))}</p><ul class="qr">${keys.map((k) => `<li><a class="chip" href="#contact" data-interest="${esc(k)}">${esc(interestLabel(ctx, k))}</a></li>`).join("")}</ul>`;
+  // Without JS they just go to the form (the contact page, the interest in the query); hydrate.js also preselects it.
+  return `<p class="qr-h">${esc(t("site.quick_reply_heading"))}</p><ul class="qr">${keys.map((k) => `<li><a class="chip" href="${esc(contactHref(ctx, k))}" data-interest="${esc(k)}">${esc(interestLabel(ctx, k))}</a></li>`).join("")}</ul>`;
 }
 
 // Offers family: one of the 3 bundled scenes, picked from the slug (or host) so it is stable per site.
@@ -62,7 +66,7 @@ export function heroParts(d, ctx, opts = {}) {
     h1: `<h1>${esc(h1)}</h1>`,
     lead: has(d.subheadline) ? `<p class="lead">${esc(d.subheadline)}</p>` : "",
     meta: sub ? `<p class="meta">${has(p.full_name) ? esc(p.full_name) + " · " : ""}${sub}</p>` : "",
-    button: cta ? `<a class="btn" href="#contact">${esc(cta)}</a>` : "",
+    button: cta ? `<a class="btn" href="${esc(contactHref(ctx))}">${esc(cta)}</a>` : "",
     chips: leadOffer ? "" : chips(ctx, d),
     login: heroLogin(ctx),
     offer: banner ? `<div class="hero-offer">${banner}</div>` : "",

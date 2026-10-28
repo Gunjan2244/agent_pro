@@ -1,6 +1,6 @@
 import { esc, url, has, tel, wa, mail, formInterests } from "./util.js";
 import { pic } from "./media.js";
-function form(ctx) {
+export function form(ctx) {
   const { t } = ctx;
   const opts = formInterests(ctx)
     .map((i) => `<option value="${esc(i.key)}">${esc(t(i.labelKey))}</option>`).join("");

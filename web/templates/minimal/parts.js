@@ -8,12 +8,37 @@ import { serviceList } from "../../sections/services.js";
 import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
-import { slider, numbers } from "../../sections/ui.js";
+import { slider, numbers, menuItems } from "../../sections/ui.js";
+import { pageHead, planOrEnquire } from "../../sections/pages.js";
 
 // The page <header> holds both columns' tops: the profile card (pinned) and the intro (h1, lead, chips, featured).
 // With no contact links the card's one button is the hero CTA, linking to the form.
 export function hero(d, ctx) {
   const x = heroParts(d, ctx, { photo: [96, 96] });
+  return `<div class="hero-in">
+${pcard(x, ctx)}
+<div class="intro enter">
+${x.h1}
+${x.lead}
+${x.chips}
+${x.offer}
+</div>
+</div>`;
+}
+
+// Inner pages (DECISIONS #122): the same profile card column, the shared page header in the résumé column (without
+// its picture column: the card shows the photo).
+export function pagehead(ctx) {
+  const x = heroParts((ctx.site.content || {}).hero || {}, ctx, { photo: [96, 96] });
+  return `<div class="hero-in">
+${pcard(x, ctx)}
+<div class="intro">${pageHead(ctx, { pic: false })}</div>
+</div>`;
+}
+
+// The profile card: photo, name, Call / WhatsApp / Email (or the hero CTA), facts with counting numbers, the page menu
+// (a list in the pinned card; a row of tabs under the card on phones) and the customer login.
+function pcard(x, ctx) {
   const { t, profile: p } = ctx;
   const c = (ctx.site.content || {}).contact || {}, a = (ctx.site.content || {}).about || {};
   const acts = [
@@ -29,15 +54,8 @@ export function hero(d, ctx) {
     has(c.officeHours) ? `<li><span>${esc(t("site.office_hours"))}</span><strong>${esc(c.officeHours)}</strong></li>` : "",
     code ? `<li><strong>${esc(code)}</strong></li>` : "",
   ].join("");
-  return `<div class="hero-in">
-<aside class="pcard">${x.face}<p class="who">${has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : ""}${x.sub ? `<span>${x.sub}</span>` : ""}</p>${btns ? `<p class="pc-acts">${btns}</p>` : ""}${facts ? `<ul class="pc-facts">${facts}</ul>` : ""}${x.login.replace('class="hero-login"', 'class="pc-login"')}</aside>
-<div class="intro enter">
-${x.h1}
-${x.lead}
-${x.chips}
-${x.offer}
-</div>
-</div>`;
+  const nav = menuItems(ctx, { login: false });
+  return `<aside class="pcard">${x.face}<p class="who">${has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : ""}${x.sub ? `<span>${x.sub}</span>` : ""}</p>${nav ? `<ul class="pc-nav">${nav}</ul>` : ""}${btns ? `<p class="pc-acts">${btns}</p>` : ""}${facts ? `<ul class="pc-facts">${facts}</ul>` : ""}${x.login.replace('class="hero-login"', 'class="pc-login"')}</aside>`;
 }
 
 // About: the bio as prose under a small label (the numbers live in the card).
@@ -53,7 +71,7 @@ export function services(d, ctx) {
   const rows = [...items, ...extra.map((k) => ({ interest: k }))];
   if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
-<ul class="rows">${rows.map((i) => `<li><div><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</div><a class="lnk" href="#contact" data-interest="${esc(i.interest)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></li>`).join("")}</ul>`;
+<ul class="rows">${rows.map((i) => `<li><div><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</div>${planOrEnquire(ctx, i.interest)}</li>`).join("")}</ul>`;
 }
 
 // Offers: bordered rows (no pictures).

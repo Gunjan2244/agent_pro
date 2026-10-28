@@ -63,6 +63,7 @@ class HomeScreenshotTest {
         },
         // The full-screen walkthrough (DECISIONS #121): one important page, and the first of several with the counter.
         "WhatsNewWalkthrough" to { WhatsNewScreen(listOf(WhatsNewItem.NewTemplates), onShowMe = {}, onDone = {}) },
+        "WhatsNewWalkthroughMultiPage" to { WhatsNewScreen(listOf(WhatsNewItem.MultiPageWebsite), onShowMe = {}, onDone = {}) },
         "WhatsNewWalkthroughPages" to { WhatsNewScreen(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.Companies), onShowMe = {}, onDone = {}) },
     )
 

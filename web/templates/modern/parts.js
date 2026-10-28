@@ -11,6 +11,8 @@ import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
 import { slider, ticker, numbers, bigNumber, topBar } from "../../sections/ui.js";
+import { planOrEnquire } from "../../sections/pages.js";
+import { contactHref } from "../../sections/links.js";
 
 const num = (n) => String(n).padStart(2, "0");
 
@@ -52,7 +54,7 @@ export function services(d, ctx) {
   const rows = [...items, ...extra.map((k) => ({ interest: k }))];
   if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
-<ol class="bento stg">${rows.map((i, n) => `<li class="bt lift zoom${n === 0 ? " bt-big" : ""}">${interestPic(ctx, i.interest, { sizes: n === 0 ? "(min-width: 1024px) 360px, 100vw" : "128px" })}<div class="bt-b"><span class="bt-n" aria-hidden="true">${num(n + 1)}</span><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}<a class="lnk" href="#contact" data-interest="${esc(i.interest)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></li>`).join("")}</ol>`;
+<ol class="bento stg">${rows.map((i, n) => `<li class="bt lift zoom${n === 0 ? " bt-big" : ""}">${interestPic(ctx, i.interest, { sizes: n === 0 ? "(min-width: 1024px) 360px, 100vw" : "128px" })}<div class="bt-b"><span class="bt-n" aria-hidden="true">${num(n + 1)}</span><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}${planOrEnquire(ctx, i.interest)}</div></li>`).join("")}</ol>`;
 }
 
 // Offers: the lead offer (the featured one, else the first) wide with its picture, the rest as hairline rows.
@@ -86,7 +88,7 @@ export function faq(d, ctx) {
   const items = arr(d.items).filter((i) => i && has(i.question) && has(i.answer));
   if (!items.length) return "";
   const call = tel(ctx.phone);
-  const btn = call ? `<a class="btn ghost" href="${call}">${esc(ctx.t("site.call"))}</a>` : `<a class="btn ghost" href="#contact">${esc(ctx.t("site.cta_default"))}</a>`;
+  const btn = call ? `<a class="btn ghost" href="${call}">${esc(ctx.t("site.call"))}</a>` : `<a class="btn ghost" href="${esc(contactHref(ctx))}">${esc(ctx.t("site.cta_default"))}</a>`;
   return `<div class="faq-grid"><div class="faq-side"><h2>${esc(ctx.t("section.faq"))}</h2>${btn}</div><div class="faq">${items
     .map((i) => `<details><summary>${esc(i.question)}</summary><p class="prose">${esc(i.answer)}</p></details>`).join("")}</div></div>`;
 }

@@ -239,7 +239,7 @@ fun OnboardingTemplateScreen(
                 style = AgentProTheme.text.bodyMuted,
                 modifier = Modifier.padding(horizontal = Spacing.m).padding(top = Spacing.m),
             )
-            TemplatePreviewBody(template, Modifier.weight(1f)) { preview(template) }
+            TemplatePreviewBody(Modifier.weight(1f)) { preview(template) }
         }
     }
 }

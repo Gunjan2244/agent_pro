@@ -54,9 +54,9 @@ class WhatsNewWalkthroughUiTest {
         setContent { App(deps) }
 
         awaitText("5 new website designs")
-        onNodeWithText("1 of 4").assertExists()
-        repeat(3) { onNode(hasText("Next") and hasClickAction()).performClick() }
-        awaitText("4 of 4")
+        onNodeWithText("1 of 5").assertExists()
+        repeat(4) { onNode(hasText("Next") and hasClickAction()).performClick() }
+        awaitText("5 of 5")
         onNode(hasText("Not now") and hasClickAction()).performClick()
 
         awaitText("Nothing due today")
