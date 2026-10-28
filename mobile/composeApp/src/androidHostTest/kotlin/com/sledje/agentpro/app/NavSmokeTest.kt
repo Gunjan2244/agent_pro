@@ -22,8 +22,9 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.offers.ui.CompaniesViewModel
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
 import com.sledje.agentpro.feature.onboarding.ui.SLUG_FIELD
-import com.sledje.agentpro.feature.onboarding.ui.ONBOARDING_INTRO_CONTINUE_TAG
+import com.sledje.agentpro.feature.website.ui.templateTileTag
 import com.sledje.agentpro.testing.FakeAppDependencies
+import com.sledje.agentpro.testing.whatsNewSeen
 import com.sledje.agentpro.testing.FakeAuthRepository
 import com.sledje.agentpro.testing.FakeCompanyRepository
 import com.sledje.agentpro.testing.FakeDataSync
@@ -52,7 +53,7 @@ class NavSmokeTest {
 
     @Test
     fun signInOpensTheTabsAndSignOutReturnsToWelcome() = runComposeUiTest {
-        val deps = FakeAppDependencies()
+        val deps = FakeAppDependencies().whatsNewSeen()
         setContent { App(deps) }
 
         // Signed out → Welcome.
@@ -111,11 +112,14 @@ class NavSmokeTest {
         onNode(hasText("Add company")).assertDoesNotExist()
         button("Continue").performClick()
 
-        // Step 2: the template intro; step 3: one of the five designs (from the generated Templates), before any company.
-        awaitText("Let's select a template for your website")
-        onNodeWithTag(ONBOARDING_INTRO_CONTINUE_TAG).performClick()
-        awaitText("Pick a design")
-        button("Use this template").performClick()
+        // Step 2: the grid of the five designs (from the generated Templates); step 3: the tapped one, before any company.
+        awaitText("Choose your template")
+        onNodeWithTag(templateTileTag("guide")).performClick()
+        awaitText("Make website from this")
+        button("See other templates").performClick()
+        awaitText("Choose your template")
+        onNodeWithTag(templateTileTag("classic")).performClick()
+        button("Make website from this").performClick()
 
         // Step 4: your work. Continue waits for one company (DECISIONS #89). Add Alpha Insurance with its code and a type.
         awaitText("Your work")
@@ -184,7 +188,7 @@ class NavSmokeTest {
         onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertDoesNotExist()
         onNodeWithTag(fieldTestTag(OnboardingViewModel.MOBILE)).performTextInput("9876543210")
         button("Continue").performClick()
-        awaitText("Let's select a template for your website")
+        awaitText("Choose your template")
         assertEquals(1, google.opened)
         assertEquals(listOf("google:id-token:raw-nonce"), auth.calls)
         assertEquals("+919876543210", profiles.updates.single().phone)
@@ -221,7 +225,7 @@ class NavSmokeTest {
         button("Edit").performClick()
         onNodeWithTag(fieldTestTag(OnboardingViewModel.NAME)).assertExists()
         button("Continue").performClick()
-        awaitText("Let's select a template for your website")
+        awaitText("Choose your template")
         assertEquals("+919876543210", profiles.updates.single().phone)
     }
 
@@ -236,7 +240,7 @@ class NavSmokeTest {
         val deps = FakeAppDependencies(
             auth = FakeAuthRepository(AuthState.SignedIn(TEST_USER, null)),
             dataSync = FakeDataSync(com.sledje.agentpro.core.data.Result.Err(AppError.Offline)),
-        )
+        ).whatsNewSeen()
         setContent { App(deps) }
         awaitText("Couldn't load your data")
         deps.dataSync.result = com.sledje.agentpro.core.data.Result.Ok(Unit)

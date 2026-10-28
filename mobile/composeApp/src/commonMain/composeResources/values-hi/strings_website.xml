@@ -51,6 +51,12 @@
     <string name="website_site_language">वेबसाइट की भाषा</string>
     <string name="website_appearance_live_note">यहाँ के बदलाव आपकी लाइव वेबसाइट पर तुरंत दिखते हैं।</string>
     <string name="website_template_picker_title">टेम्पलेट चुनें</string>
+    <string name="template_grid_title">अपना टेम्पलेट चुनें</string>
+    <string name="template_grid_hint">किसी डिज़ाइन पर टैप करें और उसे अपने नाम के साथ देखें।</string>
+    <string name="template_grid_hint_site">किसी डिज़ाइन पर टैप करें और उसमें अपनी वेबसाइट देखें।</string>
+    <string name="template_current">मौजूदा</string>
+    <string name="template_make_website">इससे वेबसाइट बनाएँ</string>
+    <string name="template_see_others">दूसरे टेम्पलेट देखें</string>
     <string name="website_free_link">मुफ़्त लिंक</string>
     <string name="website_change_link">लिंक बदलें</string>
     <string name="website_change_link_warning">आपका पुराना लिंक और QR कोड काम करना बंद कर देंगे।</string>

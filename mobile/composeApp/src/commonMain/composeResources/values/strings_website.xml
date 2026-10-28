@@ -51,6 +51,12 @@
     <string name="website_site_language">Site language</string>
     <string name="website_appearance_live_note">Changes here show on your live website straight away.</string>
     <string name="website_template_picker_title">Choose a template</string>
+    <string name="template_grid_title">Choose your template</string>
+    <string name="template_grid_hint">Tap a design to see it with your name.</string>
+    <string name="template_grid_hint_site">Tap a design to see your website in it.</string>
+    <string name="template_current">Current</string>
+    <string name="template_make_website">Make website from this</string>
+    <string name="template_see_others">See other templates</string>
     <string name="website_free_link">Free link</string>
     <string name="website_change_link">Change link</string>
     <string name="website_change_link_warning">Your old link and QR codes will stop working.</string>

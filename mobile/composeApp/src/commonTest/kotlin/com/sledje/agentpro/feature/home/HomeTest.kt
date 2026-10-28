@@ -144,22 +144,46 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun whatsNewShowsRowsForEnabledFlagsToAgentsWithASiteWhoHaventSeenIt() = runTest {
-        assertEquals(WhatsNewItem.entries.toList(), vm(deps(site = true)).state.value.whatsNew)
-        assertEquals(listOf(WhatsNewItem.Companies), vm(deps(FeatureFlags(mapOf("customerPortal" to false)), site = true)).state.value.whatsNew)
-        assertTrue(vm(deps(FeatureFlags(mapOf("offers" to false, "customerPortal" to false)), site = true)).state.value.whatsNew.isEmpty())
+    fun anAgentWhoSawVersion1GetsOnlyTheTemplatesWalkthrough() = runTest {
+        val d = deps(site = true)
+        d.store.put(StoreKeys.WHATS_NEW_SEEN, "1")
+        val s = vm(d).state.value
+        assertEquals(listOf(WhatsNewItem.NewTemplates), s.walkthrough, "only what's newer than version 1")
+        assertTrue(s.whatsNew.isEmpty(), "no sheet while there's a walkthrough, and the old rows don't repeat")
+    }
+
+    @Test
+    fun aFreshAgentWithASiteGetsEveryPendingItemAsPagesImportantFirst() = runTest {
+        val s = vm(deps(site = true)).state.value
+        assertEquals(
+            listOf(WhatsNewItem.NewTemplates, WhatsNewItem.Companies, WhatsNewItem.CustomerLogin, WhatsNewItem.ForMyCustomers),
+            s.walkthrough,
+        )
+        assertTrue(s.whatsNew.isEmpty())
+        val portalOff = vm(deps(FeatureFlags(mapOf("customerPortal" to false)), site = true)).state.value
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.Companies), portalOff.walkthrough, "a feature that's off drops its item")
+    }
+
+    @Test
+    fun withNoImportantItemTheSmallOnesStayInTheSheet() {
+        val small = listOf(WhatsNewItem.Companies, WhatsNewItem.CustomerLogin)
+        assertEquals(small, WhatsNew.sheet(small))
+        assertTrue(WhatsNew.walkthrough(small).isEmpty())
     }
 
     @Test
     fun whatsNewIsHiddenWithoutASiteAndOnceSeen() = runTest {
-        assertTrue(vm(deps(site = false)).state.value.whatsNew.isEmpty())
+        val noSite = vm(deps(site = false)).state.value
+        assertTrue(noSite.whatsNew.isEmpty() && noSite.walkthrough.isEmpty())
         val d = deps(site = true)
         val vm = vm(d)
-        assertTrue(vm.state.value.whatsNew.isNotEmpty())
+        assertTrue(vm.state.value.walkthrough.isNotEmpty())
+        assertTrue(vm.claimWalkthrough(), "Home opens it once")
+        assertFalse(vm.claimWalkthrough(), "and not again in this run")
         vm.markWhatsNewSeen()
         runCurrent()
-        assertEquals("1", d.store.get(StoreKeys.WHATS_NEW_SEEN))
-        assertTrue(vm.state.value.whatsNew.isEmpty())
+        assertEquals(WhatsNew.VERSION.toString(), d.store.get(StoreKeys.WHATS_NEW_SEEN))
+        assertTrue(vm.state.value.walkthrough.isEmpty() && vm.state.value.whatsNew.isEmpty())
     }
 
     @Test
@@ -174,17 +198,19 @@ class HomeViewModelTest {
         onboarding.later()
         runCurrent()
         assertTrue(onboarding.state.value.finished)
-        assertEquals("1", d.store.get(StoreKeys.WHATS_NEW_SEEN))
+        assertEquals(WhatsNew.VERSION.toString(), d.store.get(StoreKeys.WHATS_NEW_SEEN))
         assertTrue(vm(d).state.value.whatsNew.isEmpty())
+        assertTrue(vm(d).state.value.walkthrough.isEmpty(), "new sign-ups never get the walkthrough")
     }
 
     @Test
     fun whatsNewVersionRules() {
-        assertTrue(WhatsNew.shouldShow(null, hasSite = true))
-        assertTrue(WhatsNew.shouldShow("0", hasSite = true))
-        assertFalse(WhatsNew.shouldShow("1", hasSite = true))
-        assertFalse(WhatsNew.shouldShow("2", hasSite = true))
-        assertFalse(WhatsNew.shouldShow(null, hasSite = false))
-        assertTrue(WhatsNew.shouldShow("junk", hasSite = true))
+        assertEquals(2, WhatsNew.VERSION, "the newest item's version")
+        val all: (com.sledje.agentpro.core.catalog.FeatureId) -> Boolean = { true }
+        assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending(null, hasSite = true, enabled = all))
+        assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending("junk", hasSite = true, enabled = all), "unreadable counts as 0")
+        assertEquals(listOf(WhatsNewItem.NewTemplates), WhatsNew.pending("1", hasSite = true, enabled = all))
+        assertTrue(WhatsNew.pending("2", hasSite = true, enabled = all).isEmpty())
+        assertTrue(WhatsNew.pending(null, hasSite = false, enabled = all).isEmpty())
     }
 }

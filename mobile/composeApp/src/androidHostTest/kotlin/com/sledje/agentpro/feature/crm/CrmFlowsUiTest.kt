@@ -20,6 +20,7 @@ import com.sledje.agentpro.feature.policies.ui.PolicyDetailScreen
 import com.sledje.agentpro.feature.policies.ui.PolicyDetailViewModel
 import com.sledje.agentpro.feature.policies.ui.RECORD_BUTTON_TAG
 import com.sledje.agentpro.testing.FakeAppDependencies
+import com.sledje.agentpro.testing.whatsNewSeen
 import com.sledje.agentpro.testing.FakeAuthRepository
 import com.sledje.agentpro.testing.FakeCustomerRepository
 import com.sledje.agentpro.testing.FakeEnquiryRepository
@@ -61,7 +62,7 @@ class CrmFlowsUiTest {
             profiles = FakeProfileRepository(testProfile()),
             sites = FakeSiteRepository(testSite()),
             enquiries = enquiries,
-        )
+        ).whatsNewSeen()
         setContent { App(deps) }
         awaitText("Namaste, Ramesh")
         button("Enquiries").performClick()

@@ -2,10 +2,13 @@ package com.sledje.agentpro.core.platform
 
 import android.annotation.SuppressLint
 import android.content.res.AssetManager
+import android.net.Uri
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -18,20 +21,21 @@ import java.io.IOException
 import kotlin.math.abs
 
 /**
- * [SitePreview] on Android: a WebView on the renderer files that `agentpro.site-preview` bundles as
- * assets (`site/web/…`, `site/shared/…`, plus a generated `site/web/tokens.css`).
+ * [SitePreview] on Android: a WebView on the live renderer (`SITE_BASE_URL/?preview=1`), falling back to the
+ * renderer files that `agentpro.site-preview` bundles as assets (`site/web/…`, `site/shared/…`, plus a generated
+ * `site/web/tokens.css`) when the live page can't be reached (DECISIONS #119). The live page means a template
+ * change reaches the preview with each web deploy, without rebuilding the app.
  *
  * The renderer uses root-relative URLs (`/app.js`, `/shared/catalog.json`) and ES modules, which don't
- * work from `file://`. So the page is served from the reserved host `appassets.androidplatform.net`
- * by [AssetSiteClient], which answers every request from the assets and never touches the network
- * except for Google Fonts (the CSS link in index.html). The preview never submits enquiries or records
- * views (WEB_RENDERER.md, Resolution 0), and taps on links don't navigate away.
+ * work from `file://`. So the bundled copy is served from the reserved host `appassets.androidplatform.net`
+ * by [PreviewSiteClient], which answers those requests from the assets. The preview never submits enquiries
+ * or records views (WEB_RENDERER.md, Resolution 0), and taps on links don't navigate away.
  *
  * Inside the template pager a vertical scroll used to be taken over by the pager as soon as the finger drifted
  * sideways, so the page stopped or jumped to the next template. [VerticalScrollLock] keeps a drag that starts
  * vertical with the WebView until the finger lifts; a sideways drag still swipes the pager.
  */
-class AndroidSitePreview : SitePreview {
+class AndroidSitePreview(private val siteBaseUrl: String) : SitePreview {
     @SuppressLint("SetJavaScriptEnabled")
     @Composable
     override fun Render(siteJson: String, modifier: Modifier) {
@@ -43,20 +47,19 @@ class AndroidSitePreview : SitePreview {
                     settings.domStorageEnabled = true
                     settings.allowFileAccess = false
                     settings.allowContentAccess = false
-                    val client = AssetSiteClient(context.assets)
+                    val client = PreviewSiteClient(context.assets, SitePreviewScript.remoteUrl(siteBaseUrl))
                     webViewClient = client
                     tag = client
                     setOnTouchListener(VerticalScrollLock(ViewConfiguration.get(context).scaledTouchSlop))
-                    loadUrl(ORIGIN + SitePreviewScript.PAGE_PATH)
+                    client.start(this)
                 }
             },
-            update = { view -> (view.tag as AssetSiteClient).render(view, siteJson) },
-            onRelease = { it.destroy() },
+            update = { view -> (view.tag as PreviewSiteClient).render(view, siteJson) },
+            onRelease = { view ->
+                (view.tag as PreviewSiteClient).release(view)
+                view.destroy()
+            },
         )
-    }
-
-    private companion object {
-        const val ORIGIN = "https://${AssetSiteClient.HOST}"
     }
 }
 
@@ -90,15 +93,43 @@ internal class VerticalScrollLock(private val touchSlop: Int) : View.OnTouchList
     }
 }
 
-/** Serves the bundled renderer and keeps the latest site JSON until the page has loaded. */
-internal class AssetSiteClient(private val assets: AssetManager) : WebViewClient() {
+/**
+ * Loads the live renderer ([remoteUrl]) or, when it is null, failed recently, errors, or hasn't defined
+ * `renderSite` within [SitePreviewScript.REMOTE_TIMEOUT_MS], the bundled one; serves the bundled files and
+ * keeps the latest site JSON until a page is ready.
+ */
+internal class PreviewSiteClient(private val assets: AssetManager, private val remoteUrl: String?) : WebViewClient() {
+    private var remote = false
     private var loaded = false
+    private var released = false
     private var pending: String? = null
     private var rendered: String? = null
+    private var view: WebView? = null
+    private val timeout = Runnable { view?.let { fallBack(it) } }
+    private val remoteHost = remoteUrl?.let { Uri.parse(it).host }
+
+    fun start(view: WebView) {
+        this.view = view
+        val failedAt = lastRemoteFailure
+        val recentlyFailed = failedAt != null && SystemClock.elapsedRealtime() - failedAt < SitePreviewScript.REMOTE_RETRY_AFTER_MS
+        if (remoteUrl != null && !recentlyFailed) {
+            remote = true
+            view.postDelayed(timeout, SitePreviewScript.REMOTE_TIMEOUT_MS)
+            view.loadUrl(remoteUrl)
+        } else {
+            loadBundled(view)
+        }
+    }
 
     fun render(view: WebView, json: String) {
         pending = json
         if (loaded) flush(view)
+    }
+
+    fun release(view: WebView) {
+        released = true
+        view.removeCallbacks(timeout)
+        this.view = null
     }
 
     private fun flush(view: WebView) {
@@ -108,12 +139,55 @@ internal class AssetSiteClient(private val assets: AssetManager) : WebViewClient
         view.evaluateJavascript(SitePreviewScript.renderCall(json), null)
     }
 
-    override fun onPageFinished(view: WebView, url: String?) {
-        loaded = true
-        flush(view)
+    private fun loadBundled(view: WebView) {
+        remote = false
+        loaded = false
+        rendered = null
+        view.loadUrl(ORIGIN + SitePreviewScript.PAGE_PATH)
     }
 
-    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+    /** The live page didn't work: note it for the next previews and switch this one to the bundled copy. */
+    private fun fallBack(view: WebView) {
+        if (!remote || released) return
+        lastRemoteFailure = SystemClock.elapsedRealtime()
+        view.removeCallbacks(timeout)
+        view.stopLoading()
+        loadBundled(view)
+    }
+
+    override fun onPageFinished(view: WebView, url: String?) {
+        if (released) return
+        val host = url?.let { Uri.parse(it).host }
+        if (!remote) {
+            if (host != HOST) return // the abandoned live page finishing after the switch
+            loaded = true
+            flush(view)
+            return
+        }
+        if (host != remoteHost) return
+        view.evaluateJavascript(SitePreviewScript.READY_CHECK) { result ->
+            if (released || !remote) return@evaluateJavascript
+            if (result == "true") {
+                view.removeCallbacks(timeout)
+                loaded = true
+                flush(view)
+            } else {
+                fallBack(view)
+            }
+        }
+    }
+
+    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+        if (request.isForMainFrame) fallBack(view)
+    }
+
+    override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+        if (request.isForMainFrame) fallBack(view)
+    }
+
+    /** Links never navigate; only a server redirect of the live page itself is followed. */
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+        !(remote && request.isForMainFrame && request.isRedirect && request.url.host == remoteHost)
 
     /**
      * The WebView's renderer process died (typically out of memory with two previews alive in the template
@@ -122,12 +196,13 @@ internal class AssetSiteClient(private val assets: AssetManager) : WebViewClient
      */
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
         loaded = false
+        view.removeCallbacks(timeout)
         return true
     }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val url = request.url
-        if (url.host != HOST) return null // Google Fonts
+        if (url.host != HOST) return null // the live renderer, Google Fonts
         val path = assetPath(url.path.orEmpty()) ?: return notFound()
         return try {
             WebResourceResponse(mimeType(path), "utf-8", assets.open(path))
@@ -141,6 +216,10 @@ internal class AssetSiteClient(private val assets: AssetManager) : WebViewClient
     companion object {
         /** Android's reserved host for app assets (it never resolves on the network). */
         const val HOST = "appassets.androidplatform.net"
+        private const val ORIGIN = "https://$HOST"
+
+        /** When a live page last failed in this process (elapsedRealtime), so the next previews skip the wait. */
+        @Volatile private var lastRemoteFailure: Long? = null
 
         /** `/shared/x` → `site/shared/x`; `/` → `site/web/index.html`; `/x` → `site/web/x`. Null for `..`. */
         fun assetPath(path: String): String? {

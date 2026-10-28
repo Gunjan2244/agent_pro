@@ -108,9 +108,10 @@ data class OnboardingUiState(
  * Drives all seven onboarding steps (one instance, scoped to the onboarding nav graph; DECISIONS #113, #116):
  * 1. records a sign-up consent a Google sign-in left pending, then saves the name (from Google, shown as a summary
  *    with Edit) and the mobile, and asks the server whether the agent already has a site;
- * 2. introduces the templates ("Let's select a template for your website"; opens step 3 itself after 5 s);
- * 3. picks one of the five templates from the generated `Templates` (shared/templates/index.json), previewed with
- *    the agent's starter content before any company is known (the seed's `whenNone` types);
+ * 2. shows every template from the generated `Templates` (shared/templates/index.json) in a grid ("Choose your
+ *    template"); a tap opens that one in step 3;
+ * 3. previews the opened template with the agent's starter content before any company is known (the seed's
+ *    `whenNone` types); "Make website from this" picks it, "See other templates" goes back to the grid;
  * 4. needs at least one company link (the companies block saves one RPC at a time as they are added; each carries
  *    its own agency code) and saves the city;
  * 5. uploads and saves the agent's photo, or skips it;
@@ -233,9 +234,10 @@ class OnboardingViewModel(
 
     // ---- Step 2 -------------------------------------------------------------------------------
 
-    /** Continue on the intro (or its countdown): step 3, on the template picked so far. */
-    fun openTemplates() {
-        _state.update { it.copy(navigateTo = OnboardingStep.Template) }
+    /** A tile tapped in the grid: step 3 previews that template. Nothing is taken until [selectTemplate]. */
+    fun previewTemplate(key: String) {
+        if (Templates.fromKey(key) == null) return
+        _state.update { it.copy(templateKey = key, navigateTo = OnboardingStep.Template) }
     }
 
     // ---- Step 5 -------------------------------------------------------------------------------

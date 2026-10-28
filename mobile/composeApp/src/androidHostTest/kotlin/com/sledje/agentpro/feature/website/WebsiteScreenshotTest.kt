@@ -41,12 +41,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import com.sledje.agentpro.feature.website.ui.HubRow
 import com.sledje.agentpro.feature.website.ui.LinkScreen
 import com.sledje.agentpro.feature.website.ui.LinkUiState
 import com.sledje.agentpro.feature.website.ui.SectionEditorScreen
 import com.sledje.agentpro.feature.website.ui.TemplatePickerScreen
+import com.sledje.agentpro.feature.website.ui.TemplatePreviewScreen
 import com.sledje.agentpro.feature.website.ui.SectionEditorUiState
 import com.sledje.agentpro.feature.website.ui.SectionRow
 import com.sledje.agentpro.feature.website.ui.StatsScreen
@@ -142,9 +147,15 @@ class WebsiteScreenshotTest {
         "WebsiteAppearance" to {
             AppearanceScreen(AppearanceUiState(site = site), remember { SnackbarHostState() }, {}, {}, {}, {})
         },
-        // Website → Appearance → Template: one pager of the five templates, opened on the current one.
+        // Website → Appearance → Template: the grid of the five templates, the current one marked (placeholders, still);
+        // then one template's preview, a surface standing in for the live render.
         "WebsiteTemplatePicker" to {
-            TemplatePickerScreen(Templates.all, "spotlight", saving = false, onBack = {}, onUse = {}, preview = {})
+            TemplatePickerScreen(Templates.all, "spotlight", onBack = {}, onOpen = {}, loader = { emptyList() })
+        },
+        "WebsiteTemplatePreview" to {
+            TemplatePreviewScreen(Templates.fromKey("guide")!!, saving = false, onBack = {}, onUse = {}) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer))
+            }
         },
         "WebsiteLinkQr" to {
             LinkScreen(LinkUiState(site = site), { SiteLinks.url(it, base) }, { SiteLinks.display(it, base) }, remember { SnackbarHostState() }, {}, {}, {}, {})

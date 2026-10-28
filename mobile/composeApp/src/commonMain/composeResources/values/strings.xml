@@ -168,14 +168,9 @@
     <string name="onboarding_step_of">Step %1$d of %2$d</string>
     <string name="onboarding_mobile_title">Your mobile number</string>
     <string name="onboarding_mobile_intro">Customers will call and WhatsApp you on this number from your website.</string>
-    <string name="onboarding_intro_bar">Your website</string>
-    <string name="onboarding_intro_title">Let's select a template for your website</string>
-    <string name="onboarding_intro_body">%1$d ready designs, each filled with your name and starter text. Pick the one you like; you can change it any time.</string>
-    <string name="onboarding_intro_auto">Opening the designs in %1$d s</string>
     <string name="onboarding_template_hint">This is your website with starter text. You'll add your companies next, and you can change every word later.</string>
     <string name="onboarding_details_title">Your work</string>
     <string name="onboarding_details_intro">Add the companies you work with and the insurance you sell with each. Your website's services will match them.</string>
-    <string name="onboarding_template_title">Pick a design</string>
     <string name="onboarding_link_title">Your link</string>
     <string name="onboarding_photo_title">Your photo</string>
     <string name="onboarding_photo_intro">Customers trust a face they can see. Your photo goes at the top of your website.</string>
@@ -200,7 +195,6 @@
     <string name="onboarding_link_taken">This link is taken</string>
     <string name="onboarding_link_preview">Your site: %1$s</string>
     <string name="onboarding_trial_started">Your %1$d-day free trial has started</string>
-    <string name="onboarding_template_position">%1$d of %2$d</string>
     <string name="onboarding_photo_tips">Face and shoulders, looking at the camera, in daylight by a window.\nPlain background and smart everyday clothes.\nNo sunglasses, group photos, insurer uniform or logos.</string>
     <string name="profile_mobile">Mobile</string>
 
@@ -224,6 +218,12 @@
     <string name="whats_new_customers">Let customers see their policies online</string>
     <string name="whats_new_website">‘For my customers’ is now on your website</string>
     <string name="whats_new_got_it">Got it</string>
+    <string name="whats_new_templates">5 new website designs</string>
+    <string name="whats_new_templates_body">Your website has a fresh new look. See all five designs and pick the one you like.</string>
+    <string name="whats_new_show_me">Show me</string>
+    <string name="whats_new_next">Next</string>
+    <string name="whats_new_not_now">Not now</string>
+    <string name="whats_new_page">%1$d of %2$d</string>
     <string name="setup_next">Next step</string>
     <string name="setup_todo">To do</string>
     <string name="enquiries_empty">Share your website to get enquiries</string>

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import com.sledje.agentpro.app.App
 import com.sledje.agentpro.feature.auth.data.AuthState
 import com.sledje.agentpro.testing.FakeAppDependencies
+import com.sledje.agentpro.testing.whatsNewSeen
 import com.sledje.agentpro.testing.FakeAuthRepository
 import com.sledje.agentpro.testing.TEST_USER
 import com.sledje.agentpro.testing.testProfile
@@ -27,7 +28,7 @@ import kotlin.test.assertEquals
 class PublishConfirmationUiTest {
     @Test
     fun publishingFromTheWebsiteTabShowsYourWebsiteIsLive() = runComposeUiTest {
-        val deps = FakeAppDependencies(auth = FakeAuthRepository(AuthState.SignedIn(TEST_USER, "ramesh@example.com")))
+        val deps = FakeAppDependencies(auth = FakeAuthRepository(AuthState.SignedIn(TEST_USER, "ramesh@example.com"))).whatsNewSeen()
         deps.profiles.profile.value = testProfile()
         deps.sites.site.value = testSite()
         setContent { App(deps) }

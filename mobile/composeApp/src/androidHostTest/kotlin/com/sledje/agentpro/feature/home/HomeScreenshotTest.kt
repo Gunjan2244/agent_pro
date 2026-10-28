@@ -31,7 +31,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Roborazzi baselines of Home's two sheets (docs/TESTING.md; DECISIONS #103): the setup checklist (done rows, the next
- * step marked, later steps locked) and the one-time "What's new" sheet, in light/dark x EN/HI.
+ * step marked, later steps locked), the one-time "What's new" sheet and its full-screen walkthrough, in light/dark x EN/HI.
  * Images: composeApp/src/androidHostTest/screenshots/<variant>/home/<Name>.png.
  */
 @OptIn(ExperimentalTestApi::class)
@@ -56,11 +56,14 @@ class HomeScreenshotTest {
             Column { SetupChecklistContent(HomeUiState(), onItem = {}) }
         },
         "WhatsNew" to sheet({ stringResource(Res.string.whats_new_title) }) {
-            Column { WhatsNewContent(WhatsNewItem.entries.toList(), onItem = {}, onGotIt = {}) }
+            Column { WhatsNewContent(listOf(WhatsNewItem.Companies, WhatsNewItem.CustomerLogin, WhatsNewItem.ForMyCustomers), onItem = {}, onGotIt = {}) }
         },
         "WhatsNewCompaniesOnly" to sheet({ stringResource(Res.string.whats_new_title) }) {
             Column { WhatsNewContent(listOf(WhatsNewItem.Companies), onItem = {}, onGotIt = {}) }
         },
+        // The full-screen walkthrough (DECISIONS #121): one important page, and the first of several with the counter.
+        "WhatsNewWalkthrough" to { WhatsNewScreen(listOf(WhatsNewItem.NewTemplates), onShowMe = {}, onDone = {}) },
+        "WhatsNewWalkthroughPages" to { WhatsNewScreen(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.Companies), onShowMe = {}, onDone = {}) },
     )
 
     private fun capture(variant: String, dark: Boolean, hindi: Boolean) = runComposeUiTest {

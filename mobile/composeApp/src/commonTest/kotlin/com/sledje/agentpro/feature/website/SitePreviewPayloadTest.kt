@@ -16,6 +16,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -101,5 +102,14 @@ class SitePreviewPayloadTest {
         val decoded = RowJson.decodeFromString(JsonPrimitive.serializer(), literal.replace("\\u2028", " ")).content
         assertEquals(tricky, decoded, "the page gets exactly the payload JSON")
         assertEquals("/index.html?preview=1", SitePreviewScript.PAGE_PATH)
+    }
+
+    @Test
+    fun remoteUrlIsTheLiveShellOnTheConfiguredHttpsBase() {
+        assertEquals("https://agentpro.site/?preview=1", SitePreviewScript.remoteUrl(" https://agentpro.site/ "))
+        assertEquals("https://x.workers.dev/?preview=1", SitePreviewScript.remoteUrl("https://x.workers.dev"))
+        assertNull(SitePreviewScript.remoteUrl(""), "no base → the bundled copy only")
+        assertNull(SitePreviewScript.remoteUrl("http://10.0.2.2:8787"), "not https → the bundled copy only")
+        assertNull(SitePreviewScript.remoteUrl("https://"))
     }
 }

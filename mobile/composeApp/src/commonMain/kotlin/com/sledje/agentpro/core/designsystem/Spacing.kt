@@ -39,6 +39,9 @@ object Dimens {
     val pillHeight: Dp = 32.dp
     val avatar: Dp = 40.dp
     val hairline: Dp = 1.dp
+
+    /** The border that marks the chosen card in a grid of choices (the current template). */
+    val selectedBorder: Dp = 2.dp
     val swatch: Dp = 40.dp
     val imageSlot: Dp = 96.dp
     val chartHeight: Dp = 200.dp

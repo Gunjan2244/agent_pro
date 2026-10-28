@@ -39,7 +39,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingMobileScreen
-import com.sledje.agentpro.feature.onboarding.ui.OnboardingIntroScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateGridScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
@@ -55,8 +55,8 @@ import com.sledje.agentpro.feature.website.data.SiteServices
 import com.sledje.agentpro.feature.website.data.StarterContent
 
 /**
- * Onboarding routes (docs/UX.md: 1 Your mobile → 2 Template intro → 3 Design → 4 Your work → 5 Your photo →
- * 6 Your website → 7 Your link → Done; DECISIONS #113, #116).
+ * Onboarding routes (docs/UX.md: 1 Your mobile → 2 Choose your template (the grid) → 3 That template's preview →
+ * 4 Your work → 5 Your photo → 6 Your website → 7 Your link → Done; DECISIONS #113, #116, #120).
  */
 object OnboardingRoutes {
     @Serializable data object Graph
@@ -92,7 +92,7 @@ fun OnboardingNavHost(deps: AppDependencies) {
                 val vm = entry.onboardingViewModel(nav, deps)
                 val state by vm.state.collectAsState()
                 Navigate(vm, state.navigateTo, nav)
-                OnboardingIntroScreen(templateCount = Templates.all.size, onContinue = vm::openTemplates, onBack = { nav.popBackStack() })
+                OnboardingTemplateGridScreen(templates = Templates.all, onOpen = vm::previewTemplate, onBack = { nav.popBackStack() })
             }
             composable<OnboardingRoutes.Template> { entry ->
                 val vm = entry.onboardingViewModel(nav, deps)
@@ -100,8 +100,7 @@ fun OnboardingNavHost(deps: AppDependencies) {
                 Navigate(vm, state.navigateTo, nav)
                 val form = vm.profileForm
                 OnboardingTemplateScreen(
-                    templates = Templates.all,
-                    selectedKey = state.templateKey,
+                    template = state.template,
                     agentName = form.text(OnboardingViewModel.NAME),
                     agentLine = form.text(OnboardingViewModel.CITY),
                     onUse = vm::selectTemplate,

@@ -2,6 +2,81 @@
 
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
+
+
+## 2026-10-28 — Existing agents are walked through important news; first: the new templates (DECISIONS #121; user request)
+- **Why:** the user asked how existing members would learn about the new templates. The redesign (#117) changes every live site's look, and the grid (#120) is only in onboarding. The user also asked for a standing rule that every important rollout takes existing users through it (PRODUCT.md, 2026-10-28).
+- **What:**
+  - **Versioned items:** `WhatsNewItem` gains `since`, `walkthrough` and `body`. `WhatsNew.VERSION` is now the highest `since` (2), and `WhatsNew.pending/walkthrough/sheet` replace `shouldShow/rows`, so old rows never repeat.
+  - **The walkthrough:** important items open the new full-screen `WhatsNewScreen` (`WhatsNewRoute`) once, on the first Home of the run. It has Show me → / Next / Not now and "n of N"; Back counts as Not now. Small ones keep the sheet.
+  - **First item:** `NewTemplates` ("5 new website designs"; Show me → Appearance → Template's grid).
+  - **Strings (EN + HI):** `whats_new_templates`, `whats_new_templates_body`, `whats_new_show_me`, `whats_new_next`, `whats_new_not_now`, `whats_new_page`.
+  - **The rule:** CLAUDE.md gains "Rolling out to existing users" and a row in the doc table; PRODUCT.md gains a design principle; UX.md's What's new section is rewritten.
+- **Verified:** `verifyShared`, `:androidApp:assembleDebug`, `:androidApp:lint` (0 errors), `:composeApp:testAndroidHostTest` with Roborazzi verify: 468 tests, 0 failures, 0 screenshot diffs. The new walkthrough baselines were reviewed by eye (EN/HI, light/dark), and the version-1 sheet baselines are unchanged. Not checked on a phone (TESTING.md End to end #15). Test APK: `~/AgentPRO-test/AgentPRO-test-2026-10-28-whats-new.apk` (it also has the template grid, #120).
+- **Files:**
+  - **Code:** `mobile/composeApp/src/commonMain/.../feature/home/WhatsNew.kt`, `.../feature/home/HomeFeature.kt`
+  - **Strings:** `composeResources/values{,-hi}/strings.xml`
+  - **Tests:**
+    - `commonTest/.../feature/home/HomeTest.kt`
+    - `androidHostTest/.../feature/home/WhatsNewWalkthroughUiTest.kt` (new)
+    - `.../feature/home/HomeScreenshotTest.kt`
+    - `.../testing/WhatsNewSeen.kt` (new)
+    - `NavSmokeTest`, `CrmFlowsUiTest`, `PublishConfirmationUiTest`
+    - 8 new `home/WhatsNewWalkthrough*` baselines
+  - **Docs:** `CLAUDE.md`, PRODUCT, UX, ARCHITECTURE, TESTING, DECISIONS, STATUS
+
+## 2026-10-28 — Choose the template from an auto-scrolling grid, then preview it (DECISIONS #120; user request)
+- **Why:** the user wanted the five templates shown on the "select your template" screen itself: two per row, two rows whole and a sliver of the third, each scrolling through its page in turn. Tapping one should open its preview, with "Make website from this" (a moving arrow) and a way back to the others (PRODUCT.md, 2026-10-28). The user chose full-page pictures for the tiles, and the same grid for Appearance → Template.
+- **What:**
+  - **Onboarding:**
+    - Step 2 is now the template grid; the intro and its 5 s countdown are gone.
+    - Step 3 previews only the tapped template (live render, the agent's content) with **Make website from this →** (nudging arrow) and **See other templates**.
+    - `OnboardingViewModel.openTemplates()` → `previewTemplate(key)`.
+  - **Appearance → Template:** the grid, with the current template marked. A tap opens the new `TemplatePreviewScreen` (`WebsiteTemplatePreviewRoute(key)`) with **Use this template →** and **See other templates**. Using it saves and returns to Appearance.
+  - **The swipe pager is removed:** `TemplateChooser.kt` → `TemplatePreviewBody.kt`.
+  - **New `TemplateGrid`:**
+    - The row height is the grid height ÷ 2.1.
+    - Tiles hold bundled full-page pictures.
+    - `runTemplateAutoScroll` waits 4 s after every picture has loaded, then scrolls one tile at a time at 300 dp/s, each jumping back to the top before the next.
+    - It is skipped under "remove animations" and runs under `InfiniteAnimationPolicy`.
+  - **New tokens:** `Motion.TEMPLATE_SCROLL_DP_PER_SECOND` and `Dimens.selectedBorder`.
+  - **New `scripts/gen-template-pages.py`** generated the 20 strips `template_page_<key>_<n>.webp` (about 870 KB).
+  - **Strings (EN + HI):**
+    - New: `template_grid_title`, `template_grid_hint`, `template_grid_hint_site`, `template_current`, `template_make_website`, `template_see_others`.
+    - Removed: `onboarding_intro_bar/title/body/auto`, `onboarding_template_title`, `onboarding_template_position`.
+- **Verified:** `verifyShared`, `:androidApp:assembleDebug`, `:androidApp:lint` (0 errors; the 2 existing warnings), `:composeApp:testAndroidHostTest` with Roborazzi verify: 464 tests, 0 failures, 0 screenshot diffs. New: `TemplateGridTest` (4). Changed: `NavSmokeTest` walks the grid → preview → See other templates → grid → Make website from this, on the real picture loader. Baselines: `OnboardingIntro` ×4 removed; `OnboardingTemplateGrid` ×4 and `WebsiteTemplatePreview` ×4 new; `OnboardingTemplate`, `OnboardingTemplateOffers` and `WebsiteTemplatePicker` re-recorded (×4 each), reviewed by eye. The 20 strips were checked as a contact sheet. **Not checked on a phone** (TESTING.md onboarding step 3 and End to end #14). Test APK: `~/AgentPRO-test/AgentPRO-test-2026-10-28-template-grid.apk`.
+- **Files:**
+  - **Code:**
+    - `mobile/composeApp/src/commonMain/.../feature/website/ui/TemplateGrid.kt` (new)
+    - `.../feature/website/ui/TemplatePreviewBody.kt` (was `TemplateChooser.kt`)
+    - `.../feature/website/ui/AppearanceScreen.kt`
+    - `.../feature/website/WebsiteFeature.kt`
+    - `.../feature/onboarding/ui/OnboardingScreens.kt`
+    - `.../feature/onboarding/ui/OnboardingViewModel.kt`
+    - `.../feature/onboarding/OnboardingNavigation.kt`
+    - `.../core/designsystem/Motion.kt`
+    - `.../core/designsystem/Spacing.kt`
+  - **Resources:**
+    - `composeResources/values{,-hi}/strings.xml`
+    - `composeResources/values{,-hi}/strings_website.xml`
+    - `composeResources/drawable/template_page_*.webp` (20, new)
+  - **Script:** `scripts/gen-template-pages.py` (new)
+  - **Tests:**
+    - `commonTest/.../feature/website/TemplateGridTest.kt` (new)
+    - `OnboardingViewModelTest`
+    - `NavSmokeTest`
+    - `FoundationScreenshotTest`
+    - `WebsiteScreenshotTest`
+    - the screenshot baselines
+  - **Docs:** PRODUCT, UX, DESIGN_SYSTEM, ARCHITECTURE, WEB_RENDERER, TESTING (including #119's phone check, which mentioned the pager), DECISIONS, STATUS.
+
+## 2026-10-28 — The in-app preview loads the live renderer, so template changes don't need a new APK (DECISIONS #119; user request)
+- **Why:** the user noticed the app's template previews were baked into the APK, so each template change on the web needed an app rebuild before agents saw it (PRODUCT.md, 2026-10-28).
+- **What:** `AndroidSitePreview` now takes `AppConfig.SITE_BASE_URL` and loads `<base>/?preview=1` from the Worker first; its `WebViewClient` (renamed `AssetSiteClient` → `PreviewSiteClient`) falls back to the bundled assets on a main-frame network/HTTP error, a page without `window.renderSite`, a 10 s timeout, no https base, or a live failure in the last 60 s; only same-host server redirects are followed. `SitePreviewScript` gains `REMOTE_PATH`, `REMOTE_TIMEOUT_MS`, `REMOTE_RETRY_AFTER_MS`, `READY_CHECK` and `remoteUrl(base)`. Checked that the deployed Worker answers `/?preview=1` with the shell (200, `text/html`) and its `app.js` defines `renderSite`.
+- **Also:** re-recorded the 8 `OnboardingTemplate` / `WebsiteTemplatePicker` screenshot baselines (4 locales/themes each). They were already failing from the 2026-10-27 template descriptions (#117), not from this change: only the description line differs.
+- **Verified:** `verifyShared`, `:androidApp:assembleDebug`, `:androidApp:lint`, `:composeApp:testAndroidHostTest` with Roborazzi verify: 460 tests, 0 failures (one new: `remoteUrlIsTheLiveShellOnTheConfiguredHttpsBase`). Not checked on a phone yet (TESTING.md End to end #13).
+- **Files:** `mobile/composeApp/src/androidMain/.../core/platform/AndroidSitePreview.kt`, `.../app/AndroidAppContainer.kt`, `mobile/composeApp/src/commonMain/.../core/platform/SitePreview.kt`, `mobile/composeApp/src/commonTest/.../feature/website/SitePreviewPayloadTest.kt`, 8 screenshot baselines; docs `PRODUCT.md`, `ARCHITECTURE.md`, `WEB_RENDERER.md`, `SHARED_DEFINITIONS.md`, `OFFERS.md`, `TESTING.md`, `DECISIONS.md` #119, `STATUS.md`.
+
 ## 2026-10-28 — CI/CD: the web renderer auto-deploys on push to main (DECISIONS #118; user request)
 - **Why:** the user asked whether pushes to git auto-deployed the site (they don't — deploys were a manual local `wrangler deploy` step) and then asked to build the pipeline.
 - **What:** new `.github/workflows/deploy-web.yml`: on push to `main` touching `web/**`, `shared/**` or the build/test scripts (or manual `workflow_dispatch`), runs `node scripts/test-web.mjs` + `node scripts/lint-web-css.mjs`, builds with `sh scripts/build-web.sh` (preview build, no `RELEASE=1`, since the P1 privacy items aren't filled in yet), then `npx wrangler@4.151.1 deploy --config web/wrangler.jsonc` using `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets. `SUPABASE_URL` / `SUPABASE_ANON_KEY` are secrets; `SITE_BASE_URL` is a repo variable defaulting to the current preview URL. This is a carved-out exception to CLAUDE.md's per-deploy-approval rule, made explicit in CLAUDE.md and recorded in DECISIONS #118; the manual deploy path is unchanged for ad hoc use.

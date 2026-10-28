@@ -33,6 +33,7 @@ Every change is documented **in the same change** — not later, not "at the end
 | Anything in `shared/` (catalog, site schema, tokens, i18n, templates registry) or the codegen | `docs/SHARED_DEFINITIONS.md` |
 | Colours, type, shapes, spacing, motion, chart styling, components | `docs/DESIGN_SYSTEM.md` |
 | Screens, navigation, flows, copy rules, notifications UX | `docs/UX.md` |
+| Something existing agents should be told about (a rollout) | the `WhatsNewItem` in `feature/home/WhatsNew.kt` + `docs/UX.md` (What's new) + the PRODUCT.md requirement (important or small) |
 | Tables, RLS, RPCs, storage, realtime, migrations | `docs/BACKEND.md` |
 | Public site renderer, templates, hosting | `docs/WEB_RENDERER.md` |
 | Service plan, trial, entitlement, payments, receipts | `docs/BILLING.md` |
@@ -54,6 +55,13 @@ Every change is documented **in the same change** — not later, not "at the end
   - Strings go in Compose Multiplatform resources: `composeResources/values` **and** `values-hi`.
   - Hindi is required, and `verifyShared` fails the build on a missing translation.
 - **Features plug in through the `FeatureRegistry`** (`core/features`). The nav graph, bottom bar, Home cards, Settings and Website hub entries all come from it. A new feature is a new `feature/<name>/` package, one registry line and one flag in `catalog.json`.
+- **Rolling out to existing users** (DECISIONS #121). New sign-ups meet a feature in onboarding, but agents who already have a site only learn about it if the app tells them. So every change existing agents should know about ships with a "What's new" item, in the same change:
+  - **How:** add a `WhatsNewItem` in `feature/home/WhatsNew.kt` with `since` = the current `WhatsNew.VERSION` + 1, its feature flag, a title and a **Show me** destination (`openWhatsNewItem`). `VERSION` follows by itself, and agents see only the items newer than the version they've seen.
+  - **Important or small:**
+    - **Important** means it changes their public website, needs them to act or decide, adds a required step, or moves something they use. Mark it `walkthrough = true` and give it a body: it opens **full screen on their next app open, before Home**, one page per item, with Show me / Next / Not now.
+    - **Small** items go in the dismissible Home sheet.
+  - **Write it down first:** the PRODUCT.md requirement entry says which kind it is and what Show me opens. UX.md (What's new) lists every item.
+  - Changes to the public website that existing agents' sites get automatically (a template redesign, a new section) count as important: the agent should hear it from the app before a customer mentions it.
 - **Forms are built by `FormRenderer`** from `FieldSpec` lists. Don't hand-build form layouts.
 - **Security:**
   - Every table has owner-only RLS, and `anon` never touches tables directly.

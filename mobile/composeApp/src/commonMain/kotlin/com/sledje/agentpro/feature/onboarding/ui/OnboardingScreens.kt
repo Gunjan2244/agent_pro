@@ -13,21 +13,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -64,8 +56,14 @@ import com.sledje.agentpro.feature.offers.ui.CompanyActions
 import com.sledje.agentpro.feature.offers.ui.CompanySheets
 import com.sledje.agentpro.feature.website.data.ImageUnreadable
 import com.sledje.agentpro.feature.website.data.SiteLinks
-import com.sledje.agentpro.feature.website.ui.TemplateChooserBody
-import com.sledje.agentpro.feature.website.ui.rememberTemplateChooser
+import com.sledje.agentpro.feature.website.ui.TemplateGrid
+import com.sledje.agentpro.feature.website.ui.TemplatePageLoader
+import com.sledje.agentpro.feature.website.ui.TemplatePreviewBody
+import com.sledje.agentpro.feature.website.ui.rememberTemplatePageLoader
+import com.sledje.agentpro.resources.template_grid_hint
+import com.sledje.agentpro.resources.template_grid_title
+import com.sledje.agentpro.resources.template_make_website
+import com.sledje.agentpro.resources.template_see_others
 import com.sledje.agentpro.resources.website_photo_unreadable
 import com.sledje.agentpro.resources.website_photo_uploading
 import com.sledje.agentpro.resources.Res
@@ -92,25 +90,14 @@ import com.sledje.agentpro.resources.onboarding_skip
 import com.sledje.agentpro.resources.onboarding_mobile_intro
 import com.sledje.agentpro.resources.onboarding_mobile_title
 import com.sledje.agentpro.resources.ic_arrow_forward
-import com.sledje.agentpro.resources.ic_web
-import com.sledje.agentpro.resources.onboarding_intro_auto
-import com.sledje.agentpro.resources.onboarding_intro_bar
-import com.sledje.agentpro.resources.onboarding_intro_body
-import com.sledje.agentpro.resources.onboarding_intro_title
 import com.sledje.agentpro.resources.onboarding_template_hint
 import com.sledje.agentpro.resources.onboarding_publish_now
-import com.sledje.agentpro.resources.onboarding_template_title
-import com.sledje.agentpro.resources.onboarding_use_template
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private val STEPS = OnboardingStep.entries.size
 
 /** Test tag key of the link field. */
 const val SLUG_FIELD = "slug"
-
-/** Test tag of step 2's Continue. */
-const val ONBOARDING_INTRO_CONTINUE_TAG = "onboarding_intro_continue"
 
 /** Top bar plus the thin step progress bar (docs/UX.md: each step has a progress bar at the top). */
 @Composable
@@ -188,94 +175,63 @@ private fun ContactSummary(form: FormState, email: String?, enabled: Boolean, on
     }
 }
 
-/** Seconds the template intro waits before it opens the designs by itself. */
-const val ONBOARDING_INTRO_SECONDS = 5
-
 /**
- * Step 2: a short intro, "Let's select a template for your website", with **Continue →** (the arrow nudges back and
- * forth). With [autoAdvance] it opens step 3 by itself after [ONBOARDING_INTRO_SECONDS], counting down under the
- * button; the count restarts whenever the agent comes back to it.
+ * Step 2: "Choose your template", every template in the [TemplateGrid] (two per row, the third row peeking out, the
+ * tiles' full-page pictures taking turns to scroll). A tap opens that template in step 3 ([onOpen]).
+ *
+ * @param loader the grid's picture loader; screenshots pass one that returns none.
  */
 @Composable
-fun OnboardingIntroScreen(
-    templateCount: Int,
-    onContinue: () -> Unit,
+fun OnboardingTemplateGridScreen(
+    templates: List<TemplateSpec>,
+    onOpen: (String) -> Unit,
     onBack: () -> Unit,
-    autoAdvance: Boolean = true,
+    loader: TemplatePageLoader = rememberTemplatePageLoader(),
 ) {
-    var secondsLeft by remember { mutableIntStateOf(ONBOARDING_INTRO_SECONDS) }
-    if (autoAdvance) {
-        LaunchedEffect(Unit) {
-            while (secondsLeft > 0) {
-                delay(1_000)
-                secondsLeft--
-            }
-            onContinue()
-        }
-    }
     AppScaffold(
-        topBar = { StepTopBar(stringResource(Res.string.onboarding_intro_bar), OnboardingStep.Intro, onBack) },
+        topBar = { StepTopBar(stringResource(Res.string.template_grid_title), OnboardingStep.Intro, onBack) },
         offline = !LocalIsOnline.current,
-        bottomBar = {
-            BottomActionBar(
-                text = stringResource(Res.string.onboarding_continue),
-                onClick = onContinue,
-                modifier = Modifier.testTag(ONBOARDING_INTRO_CONTINUE_TAG),
-                helperText = if (autoAdvance) stringResource(Res.string.onboarding_intro_auto, secondsLeft) else null,
-                trailingIcon = Res.drawable.ic_arrow_forward,
-                nudgeTrailingIcon = true,
-            )
-        },
     ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Spacing.l),
-            verticalArrangement = Arrangement.spacedBy(Spacing.l, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier.size(Dimens.imageSlot).background(MaterialTheme.colorScheme.primaryContainer, AppShapes.full),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(painterResource(Res.drawable.ic_web), null, Modifier.size(Dimens.icon), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
+        Column(Modifier.fillMaxSize().padding(padding)) {
             Text(
-                stringResource(Res.string.onboarding_intro_title),
-                style = AgentProTheme.text.title,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.semantics { heading() },
+                stringResource(Res.string.template_grid_hint),
+                style = AgentProTheme.text.bodyMuted,
+                modifier = Modifier.padding(horizontal = Spacing.m).padding(top = Spacing.m),
             )
-            Text(
-                stringResource(Res.string.onboarding_intro_body, templateCount),
-                style = AgentProTheme.text.body,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+            TemplateGrid(templates, onOpen = onOpen, modifier = Modifier.weight(1f).fillMaxWidth(), loader = loader)
         }
     }
 }
 
 /**
- * Step 3: a full-height pager of the five templates with the template name below and **Use this
- * template**. The app passes [preview] = the live render of the agent's seeded starter content in that template
- * (SitePreview, the bundled web renderer); before step 4 there are no companies, so it uses the seed's default
- * insurance types. The default placeholder shows the name in the template's accent (screenshots). Back returns to
- * step 2.
+ * Step 3: the template opened from step 2, full height ([TemplatePreviewBody]). The app passes [preview] = the live
+ * render of the agent's seeded starter content in that template (SitePreview); before step 4 there are no companies,
+ * so it uses the seed's default insurance types. The default placeholder shows the name in the template's accent
+ * (screenshots). **Make website from this →** (the arrow nudges) takes it ([onUse]); **See other templates** and Back
+ * return to the grid.
  */
 @Composable
 fun OnboardingTemplateScreen(
-    templates: List<TemplateSpec>,
-    selectedKey: String,
+    template: TemplateSpec,
     agentName: String,
     agentLine: String,
     onUse: (String) -> Unit,
-    onBack: (() -> Unit)?,
+    onBack: () -> Unit,
     preview: @Composable (TemplateSpec) -> Unit = { TemplatePlaceholder(it, agentName, agentLine) },
 ) {
-    val chooser = rememberTemplateChooser(templates, selectedKey)
     AppScaffold(
-        topBar = { StepTopBar(stringResource(Res.string.onboarding_template_title), OnboardingStep.Template, onBack) },
+        topBar = { StepTopBar(stringResource(template.name), OnboardingStep.Template, onBack) },
         offline = !LocalIsOnline.current,
-        bottomBar = { chooser.current?.let { current -> BottomActionBar(stringResource(Res.string.onboarding_use_template), onClick = { onUse(current.key) }) } },
+        bottomBar = {
+            BottomActionBar(
+                text = stringResource(Res.string.template_make_website),
+                onClick = { onUse(template.key) },
+                trailingIcon = Res.drawable.ic_arrow_forward,
+                nudgeTrailingIcon = true,
+                secondaryText = stringResource(Res.string.template_see_others),
+                onSecondary = onBack,
+            )
+        },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Text(
@@ -283,7 +239,7 @@ fun OnboardingTemplateScreen(
                 style = AgentProTheme.text.bodyMuted,
                 modifier = Modifier.padding(horizontal = Spacing.m).padding(top = Spacing.m),
             )
-            Box(Modifier.weight(1f).fillMaxWidth()) { TemplateChooserBody(chooser) { template -> preview(template) } }
+            TemplatePreviewBody(template, Modifier.weight(1f)) { preview(template) }
         }
     }
 }

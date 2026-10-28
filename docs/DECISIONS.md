@@ -1011,3 +1011,53 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
 - **Alternatives considered:** a protected GitHub Environment requiring a manual approval click before the deploy step (rejected by the user — they want it fully automatic); `workflow_dispatch`-only with no automatic trigger (rejected, same reason); a third-party `wrangler-action` (skipped in favour of the exact `npx wrangler@4.151.1` command the docs already specify, so CI and manual deploys stay identical).
 - **Not done:** the GitHub repo secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`) are not yet added — the user is adding them. Until they exist, pushes to `main` will run the workflow and fail at the build/deploy step.
 - **Status:** Accepted.
+
+### #119 — 2026-10-28 — The in-app preview loads the live renderer; the bundled copy is the fallback
+- **Decision:** `SitePreview` first loads the deployed renderer at `<SITE_BASE_URL>/?preview=1` (the Worker's static shell, never SSR'd, no backend call) and calls `window.renderSite(json)` as before. The renderer bundled in the APK (`agentpro.site-preview`, served from `https://appassets.androidplatform.net`) is used only when `SITE_BASE_URL` isn't an https URL, the live page failed in the last 60 s, the main frame gets a network or HTTP error, the page has no `window.renderSite`, or it isn't ready within 10 s. Only a server redirect on the live host is followed; link taps still never navigate. **Supersedes the "Preview" item of #56** (the bundled renderer as the only source); the rest of #56 stands.
+- **Why:** the user found that every template change on the web needed a new APK before agents saw it in the app ("should it not be fetched from the web"). The public sites already update with each deploy (now automatic, #118); the preview lagged behind and could show a design that no longer matches the live site.
+- **Trade-offs:**
+  - The preview shows whatever is deployed, so `renderSite` must keep accepting the payloads older app versions send (WEB_RENDERER.md, Resolution 0), and a broken deploy shows in the app too (the bundled copy only covers a page that fails to load or lacks `renderSite`).
+  - Each preview fetches the shell over the network (the Worker sends `max-age=300`, so the WebView cache absorbs most of it); offline or on a very slow network the agent waits up to 10 s before the bundled copy appears, and the next 60 s go straight to it.
+  - The draft (the agent's own unsaved content) is only passed into the page through `evaluateJavascript`; the preview shell sends nothing anywhere, so no personal data leaves the phone that didn't before (PRIVACY.md unchanged).
+  - The offers slot-mode bridge (OFFERS.md 8b-4b, not built yet) must accept the `SITE_BASE_URL` origin as well as `appassets`.
+- **Not in scope:** the template list itself (`Templates.kt`: keys, names, descriptions, sections, default accent) is still generated at build time, so a brand-new template key still needs an app update. Fetching the list and its labels from `/shared/` would need its own decision, because it changes the "definitions in `shared/` + codegen" pattern for the pickers.
+- **Alternatives considered:** keep bundling and rebuild for every template change (the problem); live only with no fallback (a blank preview offline, and the app works offline elsewhere, #8); download and cache the renderer files in app storage (more code — versioning, partial downloads — for little gain over the WebView's HTTP cache plus the bundled copy).
+- **Status:** Accepted.
+
+
+### #120 — 2026-10-28 — Choose a template from a grid of auto-scrolling full-page pictures, then preview it
+- **Decision:** onboarding step 2 and Website → Appearance → Template show every template in one grid: 2 per row, 2 rows whole and a tenth of the third peeking. Each tile holds the template's **full-page picture**: strips generated from the web templates by `scripts/gen-template-pages.py` and bundled as `composeResources/drawable/template_page_<key>_<n>.webp`.
+  - **Auto-scroll:** 4 s after every picture has loaded, the tiles scroll one at a time, in order. Each one jumps back to the top at its end, then the next starts, round and round. Nothing moves when animations are off.
+  - **Tapping a tile** opens that template's live preview (`SitePreview`, the agent's own content) with **Make website from this →** in onboarding, or **Use this template →** in Appearance, and **See other templates**.
+  - **Replaces** the step-2 intro with its 5 s countdown (#115) and the swipe pager of all 5 templates in step 3 and in Appearance. The step numbers stay the same.
+- **Why:** the user asked for it: the template choice screen should show the 5 templates itself, scroll through them automatically, and send the agent to a preview of the chosen one with a way back.
+- **Tiles as pictures, not live renders (the user's choice):** five live WebViews at once would be slow to load and heavy. On low-memory phones the WebView's renderer process can die, and it already did with two previews alive in the pager (`onRenderProcessGone`). So the tiles stay blank.
+  - Pictures are light: about 870 KB in the APK and about 57 MB of bitmaps, freed when the grid closes. They also scroll smoothly.
+  - They are cut into strips of 2048 px or less, because a single 8600 px bitmap can exceed GPU texture limits.
+- **Trade-offs:**
+  - The tiles show a sample agent, not the agent's name. The preview after the tap shows the agent's own content.
+  - The pictures ship in the app, so a template's new look reaches the grid only with an app build (the preview itself is live, #119). They must be regenerated with `preview.webp` (WEB_RENDERER.md, Template page strips), and `TemplateGridTest` fails if a template has none.
+  - The loop is an endless animation, so it runs under Compose's `InfiniteAnimationPolicy` (UI tests stop it), and it is skipped under "remove animations", where every `animateTo` would end at once.
+- **Alternatives considered:**
+  - Live mini-websites in the tiles (memory and crashes, above).
+  - One picture per template from the web at runtime (needs network, more code).
+  - Keeping the pager with an auto-advance (not what was asked).
+- **Status:** Accepted. Supersedes the step-2 intro and the template pager of #115 (the families stay removed).
+
+### #121 — 2026-10-28 — Important rollouts take existing agents through a full-screen "What's new" walkthrough; items are versioned
+- **Decision:**
+  - **Versioned items:** each "What's new" item (`WhatsNewItem`) records the release that brought it (`since`), and `WhatsNew.VERSION` is the highest one. Agents see only the items newer than the version they've seen, so old rows never repeat.
+  - **Important items:** if any new item is important, all the new items show as a **full-screen walkthrough on the first Home of the app run**, before anything else. It has one page per item with **Show me** (opens it), **Next**, and **Not now** on the last page. Smaller items keep the dismissible Home sheet (#103).
+  - **What counts as important:** it changes the agent's public website, needs them to act or decide, adds a required step, or moves something they use.
+  - **Seen:** any way out marks everything seen. New sign-ups never see it, because finishing onboarding marks it seen.
+  - **The standing rule (CLAUDE.md, Rolling out to existing users):** every change existing agents should know about ships with an item, and the PRODUCT.md requirement says whether it is important and what Show me opens.
+  - **First use:** "5 new website designs" (`NewTemplates`, since 2, important). Show me opens the template grid (#120).
+- **Why:** the user asked how existing members would learn about the new templates, and asked for a standing rule so important features always reach existing users. The redesign (#117) already changed every existing site's look without telling its agent, and onboarding only reaches new sign-ups.
+  - The #103 sheet was too easy to dismiss.
+  - Its single `VERSION` couldn't add rows without re-showing the old ones.
+- **Options the user chose between:** full-screen walkthrough (chosen), must act before Home (blocks an agent who just wants a due date), the Home sheet only (easy to ignore). For this rollout: Show me opens the grid directly (chosen) rather than first showing their own site in the new look.
+- **Trade-offs:**
+  - Show me ends the walkthrough, so later pages of the same run aren't shown. Pages are ordered important first so the one that matters is always seen.
+  - A fresh existing agent who never saw version 1 gets 4 pages.
+  - The flow UI tests that reach Home with a site now mark What's new seen first (`whatsNewSeen()`).
+- **Status:** Accepted. Supersedes #103's single-version scheme (the sheet itself stays for small items).

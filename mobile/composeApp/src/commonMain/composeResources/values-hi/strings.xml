@@ -165,14 +165,9 @@
     <string name="onboarding_step_of">चरण %1$d / %2$d</string>
     <string name="onboarding_mobile_title">आपका मोबाइल नंबर</string>
     <string name="onboarding_mobile_intro">ग्राहक आपकी वेबसाइट से इसी नंबर पर आपको कॉल और WhatsApp करेंगे।</string>
-    <string name="onboarding_intro_bar">आपकी वेबसाइट</string>
-    <string name="onboarding_intro_title">चलिए, अपनी वेबसाइट के लिए एक टेम्पलेट चुनें</string>
-    <string name="onboarding_intro_body">%1$d तैयार डिज़ाइन, हर एक में आपका नाम और शुरुआती टेक्स्ट। जो पसंद आए वह चुनें; इसे कभी भी बदल सकते हैं।</string>
-    <string name="onboarding_intro_auto">%1$d सेकंड में डिज़ाइन खुलेंगे</string>
     <string name="onboarding_template_hint">यह शुरुआती टेक्स्ट के साथ आपकी वेबसाइट है। अगले चरण में आप अपनी कंपनियाँ जोड़ेंगे, और हर शब्द बाद में बदल सकते हैं।</string>
     <string name="onboarding_details_title">आपका काम</string>
     <string name="onboarding_details_intro">वे कंपनियाँ जोड़ें जिनके साथ आप काम करते हैं और हर एक के साथ कौन-सा बीमा बेचते हैं। आपकी वेबसाइट की सेवाएँ इन्हीं के हिसाब से होंगी।</string>
-    <string name="onboarding_template_title">डिज़ाइन चुनें</string>
     <string name="onboarding_link_title">आपका लिंक</string>
     <string name="onboarding_photo_title">आपकी फ़ोटो</string>
     <string name="onboarding_photo_intro">ग्राहक उस चेहरे पर भरोसा करते हैं जिसे वे देख सकें। आपकी फ़ोटो आपकी वेबसाइट में सबसे ऊपर दिखेगी।</string>
@@ -197,7 +192,6 @@
     <string name="onboarding_link_taken">यह लिंक पहले से लिया जा चुका है</string>
     <string name="onboarding_link_preview">आपकी साइट: %1$s</string>
     <string name="onboarding_trial_started">आपका %1$d दिन का निःशुल्क ट्रायल शुरू हो गया है</string>
-    <string name="onboarding_template_position">%2$d में से %1$d</string>
     <string name="onboarding_photo_tips">चेहरा और कंधे, कैमरे की ओर देखते हुए, खिड़की की दिन की रोशनी में।\nसादी पृष्ठभूमि और साफ़-सुथरे रोज़ के कपड़े।\nधूप का चश्मा, ग्रुप फ़ोटो, बीमा कंपनी की वर्दी या लोगो नहीं।</string>
     <string name="profile_mobile">मोबाइल</string>
 
@@ -221,6 +215,12 @@
     <string name="whats_new_customers">ग्राहक अपनी पॉलिसियाँ ऑनलाइन देख सकें</string>
     <string name="whats_new_website">‘मेरे ग्राहकों के लिए’ अब आपकी वेबसाइट पर है</string>
     <string name="whats_new_got_it">समझ गया</string>
+    <string name="whats_new_templates">वेबसाइट के 5 नए डिज़ाइन</string>
+    <string name="whats_new_templates_body">आपकी वेबसाइट का रूप नया हो गया है। पाँचों डिज़ाइन देखें और जो पसंद आए वह चुनें।</string>
+    <string name="whats_new_show_me">दिखाएँ</string>
+    <string name="whats_new_next">आगे</string>
+    <string name="whats_new_not_now">अभी नहीं</string>
+    <string name="whats_new_page">%2$d में से %1$d</string>
     <string name="setup_next">अगला कदम</string>
     <string name="setup_todo">बाकी</string>
     <string name="enquiries_empty">पूछताछ पाने के लिए अपनी वेबसाइट शेयर करें</string>

@@ -30,7 +30,7 @@ import com.sledje.agentpro.feature.onboarding.ui.LaunchStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingMobileScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingPhotoScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingPreviewScreen
-import com.sledje.agentpro.feature.onboarding.ui.OnboardingIntroScreen
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateGridScreen
 import com.sledje.agentpro.feature.onboarding.ui.SiteLaunchScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingUiState
@@ -92,15 +92,16 @@ class FoundationScreenshotTest {
             val form = remember { FormState(OnboardingViewModel.PROFILE_FIELDS, mapOf(OnboardingViewModel.NAME to "Ramesh Kumar")) }
             OnboardingMobileScreen(form, OnboardingUiState(contactSummary = true, email = "ramesh.kumar@gmail.com"), onContinue = {})
         },
-        // Step 2: the template intro (no countdown in a still); step 3 pages through all five templates.
-        "OnboardingIntro" to {
-            OnboardingIntroScreen(templateCount = Templates.all.size, onContinue = {}, onBack = {}, autoAdvance = false)
+        // Step 2: the grid of the five templates (the tiles' placeholders: no pictures, nothing moves in a still);
+        // step 3: the tapped template, a placeholder standing in for the live render.
+        "OnboardingTemplateGrid" to {
+            OnboardingTemplateGridScreen(Templates.all, onOpen = {}, onBack = {}, loader = { emptyList() })
         },
         "OnboardingTemplate" to {
-            OnboardingTemplateScreen(Templates.all, Templates.all.first().key, "Ramesh Kumar", "Pune", onUse = {}, onBack = {})
+            OnboardingTemplateScreen(Templates.all.first(), "Ramesh Kumar", "Pune", onUse = {}, onBack = {})
         },
         "OnboardingTemplateOffers" to {
-            OnboardingTemplateScreen(Templates.all, "spotlight", "Ramesh Kumar", "Pune", onUse = {}, onBack = {})
+            OnboardingTemplateScreen(Templates.fromKey("spotlight")!!, "Ramesh Kumar", "Pune", onUse = {}, onBack = {})
         },
         "OnboardingPhoto" to {
             val form = remember { FormState(OnboardingViewModel.PROFILE_FIELDS, mapOf(OnboardingViewModel.NAME to "Ramesh Kumar")) }

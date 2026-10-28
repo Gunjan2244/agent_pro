@@ -9,6 +9,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,7 @@ import com.sledje.agentpro.feature.settings.ProfileRoute
 import com.sledje.agentpro.feature.website.WebsiteContentRoute
 import com.sledje.agentpro.feature.website.WebsiteLinkRoute
 import com.sledje.agentpro.feature.website.WebsiteSectionRoute
+import com.sledje.agentpro.feature.website.WebsiteTemplatesRoute
 import com.sledje.agentpro.feature.website.data.Site
 import com.sledje.agentpro.feature.website.data.StarterContent
 import kotlinx.serialization.json.JsonObject
@@ -79,6 +81,9 @@ import org.jetbrains.compose.resources.stringResource
 
 @Serializable data object HomeRoute
 
+/** The full-screen "What's new" walkthrough for important new features (docs/UX.md, What's new; DECISIONS #121). */
+@Serializable data object WhatsNewRoute
+
 /** Home: always on (no catalog flag). Phase 5 has the greeting, the setup checklist and "Nothing due today"; Phase 11 adds Today, KPIs and the chart. */
 object HomeFeature : AppFeature {
     override val flag = null
@@ -89,6 +94,10 @@ object HomeFeature : AppFeature {
         composable<HomeRoute> {
             val vm = viewModel { HomeViewModel(host.deps) }
             val state by vm.state.collectAsState()
+            // Important news opens full screen once, on the first Home of this app run that has it.
+            LaunchedEffect(state.walkthrough.isNotEmpty()) {
+                if (state.walkthrough.isNotEmpty() && vm.claimWalkthrough()) host.nav.navigate(WhatsNewRoute)
+            }
             HomeScreen(
                 state,
                 onOpenSettings = host::openSettings,
@@ -98,6 +107,29 @@ object HomeFeature : AppFeature {
                     host.openWhatsNewItem(item)
                 },
                 onWhatsNewSeen = vm::markWhatsNewSeen,
+            )
+        }
+        composable<WhatsNewRoute> { entry ->
+            // Home's view model: the pages it found, and the same "seen" mark.
+            val homeEntry = remember(entry) { host.nav.getBackStackEntry<HomeRoute>() }
+            val vm: HomeViewModel = viewModel(viewModelStoreOwner = homeEntry) { HomeViewModel(host.deps) }
+            // Kept as opened: marking them seen empties the state while the screen is still animating out.
+            val pages = remember { vm.state.value.walkthrough }
+            if (pages.isEmpty()) {
+                LaunchedEffect(Unit) { host.nav.popBackStack() }
+                return@composable
+            }
+            WhatsNewScreen(
+                pages,
+                onShowMe = { item ->
+                    vm.markWhatsNewSeen()
+                    host.nav.popBackStack()
+                    host.openWhatsNewItem(item)
+                },
+                onDone = {
+                    vm.markWhatsNewSeen()
+                    host.nav.popBackStack()
+                },
             )
         }
     }
@@ -121,6 +153,7 @@ internal fun FeatureHost.openWhatsNewItem(item: WhatsNewItem) {
         WhatsNewItem.Companies -> nav.navigate(ProfileRoute)
         WhatsNewItem.CustomerLogin -> openTab("customers")
         WhatsNewItem.ForMyCustomers -> if (openTab("website")) nav.navigate(WebsiteContentRoute)
+        WhatsNewItem.NewTemplates -> if (openTab("website")) nav.navigate(WebsiteTemplatesRoute)
     }
 }
 
@@ -137,7 +170,8 @@ enum class SetupItem(val label: StringResource, val feature: FeatureId? = null) 
 
 /**
  * [items] are the checklist rows whose feature flag is on (all of them by default); [whatsNew] holds the rows of the
- * one-time "What's new" sheet, empty when it shouldn't show.
+ * one-time "What's new" sheet and [walkthrough] the pages of the full-screen one (at most one of them is non-empty;
+ * both are empty when there's nothing new; [WhatsNew]).
  */
 data class HomeUiState(
     val firstName: String? = null,
@@ -145,6 +179,7 @@ data class HomeUiState(
     val done: Set<SetupItem> = emptySet(),
     val items: List<SetupItem> = SetupItem.entries.toList(),
     val whatsNew: List<WhatsNewItem> = emptyList(),
+    val walkthrough: List<WhatsNewItem> = emptyList(),
 ) {
     val doneCount: Int get() = items.count { it in done }
     val setupComplete: Boolean get() = items.all { it in done }
@@ -190,6 +225,7 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
         marks,
         combine(deps.customers.observeAll(), companiesLinked) { customers, linked -> customers.isNotEmpty() to linked },
     ) { profile, site, flags, (shared, invited, seen), (hasCustomers, linked) ->
+        val news = WhatsNew.pending(seen, hasSite = site != null, enabled = flags::isEnabled)
         HomeUiState(
             firstName = profile?.firstName,
             photoUrl = site?.heroPhoto() ?: profile?.photoUrl?.takeIf { it.isNotBlank() },
@@ -204,11 +240,17 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
                 if (hasCustomers) add(SetupItem.FirstCustomer)
                 if (invited) add(SetupItem.CustomerLogin)
             },
-            whatsNew = if (WhatsNew.shouldShow(seen, hasSite = site != null)) WhatsNew.rows(flags::isEnabled) else emptyList(),
+            whatsNew = WhatsNew.sheet(news),
+            walkthrough = WhatsNew.walkthrough(news),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
-    /** Closing the sheet, tapping a row or "Got it": this version won't show again. */
+    private var walkthroughOpened = false
+
+    /** True the first time only, so Home opens the walkthrough once (not again on Back or recomposition). */
+    fun claimWalkthrough(): Boolean = !walkthroughOpened.also { walkthroughOpened = true }
+
+    /** Closing the sheet or the walkthrough, a row, "Got it", "Show me", "Not now": this version won't show again. */
     fun markWhatsNewSeen() {
         viewModelScope.launch { deps.store.put(StoreKeys.WHATS_NEW_SEEN, WhatsNew.VERSION.toString()) }
     }

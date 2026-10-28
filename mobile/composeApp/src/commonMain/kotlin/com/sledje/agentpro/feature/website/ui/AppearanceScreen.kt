@@ -20,7 +20,6 @@ import com.sledje.agentpro.core.catalog.color
 import com.sledje.agentpro.core.catalog.label
 import com.sledje.agentpro.core.designsystem.AgentProTheme
 import com.sledje.agentpro.core.designsystem.Spacing
-import com.sledje.agentpro.core.designsystem.components.AppCard
 import com.sledje.agentpro.core.designsystem.components.AppScaffold
 import com.sledje.agentpro.core.designsystem.components.AppTopBar
 import com.sledje.agentpro.core.designsystem.components.BottomActionBar
@@ -32,6 +31,7 @@ import com.sledje.agentpro.core.designsystem.components.SegmentedControl
 import com.sledje.agentpro.core.designsystem.components.SwatchOption
 import com.sledje.agentpro.core.designsystem.components.SwatchPicker
 import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.resources.ic_arrow_forward
 import com.sledje.agentpro.resources.ic_web
 import com.sledje.agentpro.resources.needs_internet
 import com.sledje.agentpro.resources.onboarding_use_template
@@ -41,6 +41,8 @@ import com.sledje.agentpro.resources.website_hub_appearance
 import com.sledje.agentpro.resources.website_site_language
 import com.sledje.agentpro.resources.website_template
 import com.sledje.agentpro.resources.website_template_picker_title
+import com.sledje.agentpro.resources.template_grid_hint_site
+import com.sledje.agentpro.resources.template_see_others
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -103,37 +105,64 @@ fun AppearanceScreen(
 }
 
 /**
- * Template picker (docs/UX.md): a full-height pager of the agent's real draft rendered in each of the five templates
- * (SitePreview, injected as [preview]), opened on the current one, with the name and description below and **Use
- * this template**.
+ * Template picker (docs/UX.md, Template grid): every template in the [TemplateGrid], the site's current one marked.
+ * A tap opens that template's preview ([onOpen], [TemplatePreviewScreen]); nothing changes until the agent takes it.
+ *
+ * @param loader the grid's picture loader; screenshots pass one that returns none.
  */
 @Composable
 fun TemplatePickerScreen(
     templates: List<TemplateSpec>,
-    selectedKey: String,
+    currentKey: String,
+    onBack: () -> Unit,
+    onOpen: (String) -> Unit,
+    loader: TemplatePageLoader = rememberTemplatePageLoader(),
+) {
+    AppScaffold(
+        topBar = { AppTopBar(title = stringResource(Res.string.website_template_picker_title), onBack = onBack) },
+        offline = !isOnline(),
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            Text(
+                stringResource(Res.string.template_grid_hint_site),
+                style = AgentProTheme.text.bodyMuted,
+                modifier = Modifier.padding(horizontal = Spacing.m).padding(top = Spacing.m),
+            )
+            TemplateGrid(templates, onOpen = onOpen, modifier = Modifier.weight(1f).fillMaxWidth(), currentKey = currentKey, loader = loader)
+        }
+    }
+}
+
+/**
+ * One template from the picker (docs/UX.md, Template preview): the agent's real draft as it would look after switching
+ * ([preview], SitePreview), with **Use this template →** (the arrow nudges; needs internet) and **See other
+ * templates**, which goes back to the grid like Back.
+ */
+@Composable
+fun TemplatePreviewScreen(
+    template: TemplateSpec,
     saving: Boolean,
     onBack: () -> Unit,
     onUse: (String) -> Unit,
-    preview: @Composable (TemplateSpec) -> Unit,
+    preview: @Composable () -> Unit,
 ) {
     val online = isOnline()
-    val chooser = rememberTemplateChooser(templates, selectedKey)
     AppScaffold(
-        topBar = { AppTopBar(title = stringResource(Res.string.website_template_picker_title), onBack = onBack) },
+        topBar = { AppTopBar(title = stringResource(template.name), onBack = onBack) },
         offline = !online,
         bottomBar = {
-            chooser.current?.let { current ->
-                BottomActionBar(
-                    text = stringResource(Res.string.onboarding_use_template),
-                    onClick = { onUse(current.key) },
-                    enabled = online && !saving,
-                    helperText = if (!online) stringResource(Res.string.needs_internet) else null,
-                )
-            }
+            BottomActionBar(
+                text = stringResource(Res.string.onboarding_use_template),
+                onClick = { onUse(template.key) },
+                enabled = online && !saving,
+                helperText = if (!online) stringResource(Res.string.needs_internet) else null,
+                secondaryText = stringResource(Res.string.template_see_others),
+                onSecondary = onBack,
+                trailingIcon = Res.drawable.ic_arrow_forward,
+                nudgeTrailingIcon = true,
+            )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            TemplateChooserBody(chooser) { template -> AppCard(Modifier.fillMaxSize()) { preview(template) } }
-        }
+        TemplatePreviewBody(template, Modifier.padding(padding), preview)
     }
 }

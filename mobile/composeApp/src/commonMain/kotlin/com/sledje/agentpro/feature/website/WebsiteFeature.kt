@@ -56,6 +56,7 @@ import com.sledje.agentpro.feature.website.ui.ShareSheet
 import com.sledje.agentpro.feature.website.ui.StatsScreen
 import com.sledje.agentpro.feature.website.ui.StatsViewModel
 import com.sledje.agentpro.feature.website.ui.TemplatePickerScreen
+import com.sledje.agentpro.feature.website.ui.TemplatePreviewScreen
 import com.sledje.agentpro.feature.website.ui.WebsiteHubScreen
 import com.sledje.agentpro.feature.website.ui.WebsiteHubViewModel
 import com.sledje.agentpro.feature.website.ui.sectionFor
@@ -89,6 +90,7 @@ import org.jetbrains.compose.resources.stringResource
 @Serializable data class WebsiteSectionRoute(val key: String, val fromSetup: Boolean = false)
 @Serializable data object WebsiteAppearanceRoute
 @Serializable data object WebsiteTemplatesRoute
+@Serializable data class WebsiteTemplatePreviewRoute(val key: String)
 @Serializable data object WebsiteLinkRoute
 @Serializable data object WebsiteStatsRoute
 @Serializable data object WebsitePreviewRoute
@@ -162,6 +164,7 @@ object WebsiteFeature : AppFeature {
         composable<WebsiteSectionRoute> { entry -> SectionRoute(host, entry) }
         composable<WebsiteAppearanceRoute> { AppearanceRoute(host) }
         composable<WebsiteTemplatesRoute> { TemplatesRoute(host) }
+        composable<WebsiteTemplatePreviewRoute> { entry -> TemplatePreviewRoute(host, entry) }
         composable<WebsiteLinkRoute> { LinkRoute(host) }
         composable<WebsiteStatsRoute> { StatsRoute(host) }
         composable<WebsitePreviewRoute> { PreviewRoute(host) }
@@ -368,21 +371,35 @@ private fun AppearanceRoute(host: FeatureHost) {
 private fun TemplatesRoute(host: FeatureHost) {
     val vm = viewModel { AppearanceViewModel(host.deps.sites) }
     val state by vm.state.collectAsState()
+    val site = state.site ?: return
+    TemplatePickerScreen(
+        templates = Templates.all,
+        currentKey = site.templateKey,
+        onBack = { host.nav.popBackStack() },
+        onOpen = { key -> host.nav.navigate(WebsiteTemplatePreviewRoute(key)) },
+    )
+}
+
+/** One template from the picker; taking it saves and returns to Appearance (docs/UX.md, Template preview). */
+@Composable
+private fun TemplatePreviewRoute(host: FeatureHost, entry: NavBackStackEntry) {
+    val template = Templates.fromKey(entry.toRoute<WebsiteTemplatePreviewRoute>().key) ?: return
+    val vm = viewModel { AppearanceViewModel(host.deps.sites) }
+    val state by vm.state.collectAsState()
     val profile by host.websiteHub().profile.collectAsState()
     LaunchedEffect(state.templateSaved) {
         if (state.templateSaved) {
             vm.consumeTemplateSaved()
-            host.nav.popBackStack()
+            host.nav.popBackStack(WebsiteTemplatesRoute, inclusive = true)
         }
     }
     val site = state.site ?: return
-    TemplatePickerScreen(
-        templates = Templates.all,
-        selectedKey = site.templateKey,
+    TemplatePreviewScreen(
+        template = template,
         saving = state.saving,
         onBack = { host.nav.popBackStack() },
         onUse = vm::selectTemplate,
-        preview = { template ->
+        preview = {
             // The page as it would be after switching (DECISIONS #86); nothing is saved until the agent chooses.
             val content = remember(site, template.key) {
                 SiteContent.afterSwitch(site.draftContent, Templates.fromKey(site.templateKey), template)

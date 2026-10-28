@@ -24,7 +24,7 @@ fun androidAppContainer(context: Context): AppContainer {
             urlLauncher = AndroidUrlLauncher(app),
             mediaPicker = AndroidMediaPicker(),
             imageProcessor = AndroidImageProcessor(),
-            sitePreview = AndroidSitePreview(),
+            sitePreview = AndroidSitePreview(AppConfig.SITE_BASE_URL),
             secureSettings = KeystoreSecureSettings(app),
             locale = AppCompatLocaleController(),
             contactPicker = AndroidContactPicker(),

@@ -43,6 +43,9 @@ object Motion {
     /** One way of the "Continue →" arrow's nudge (forward, then back over the same time). */
     const val NUDGE_MILLIS: Int = 600
 
+    /** How fast a template tile's full-page picture slides up in the template grid (dp per second, linear). */
+    const val TEMPLATE_SCROLL_DP_PER_SECOND: Float = 300f
+
     fun <T> stateChange(): FiniteAnimationSpec<T> = tween(SHORT_MILLIS, easing = StandardEasing)
 
     fun <T> navigation(): FiniteAnimationSpec<T> = tween(MEDIUM_MILLIS, easing = StandardEasing)

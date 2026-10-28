@@ -41,6 +41,7 @@ Agent PRO is for insurance agents in India (LIC and other insurers; each agent b
 ## Design principles
 - **Easy to use, professional, close to white, uncluttered.**
 - One job and one primary action per screen, with details one tap away. See the calm-screen rules in DESIGN_SYSTEM.md.
+- **Existing users are taken through what changes for them.** Every important new feature or website change reaches agents who already have a site as a full-screen "What's new" page on their next app open, with Show me; smaller ones go in the Home sheet (UX.md, What's new; CLAUDE.md, Rolling out to existing users).
 
 ## Designed in, built later
 - **Domain auto-renewal** through Razorpay Subscriptions or a UPI mandate. v1 renews manually after reminders.
@@ -138,3 +139,12 @@ Add new requirements here, with the date, before implementing them.
   - Template 1 (Trust, `classic`) follows Theme A; the other four each have a different structure (Fresh: editorial split; Simple: profile sidebar; Spotlight: dark offer showcase; Guide: needs finder).
   - Every template has moving parts: sliders that autoplay and can be swiped, scrolling tickers, numbers that count up, sections and cards that rise in on scroll, hover lift and picture zoom. Motion stops for visitors who ask for reduced motion, and every page is complete without JavaScript.
   - Wireframes for all five (desktop and phone) are kept on a Design canvas artifact shared with the user.
+- 2026-10-28: **template changes made on the web must show in the app without rebuilding the APK** (user: "the templates are hard coded, so every time I update the template in web the apk needs to be rebuilt; should it not be fetched from the web"; DECISIONS #119). The in-app preview loads the live renderer and falls back to the copy bundled in the app when it can't be reached. Adding a brand-new template (a sixth key) still needs an app update, because the template list and names are compiled in; fetching those is a possible later step.
+- 2026-10-28: **choose the template from a grid of all five, then preview the chosen one** (user; DECISIONS #120). The "select your template" screen shows the 5 templates itself, 2 per row, with 2 rows fully visible and about a tenth of the third peeking out so the agent sees there is more.
+  - Each tile shows its template's whole page and scrolls through it on its own. 4 s after every template has loaded, the tiles scroll **one at a time**, one after the other. A tile that reaches the end jumps straight back to the top, and the next one starts.
+  - Tapping a tile opens a preview of that template with **Make website from this →** (the arrow moving) and an option to go back and look at the others.
+  - The user chose full-page pictures for the tiles (generated from the web templates and bundled in the app) over five live mini-websites, and the same grid for Website → Appearance → Template.
+- 2026-10-28: **existing members must learn about new features; when an important feature rolls out, there must be a way to make them go through it** (user: "how would the existing members know about the new templates", and asked for the rule in CLAUDE.md and the relevant places; DECISIONS #121).
+  - The user chose a **full-screen walkthrough** for important features: on the next app open, before Home, one page per new item with **Show me** (opens it) and **Next** / **Not now**. It can't be missed, but nothing is forced. Smaller features keep the dismissible Home sheet.
+  - **First use, important:** "5 new website designs". The redesign (#117) already changed every existing site's look, and Show me opens the template grid (#120), as the user chose.
+  - New sign-ups never see it, because onboarding already shows them the grid. Agents who saw the earlier sheet (companies, customer login) see only the new page.

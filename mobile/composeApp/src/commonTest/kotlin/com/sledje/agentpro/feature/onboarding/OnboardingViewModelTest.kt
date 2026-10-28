@@ -149,14 +149,18 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun theIntroOpensTheTemplatesOnThePickSoFar() = runTest {
+    fun aTappedTileIsPreviewedThenTaken() = runTest {
         val vm = vm()
-        vm.openTemplates()
+        vm.previewTemplate("guide")
         assertEquals(OnboardingStep.Template, vm.state.value.navigateTo)
+        assertEquals("guide", vm.state.value.templateKey, "step 3 previews the tapped template")
         vm.onNavigated()
-        vm.selectTemplate("spotlight")
-        vm.openTemplates()
-        assertEquals("spotlight", vm.state.value.templateKey, "coming back keeps the design picked")
+        vm.previewTemplate("no-such-template")
+        assertEquals(null, vm.state.value.navigateTo, "an unknown key goes nowhere")
+        assertEquals("guide", vm.state.value.templateKey)
+        vm.selectTemplate("guide")
+        assertEquals(OnboardingStep.Details, vm.state.value.navigateTo)
+        assertEquals("guide", vm.state.value.templateKey)
     }
 
     @Test
