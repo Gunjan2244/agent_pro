@@ -1,15 +1,68 @@
-/* Guide ("Best offers"): needs first. The hero asks what to protect; big choice buttons jump to anchored groups
-   (heading, the agent's own description, then the cards). Hero layout and cards: base.css .fam-offers. */
-.tpl-guide .qr-h{margin-top:calc(var(--space-l)*2);font-size:var(--text-m);line-height:var(--line-m);font-weight:600;color:var(--c-onSurface)}
-.tpl-guide .qr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-s);margin-top:var(--space-m)}
-.tpl-guide .chip{justify-content:center;width:100%;min-height:48px;border-radius:var(--shape-md);text-align:center;font-weight:600}
-.tpl-guide .need .plan .offer-b{padding-top:var(--space-m)}
-@media(min-width:720px){.tpl-guide .qr{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(min-width:1024px){.tpl-guide .qr{grid-template-columns:repeat(2,minmax(0,1fr))}}
-/* wide screens: each group is one row, its heading and the agent's description on the left, its cards on the right */
-@media(min-width:1024px){
-  .tpl-guide .need{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);grid-template-rows:auto 1fr;column-gap:calc(var(--space-l)*2);align-items:start}
-  .tpl-guide .need>h3{grid-area:1/1}
-  .tpl-guide .need-d{grid-area:2/1}
-  .tpl-guide .need .offers{grid-area:1/2/3/3;margin-top:0;grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Guide ("Best offers", needs finder; DECISIONS #76, #117). A centred hero on a pale tint with picture tiles, a
+   three-step strip, groups by need beside a sticky index (a sticky strip on phones), a trust ticker band and one big
+   rotating quote. */
+.tpl-guide .sec-hero{max-width:none;padding:calc(var(--space-l)*2) 0 0;background:var(--tint)}
+.tpl-guide .hero-in{display:grid;justify-items:center;gap:var(--space-l);max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto;padding:0 var(--gutter) calc(var(--space-l)*2);text-align:center}
+.tpl-guide .hero-text{display:grid;justify-items:center;gap:var(--space-m);max-width:800px;margin:0}
+.tpl-guide .hero-id{display:flex;align-items:center;gap:var(--space-s);text-align:left}
+.tpl-guide .hero-photo{width:56px;height:56px}
+.tpl-guide .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m);background:var(--c-surface)}
+.tpl-guide .hero-text .lead{margin:0}
+.tpl-guide .qr-h{margin:0;color:var(--accent);font-size:var(--text-m);line-height:var(--line-m);font-weight:700}
+.tpl-guide .needs-t{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-m);width:100%;text-align:left}
+.tpl-guide .nt{display:flex;flex-direction:column;height:100%;border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg);background:var(--c-surface);color:var(--c-onSurface);text-decoration:none}
+.tpl-guide .nt .pic{width:100%;aspect-ratio:16/10;object-fit:cover}
+.tpl-guide .nt-b{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--space-s);padding:var(--space-m)}
+.tpl-guide .nt-b strong{font-weight:600}
+.tpl-guide .nt .lnk{font-weight:500}
+@media(min-width:1024px){.tpl-guide .needs-t{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-l)}.tpl-guide .nt-b{padding:var(--space-m) var(--space-l)}}
+.tpl-guide .feat-s{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--space-s) var(--space-m);width:100%;padding:var(--space-m);border-radius:var(--shape-md);background:var(--c-surface)}
+.tpl-guide .feat-s>span:nth-child(2){font-weight:600}
+
+/* how it works: numbered steps joined by a line */
+.tpl-guide .steps{max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto;padding:var(--space-l) var(--gutter) calc(var(--space-l)*2)}
+.tpl-guide .st-h{margin-bottom:var(--space-m);color:var(--c-muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.tpl-guide .steps ol{display:grid;gap:var(--space-m)}
+.tpl-guide .steps li{display:flex;align-items:center;gap:var(--space-m);font-weight:600}
+.tpl-guide .st-n{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700}
+@media(min-width:720px){
+  .tpl-guide .steps ol{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-l)}
+  .tpl-guide .steps li{position:relative}
+  .tpl-guide .steps li:not(:last-child)::after{content:"";flex:1;min-width:var(--space-l);height:2px;background:linear-gradient(90deg,var(--accent) 50%,var(--c-outline) 50%) left/200% 100%}
 }
+@media(min-width:720px) and (prefers-reduced-motion:no-preference){.tpl-guide .steps li:not(:last-child)::after{animation:draw 1400ms 500ms ease-out both}.tpl-guide .steps li:nth-child(2)::after{animation-delay:1400ms}}
+@keyframes draw{from{background-position:right}}
+
+/* groups by need beside the index */
+.tpl-guide .needs{display:grid;gap:var(--space-l)}
+.tpl-guide .need-idx{position:sticky;top:64px;z-index:3;margin:0 calc(var(--gutter)*-1);padding:var(--space-s) var(--gutter);background:var(--c-surface);border-bottom:1px solid var(--c-outlineVariant);overflow-x:auto;scrollbar-width:none}
+.tpl-guide .need-idx ul{display:flex;gap:var(--space-s)}
+.tpl-guide .need-idx a{display:flex;align-items:center;gap:var(--space-s);min-height:40px;padding:0 var(--space-m);border-radius:var(--shape-lg);color:var(--c-onSurfaceVariant);font-weight:500;text-decoration:none;white-space:nowrap;transition:background-color var(--motion-short),color var(--motion-short)}
+.tpl-guide .need-idx span{color:var(--c-muted)}
+.tpl-guide .need-idx a[aria-current=true],.tpl-guide .need-idx a:hover{background:var(--tint);color:var(--accent)}
+.tpl-guide .need{scroll-margin-top:calc(var(--space-l)*5)}
+.tpl-guide .need-h{display:flex;align-items:center;gap:var(--space-m)}
+.tpl-guide .need-h .pic{flex:none;width:72px;aspect-ratio:1;object-fit:cover;border-radius:var(--shape-md)}
+.tpl-guide .need-d{margin-top:var(--space-s)}
+.tpl-guide .need .offers{margin-top:var(--space-l)}
+@media(min-width:1024px){
+  .tpl-guide .needs{grid-template-columns:220px minmax(0,1fr);gap:calc(var(--space-l)*2);align-items:start}
+  .tpl-guide .need-idx{top:calc(64px + var(--space-l));margin:0;padding:0 var(--space-m) 0 0;border:0;border-right:1px solid var(--c-outlineVariant);overflow:visible}
+  .tpl-guide .need-idx ul{flex-direction:column}
+  .tpl-guide .need-idx a{justify-content:space-between;border-radius:var(--shape-md)}
+  .tpl-guide .need .offers{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* trust ticker band, the big quote */
+.tpl-guide .sec-highlights{max-width:none;padding-left:0;padding-right:0}
+.tpl-guide .sec-highlights h2{max-width:var(--wrap);margin-inline:auto;padding:0 var(--gutter)}
+.tpl-guide .tk-trust{background:color-mix(in srgb,var(--accent) 75%,#000);color:#fff;font-weight:500}
+.tpl-guide .tk-trust .ico,.tpl-guide .tk-trust strong{color:#fff}
+.tpl-guide .tk-trust strong{margin-right:var(--space-s)}
+.tpl-guide .sec-testimonials{text-align:center}
+.tpl-guide .sl-bigq{--sl-w:100%}
+.tpl-guide .bigq{margin:0}
+.tpl-guide .bigq blockquote{max-width:800px;margin:0 auto;font-size:var(--text-m);line-height:var(--line-m);font-weight:600;white-space:pre-line}
+.tpl-guide .bigq blockquote::before{content:"\201C";display:block;color:var(--accent);font-size:var(--text-xl);line-height:var(--line-l);font-weight:700}
+.tpl-guide .bigq figcaption{margin-top:var(--space-m);color:var(--c-muted)}
+@media(min-width:1024px){.tpl-guide .bigq blockquote{font-size:var(--text-l);line-height:var(--line-l)}}

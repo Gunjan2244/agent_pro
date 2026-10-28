@@ -163,11 +163,12 @@ try {
       console.log(`SIZE SSR first paint ${tpl}: ${(size(c) / 1024).toFixed(1)} KB raw, ${(gz(c) / 1024).toFixed(1)} KB gzip (template style.css ${(size([c[3]]) / 1024).toFixed(1)} KB)`);
       // 2026-10-22 redesign: one layout system (grid, rhythm, accordion, companies, the family's hero) took base.css
       // from 11 KB to 15 KB raw; first paint is 21-24 KB raw but under 7 KB gzip, which is what the network carries.
-      assert.ok(size(c) < 26 * 1024, tpl + ": SSR first-paint CSS over 26KB raw");
-      assert.ok(gz(c) < 7 * 1024, tpl + ": SSR first-paint CSS over 7KB gzip");
+      // 26 -> 34 KB raw, 7 -> 9 KB gzip: the lively redesign (DECISIONS #117: top bar, sliders, tickers, dark bands)
+      assert.ok(size(c) < 34 * 1024, tpl + ": SSR first-paint CSS over 34KB raw");
+      assert.ok(gz(c) < 9 * 1024, tpl + ": SSR first-paint CSS over 9KB gzip");
     }
     console.log(`SIZE SSR hydration JS (deferred): ${(size(hydrateJs) / 1024).toFixed(1)} KB raw, ${(gz(hydrateJs) / 1024).toFixed(1)} KB gzip; + install.js ${(size([...hydrateJs, "install.js"]) / 1024).toFixed(1)} KB raw; + privacy.js on the privacy page ${(size([...hydrateJs, "privacy.js"]) / 1024).toFixed(1)} KB raw`);
-    assert.ok(size(css) < 26 * 1024, "SSR first-paint CSS over 26KB");
+    assert.ok(size(css) < 34 * 1024, "SSR first-paint CSS over 34KB");
     assert.ok(size([...hydrateJs, "install.js"]) < 30 * 1024, "SSR hydration JS over 30KB");
   }
   // a template's own modules: render.js plus any template partials (parts.js, DECISIONS #85)
@@ -181,16 +182,16 @@ try {
     // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip); WP5c's template partials (modern/minimal parts.js and
     // their layouts, DECISIONS #85) add up to ~6KB; the 2026-10-22 redesign (one layout system in base.css, the companies
     // partials) another ~7KB, so the cap is 100KB (unminified, commented source); the SSR path keeps its own caps above.
-    assert.ok(raw < 106 * 1024, tpl + " over 106KB"); // 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB
+    assert.ok(raw < 124 * 1024, tpl + " over 124KB"); // 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB; 106 -> 124KB: the lively redesign (DECISIONS #117: ui.js, template parts, top bar / slider / ticker CSS), ~14KB
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
     const later = [...shared, ...own(tpl), `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 113 * 1024, tpl + " + install modules over 113KB"); // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
+    assert.ok(later < 131 * 1024, tpl + " + install modules over 131KB"); // 113 -> 131KB: DECISIONS #117 // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
-      assert.ok(sz < 102 * 1024, extra + " page over 102KB"); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
+      assert.ok(sz < 112 * 1024, extra + " page over 112KB"); // 102 -> 112KB: DECISIONS #117 (sections/ui.js and base.css's lively parts); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
     }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);

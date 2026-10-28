@@ -195,15 +195,8 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 .tpl.has-bar{padding-bottom:calc(var(--space-l)*2 + var(--space-m) + env(safe-area-inset-bottom))}
 @media(min-width:720px){.callbar{display:none}.tpl.has-bar{padding-bottom:0}}
 
-/* ---- "Best offers" family: the hero is two columns from 1024px (text left; featured card and scene right) ---- */
-.fam-offers .hero-photo{width:72px;height:72px}
-.fam-offers .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
-.fam-offers .hero-id{order:1}
-.fam-offers .hero-text{order:2}
-.fam-offers .hero-offer{order:3;max-width:none}
-.fam-offers .hero-more{order:4}
-.fam-offers .scene{order:5}
-.fam-offers .hero-offer .offer-b{padding:var(--space-l)}
+/* ---- "Best offers" family (spotlight, guide): each template draws its own hero; shared here are the contact band
+   and the promo card ---- */
 .fam-offers .sec-contact,.fam-offers .sec-portal{background:var(--c-surfaceContainerLow);box-shadow:0 0 0 100vmax var(--c-surfaceContainerLow);clip-path:inset(0 -100vmax)}
 /* the promo: a compact white card on the band, the points as a row of pills (the trust strip's look) */
 .fam-offers .pp{max-width:none;padding:var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surface)}
@@ -211,15 +204,66 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 .fam-offers .pp-pts li{min-height:40px;padding:var(--space-s) var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg)}
 .fam-offers .pp-go .btn{width:100%}
 @media(min-width:720px){.fam-offers .pp{padding:var(--space-l)}.fam-offers .pp-go .btn{width:auto}}
-@media(min-width:1024px){
-  .fam-offers .hero-in{grid-template-columns:minmax(0,1fr) 440px;grid-template-rows:auto auto 1fr;column-gap:calc(var(--space-l)*3);grid-template-areas:"id side" "text side" "more side";align-items:start}
-  .fam-offers .hero-id{grid-area:id}
-  .fam-offers .hero-text{grid-area:text}
-  .fam-offers .hero-more{grid-area:more}
-  .fam-offers .hero-side{grid-area:side;display:grid;gap:var(--space-l)}
-  .fam-offers .hero-offer{margin-top:0}
-  .fam-offers .scene{max-width:none;margin:0}
-}
+
+/* ---- lively parts (DECISIONS #117): top bar, sliders, tickers, hover lift, entrance. Complete without JS; motion.js
+   adds slider controls and count-up; every animation is off under prefers-reduced-motion (rule at the end) ---- */
+.topbar{position:sticky;top:0;z-index:6;background:color-mix(in srgb,var(--c-surface) 92%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid transparent;transition:box-shadow var(--motion-medium),border-color var(--motion-medium)}
+.topbar.up{border-color:var(--c-outlineVariant);box-shadow:0 4px 16px rgb(17 24 39/.06)}
+.tb-in{display:flex;align-items:center;gap:var(--space-m);max-width:calc(var(--wrap) + var(--gutter)*2);min-height:64px;margin:0 auto;padding:var(--space-s) var(--gutter)}
+.tb-id{display:flex;align-items:center;gap:var(--space-s);min-width:0;margin-right:auto;color:var(--c-onSurface);font-weight:600;text-decoration:none}
+.tb-id span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-ph{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none}
+.tb-ph.mono{display:grid;place-items:center;background:var(--tint);color:var(--accent)}
+.tb-links{display:none}
+.tb-links a,.tb-menu a{color:var(--c-onSurfaceVariant);font-weight:500;text-decoration:none;transition:color var(--motion-short)}
+.tb-links a:hover,.tb-menu a:hover{color:var(--accent)}
+.tb-cta{min-height:40px;padding:0 var(--space-m)}
+.tb-menu{position:relative}
+.tb-menu summary{display:grid;place-items:center;width:44px;height:44px;list-style:none;cursor:pointer}
+.tb-menu summary::-webkit-details-marker{display:none}
+.tb-menu summary span,.tb-menu summary span::before,.tb-menu summary span::after{display:block;position:relative;width:20px;height:2px;border-radius:2px;background:var(--c-onSurface);transition:transform var(--motion-short),background-color var(--motion-short)}
+.tb-menu summary span::before,.tb-menu summary span::after{content:"";position:absolute;left:0;top:-6px}
+.tb-menu summary span::after{top:6px}
+.tb-menu[open] summary span{background:transparent}
+.tb-menu[open] summary span::before{transform:translateY(6px) rotate(45deg)}
+.tb-menu[open] summary span::after{transform:translateY(-6px) rotate(-45deg)}
+.tb-menu ul{position:absolute;right:0;top:100%;display:grid;min-width:240px;padding:var(--space-s);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md);background:var(--c-surface);box-shadow:0 12px 32px rgb(17 24 39/.14)}
+.tb-menu li a{display:flex;align-items:center;min-height:44px;padding:0 var(--space-m)}
+@media(max-width:719px){.has-bar .tb-cta{display:none}}
+@media(min-width:1024px){.tb-links{display:flex;align-items:center;gap:var(--space-l)}.tb-menu{display:none}}
+.tb-login a{color:var(--accent)}
+
+.slider{position:relative;--sl-w:86%}
+.sl-track{display:grid;grid-auto-flow:column;grid-auto-columns:var(--sl-w);gap:var(--space-m);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;padding:var(--space-s) 0 var(--space-m)}
+.sl-track::-webkit-scrollbar{display:none}
+.slide{display:flex;min-width:0;scroll-snap-align:start}
+.slide>*{flex:1;min-width:0}
+.sl-nav{display:flex;align-items:center;justify-content:center;gap:var(--space-m);margin-top:var(--space-s)}
+.sl-nav[hidden]{display:none}
+.sl-btn{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--c-outline);border-radius:50%;background:var(--c-surface);color:var(--c-onSurface);font-family:inherit;font-size:var(--text-m);line-height:1;cursor:pointer;transition:border-color var(--motion-short),color var(--motion-short)}
+.sl-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sl-dots{display:flex;gap:var(--space-s)}
+.sl-dot{width:10px;height:10px;padding:0;border:0;border-radius:5px;background:var(--c-outline);cursor:pointer;transition:width var(--motion-medium),background-color var(--motion-medium)}
+.sl-dot[aria-current=true]{width:28px;background:var(--accent)}
+
+.ticker{display:flex;overflow:hidden;white-space:nowrap}
+.tk-run{display:flex;flex:none;justify-content:space-around;gap:calc(var(--space-l)*2);min-width:100%;padding:var(--space-m) calc(var(--space-l)) var(--space-m) var(--space-l)}
+.tk-run li{display:inline-flex;align-items:center;gap:var(--space-s)}
+.tk-run strong{font-weight:700}
+@media(prefers-reduced-motion:no-preference){.tk-run{animation:tk var(--tk,40s) linear infinite}.ticker:hover .tk-run{animation-play-state:paused}.tk-rev .tk-run{animation-direction:reverse}}
+@media(prefers-reduced-motion:reduce){.ticker{white-space:normal}.tk-run{flex-wrap:wrap;min-width:0}.tk-run[aria-hidden]{display:none}}
+@keyframes tk{to{transform:translateX(-100%)}}
+
+.lift{transition:transform var(--motion-medium) ease-out,box-shadow var(--motion-medium) ease-out}
+.zoom{overflow:hidden}
+.zoom .pic{transition:transform 700ms ease-out}
+@media(hover:hover){.lift:hover{transform:translateY(-4px);box-shadow:0 14px 32px rgb(17 24 39/.12)}.zoom:hover .pic{transform:scale(1.06)}}
+/* the hero's text rises in (transform only, so the <h1> is painted at once and stays the LCP element) */
+@media(prefers-reduced-motion:no-preference){.enter>*{animation:enter 700ms cubic-bezier(.2,.7,.2,1) both}.enter>:nth-child(2){animation-delay:60ms}.enter>:nth-child(3){animation-delay:120ms}.enter>:nth-child(n+4){animation-delay:180ms}.fade{animation:fade 900ms ease-out both}}
+@keyframes enter{from{transform:translateY(var(--space-l))}}
+@keyframes fade{from{opacity:0;transform:scale(1.03)}}
+.cu{font-variant-numeric:tabular-nums}
+.ask{margin-top:auto;padding-top:var(--space-s)}
 
 /* ---- platform and privacy pages ---- */
 .doc{max-width:720px;margin:0 auto;padding:var(--space-l) var(--space-m);display:grid;gap:var(--space-m);--accent:var(--c-primary);--on-accent:var(--c-onPrimary)}

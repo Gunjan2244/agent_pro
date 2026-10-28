@@ -68,6 +68,8 @@ export async function show(site, target = {}) {
   document.documentElement.lang = locale;
   root.innerHTML = mod.render(site, t, tokens);
   root.removeAttribute("aria-busy");
+  import("./motion.js").then((m) => m.wireMotion()).catch(() => {}); // sliders, count-up, top bar: cosmetic, never blocks
+  import("./reveal.js").then((m) => m.revealSections()).catch(() => {});
   const ctx = Object.assign(makeCtx(site, t, tokens, key), { slug: target.slug, host: target.host, consent: consentFor(nf.notices, locale), images: imgs, family });
   return ctx;
 }

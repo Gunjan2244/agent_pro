@@ -1,33 +1,102 @@
-/* Trust ("Meet me", DECISIONS #85): centred and traditional. A big round portrait with the name under it, centred
-   section heads with a short accent rule, soft cards (pale surface, no border, lg corners) everywhere, highlights as
-   an icon grid. Text inside cards, the FAQ and the contact column stays left-aligned for reading. */
-.tpl-classic .sec{text-align:center}
-.tpl-classic h2::after{content:"";display:block;width:40px;height:2px;margin:var(--space-m) auto 0;background:var(--accent)}
-.tpl-classic .hero-in{justify-items:center}
-.tpl-classic .hero-id{flex-direction:column;gap:var(--space-m)}
-.tpl-classic .hero-text{max-width:800px}
-.tpl-classic .lead,.tpl-classic .prose,.tpl-classic .about-b,.tpl-classic .faq,.tpl-classic .list,.tpl-classic .disc{margin-inline:auto}
-.tpl-classic .qr,.tpl-classic .stats,.tpl-classic .tags{justify-content:center}
-.tpl-classic .hero-offer{width:100%;text-align:left}
-.tpl-classic .card,.tpl-classic .offer,.tpl-classic .enq{border-color:transparent;background:var(--c-surfaceContainerLow);border-radius:var(--shape-lg)}
-.tpl-classic .offer .pill{background:var(--c-surface)}
-.tpl-classic .card .pic{mix-blend-mode:multiply}
-.tpl-classic .svcs,.tpl-classic .offers,.tpl-classic .faq,.tpl-classic .list,.tpl-classic .contact-grid{text-align:left}
-.tpl-classic .hl .card,.tpl-classic .co,.tpl-classic .quotes .card{text-align:center}
-.tpl-classic .hl .ico{margin-inline:auto}
-.tpl-classic .cos{justify-content:center}
-.tpl-classic .enq .fld input,.tpl-classic .enq .fld select,.tpl-classic .enq .fld textarea{background:var(--c-surface)}
-.tpl-classic .foot{text-align:center}
-@media(min-width:720px){.tpl-classic .hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(min-width:1024px){.tpl-classic .hl{grid-template-columns:repeat(4,minmax(0,1fr))}}
-/* centred rows: a last row with fewer cards is centred too (three 1/3-width cards per row) */
-@media(min-width:720px){
-  .tpl-classic .svcs,.tpl-classic .offers,.tpl-classic .cos,.tpl-classic .quotes{display:flex;flex-wrap:wrap;justify-content:center}
-  .tpl-classic .svcs>li,.tpl-classic .offers>li,.tpl-classic .cos>li,.tpl-classic .quotes>li{flex:0 1 calc((100% - var(--space-l))/2)}
+/* Trust ("classic", Theme A; DECISIONS #117). Banner with a dark text panel, ticker bands, sliders, a dark
+   introduction panel and a dark footer. Section heads centred with a short accent rule; text stays left-aligned. */
+.tpl-classic{--deep:color-mix(in srgb,var(--accent) 70%,#0b1020);--ink:#111827}
+.tpl-classic h2{text-align:center}
+.tpl-classic h2::after{content:"";display:block;width:40px;height:3px;margin:var(--space-m) auto 0;border-radius:2px;background:var(--accent)}
+
+/* banner: full width, the scene picture behind a dark panel; without a picture the panel sits on the deep accent */
+.tpl-classic .sec-hero{max-width:none;padding:0}
+.tpl-classic .banner{position:relative;display:grid;align-items:end;min-height:520px;overflow:hidden;background:var(--deep)}
+.tpl-classic .bn-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tpl-classic .bn-panel{position:relative;display:grid;justify-items:start;gap:var(--space-m);max-width:640px;margin:var(--space-l) var(--gutter);padding:var(--space-l);border-radius:var(--shape-lg);background:rgb(17 24 39/.8);color:#fff}
+.tpl-classic .bn-panel h1{color:#fff}
+.tpl-classic .bn-panel .lead{margin-top:0;color:#E5E7EB}
+.tpl-classic .bn-panel .who span{color:#D1D5DB}
+.tpl-classic .bn-panel .hero-id{gap:var(--space-s)}
+.tpl-classic .bn-panel .hero-photo{width:56px;height:56px;border:2px solid rgb(255 255 255/.7)}
+.tpl-classic .bn-panel .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-classic .bn-act{display:flex;flex-wrap:wrap;gap:var(--space-s)}
+.tpl-classic .bn-act .btn.ghost{background:transparent;border-color:#fff;color:#fff}
+.tpl-classic .bn-panel .qr-h{margin-top:0;color:#E5E7EB}
+.tpl-classic .bn-panel .chip{background:transparent;border-color:rgb(255 255 255/.5);color:#fff}
+.tpl-classic .bn-panel .chip:hover{background:rgb(255 255 255/.12)}
+/* phones: the picture on top, the panel overlapping its lower edge */
+@media(max-width:719px){
+  .tpl-classic .banner{display:block;min-height:0;padding-bottom:var(--space-m)}
+  .tpl-classic .bn-img{position:relative;height:260px}
+  .tpl-classic .banner.no-img{padding-top:var(--space-m)}
+  .tpl-classic .bn-panel{margin:calc(var(--space-l)*-2) var(--gutter) 0;padding:var(--space-l) var(--space-m);background:rgb(17 24 39/.94)}
 }
-@media(min-width:1024px){.tpl-classic .svcs>li,.tpl-classic .offers>li,.tpl-classic .cos>li,.tpl-classic .quotes>li{flex-basis:calc((100% - var(--space-l)*2)/3)}}
-/* promo: a centred soft card, the points a 2x2 grid of icon tiles, a centred button */
-.tpl-classic .pp{max-width:720px;margin-inline:auto;padding:var(--space-m);border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow);justify-items:center}
-.tpl-classic .pp-pts{grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:var(--space-s)}
-.tpl-classic .pp-pts li{flex-direction:column;justify-content:flex-start;padding:var(--space-m) var(--space-s);border-radius:var(--shape-md);background:var(--c-surface)}
-@media(min-width:720px){.tpl-classic .pp{padding:var(--space-l)}.tpl-classic .pp-pts{gap:var(--space-m)}}
+@media(min-width:1024px){
+  .tpl-classic .banner{min-height:600px}
+  .tpl-classic .bn-panel{margin:calc(var(--space-l)*2) max(var(--gutter),calc((100% - var(--wrap))/2));padding:calc(var(--space-l)*2)}
+}
+.tpl-classic .hero-offer{max-width:720px;margin:var(--space-l) auto 0;padding:0 var(--gutter)}
+
+/* tickers */
+.tpl-classic .tk-trust{background:var(--deep);color:#fff;font-weight:500}
+.tpl-classic .tk-trust .ico{width:20px;height:20px;color:#fff}
+.tpl-classic .tk-cos{border-radius:var(--shape-md);background:var(--tint);color:var(--c-onSurface)}
+.tpl-classic .tk-cos span{color:var(--c-onSurfaceVariant)}
+
+/* offers slider: one wide card (picture beside the text from 720 px) with a peek of the next */
+.tpl-classic .sl-offers{--sl-w:88%}
+.tpl-classic .sl-offers .offer{box-shadow:0 8px 24px rgb(17 24 39/.08)}
+.tpl-classic .sl-offers .offer .pic{aspect-ratio:16/9}
+@media(min-width:720px){
+  .tpl-classic .sl-offers{--sl-w:80%}
+  .tpl-classic .sl-offers .offer{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+  .tpl-classic .sl-offers .offer .pic{height:100%;aspect-ratio:auto}
+}
+@media(min-width:1024px){.tpl-classic .sl-offers{--sl-w:72%}}
+
+/* introduction: picture beside a dark panel */
+.tpl-classic .intro{display:grid;overflow:hidden;border-radius:var(--shape-lg);background:var(--ink)}
+.tpl-classic .in-pic{min-height:240px}
+.tpl-classic .in-img{width:100%;height:100%;max-height:420px;object-fit:cover;object-position:50% 20%}
+@media(min-width:720px){.tpl-classic .in-img{max-height:none}}
+.tpl-classic .in-panel{display:grid;align-content:center;gap:var(--space-m);padding:var(--space-l);color:#E5E7EB}
+.tpl-classic .in-panel h2{margin:0;color:#fff;text-align:left}
+.tpl-classic .in-panel h2::after{margin-left:0}
+.tpl-classic .in-panel .kicker{color:#fff;opacity:.85}
+.tpl-classic .in-panel .prose{color:#D1D5DB}
+.tpl-classic .in-nums{display:flex;flex-wrap:wrap;gap:var(--space-l) calc(var(--space-l)*2)}
+.tpl-classic .in-nums strong{display:block;color:#fff;font-size:var(--text-l);line-height:var(--line-l);font-weight:700}
+.tpl-classic .in-panel .facts,.tpl-classic .in-panel .fact-k{color:#D1D5DB}
+@media(min-width:720px){.tpl-classic .intro{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.tpl-classic .in-panel{padding:calc(var(--space-l)*2)}}
+
+/* plans grid: 2 × 3 picture cards */
+.tpl-classic .plans{display:grid;gap:var(--space-m)}
+.tpl-classic .plan-c{display:flex;flex-direction:column;border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg);background:var(--c-surface)}
+.tpl-classic .plan-c .pic{width:100%;aspect-ratio:21/9;object-fit:cover}
+@media(min-width:720px){.tpl-classic .plan-c .pic{aspect-ratio:16/9}}
+.tpl-classic .plan-b{display:flex;flex-direction:column;flex:1;gap:var(--space-s);padding:var(--space-m) var(--space-l) var(--space-l)}
+.tpl-classic .plan-b h3{font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-classic .plan-b p{color:var(--c-onSurfaceVariant)}
+@media(min-width:720px){.tpl-classic .plans{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-l)}}
+@media(min-width:1024px){.tpl-classic .plans{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* why choose me: three per view; policyholders: two and a peek, running off the right edge */
+.tpl-classic .sl-three{--sl-w:78%}
+.tpl-classic .hl-c{display:grid;justify-items:center;align-content:start;gap:var(--space-s);text-align:center;border:0;background:var(--c-surfaceContainerLow);border-radius:var(--shape-lg)}
+.tpl-classic .hl-c .ico{width:48px;height:48px;margin:0;padding:var(--space-s);border-radius:50%;background:var(--tint)}
+.tpl-classic .hl-c p{margin:0}
+.tpl-classic .sl-quotes{--sl-w:86%}
+.tpl-classic .quote{display:grid;align-content:space-between;gap:var(--space-m);margin:0;border:0;border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
+.tpl-classic .quote blockquote{font-size:var(--text-m);line-height:var(--line-m);font-weight:500;white-space:pre-line}
+.tpl-classic .quote blockquote::before{content:"\201C";display:block;color:var(--accent);font-size:var(--text-xl);line-height:var(--line-m);font-weight:700}
+@media(min-width:720px){.tpl-classic .sl-three{--sl-w:calc((100% - var(--space-l))/2)}.tpl-classic .sl-quotes{--sl-w:46%}.tpl-classic .sl-track{gap:var(--space-l)}}
+@media(min-width:1024px){
+  .tpl-classic .sl-three{--sl-w:calc((100% - var(--space-l)*2)/3)}
+  .tpl-classic .sl-quotes{--sl-w:38%}
+}
+
+/* FAQ centred, contact on a pale band, the promo a soft card */
+.tpl-classic .faq,.tpl-classic .list,.tpl-classic .disc{margin-inline:auto}
+.tpl-classic .sec-contact,.tpl-classic .sec-faq{background:var(--c-surfaceContainerLow);box-shadow:0 0 0 100vmax var(--c-surfaceContainerLow);clip-path:inset(0 -100vmax)}
+.tpl-classic .pp{max-width:720px;margin-inline:auto;padding:var(--space-l);border-radius:var(--shape-lg);background:var(--tint)}
+
+/* dark footer */
+.tpl-classic .foot{background:var(--ink);color:#9CA3AF;padding-top:calc(var(--space-l)*2);padding-bottom:calc(var(--space-l)*2)}
+.tpl-classic .foot p:first-child{color:#fff;font-weight:600}
+.tpl-classic .foot a{color:#E5E7EB}

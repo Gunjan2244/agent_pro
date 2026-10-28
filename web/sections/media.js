@@ -16,12 +16,12 @@ export function initials(name) {
 }
 // A bundled illustration (docs/IMAGES.md): drawn only when `name` is listed in web/images/manifest.json
 // (ctx.images = {name: {w, h, sizes}}). Always lazy, async, explicit size; alt "" unless given.
-export function pic(ctx, name, { alt = "", sizes = "(min-width: 720px) 400px, 100vw", cls = "pic", low = false } = {}) {
+export function pic(ctx, name, { alt = "", sizes = "(min-width: 720px) 400px, 100vw", cls = "pic", low = false, eager = false } = {}) {
   const m = ctx.images && /^[a-z0-9-]+$/.test(String(name || "")) ? ctx.images[name] : null;
   const ws = m && Array.isArray(m.sizes) ? m.sizes.filter((w) => Number.isInteger(w) && w > 0) : [];
   if (!m || !ws.length || !(m.w > 0) || !(m.h > 0)) return "";
   const src = (w) => `/images/${name}-${w}.webp`;
-  return `<img class="${cls}" src="${src(ws[ws.length - 1])}" srcset="${ws.map((w) => `${src(w)} ${w}w`).join(", ")}" sizes="${sizes}" width="${m.w}" height="${m.h}" alt="${esc(alt)}" loading="lazy" decoding="async"${low ? ' fetchpriority="low"' : ""}>`;
+  return `<img class="${cls}" src="${src(ws[ws.length - 1])}" srcset="${ws.map((w) => `${src(w)} ${w}w`).join(", ")}" sizes="${sizes}" width="${m.w}" height="${m.h}" alt="${esc(alt)}"${eager ? "" : ' loading="lazy"'} decoding="async"${low ? ' fetchpriority="low"' : ""}>`;
 }
 // The catalog's image name for an interest, and its translated alt text ("{interest} illustration"). An interest
 // whose own illustration isn't shipped yet (not in the manifest; e.g. motor, home, travel, business, accident until

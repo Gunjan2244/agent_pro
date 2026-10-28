@@ -1,7 +1,8 @@
 import { compose } from "../../sections/index.js";
-// "Best offers" family. Spotlight: the featured offer front and centre in the hero (on the pale tint), then an
-// offer grid with images and "ends on" dates (or plan cards when there are no offers), a trust strip, services,
-// FAQ and contact. site = { content, template_key, accent, locale, profile, offers, company }; tokens see makeCtx.
+import { hero, offers, services, highlights, testimonials } from "./parts.js";
+// "Best offers" family · Spotlight (DECISIONS #76, #117): a dark hero with an offer slider, a trust bar on its edge,
+// an offer wall, picture tiles for services, icon cards, a testimonials slider, FAQ and contact.
+// site = { content, template_key, accent, locale, profile, offers, company }; tokens see makeCtx.
 export function render(site, t, tokens) {
-  return compose(site, t, tokens, "spotlight", { layout: "grid", companiesAfter: "highlights" });
+  return compose(site, t, tokens, "spotlight", { layout: "grid", companiesAfter: "highlights", partials: { hero, offers, services, highlights, testimonials } });
 }

@@ -69,14 +69,15 @@ function offerPic(o, ctx) {
 }
 
 // opts: { tag: "li" | "div", image: bool, featured: bool (hero banner: no image, title not a heading),
-//         button: bool (the CTA is the section's one button: the offers family's hero) }
+//         button: bool (the CTA is the section's one button: the offers family's hero),
+//         ttl: bool (the title is a <p class="ttl">, not a heading: a card inside the hero, which has only its <h1>) }
 export function offerCard(o, ctx, opts = {}) {
   const { t } = ctx;
   const tag = opts.tag || "li";
   const src = o.from_agent ? t("site.offer_agent_note") : t("site.offer_pick");
   const ends = formatDate(o.ends_on, ctx.locale);
   const img = opts.image && !opts.featured ? offerPic(o, ctx) : "";
-  const title = opts.featured ? `<p class="ttl">${esc(o.title)}</p>` : `<h3>${esc(o.title)}</h3>`;
+  const title = opts.featured || opts.ttl ? `<p class="ttl">${esc(o.title)}</p>` : `<h3>${esc(o.title)}</h3>`;
   return `<${tag} class="offer${opts.featured ? " feat" : ""}">${img}<div class="offer-b">
 <p class="offer-top">${has(o.badge) ? `<span class="pill">${esc(o.badge)}</span>` : ""}<span class="src">${esc(src)}</span></p>
 ${title}${has(o.summary) ? `<p class="sum">${esc(o.summary)}</p>` : ""}

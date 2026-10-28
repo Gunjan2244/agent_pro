@@ -1,8 +1,70 @@
-/* Spotlight ("Best offers"): the featured offer on the pale tint above the fold, then the offer grid with images,
-   the trust strip, services and the rest. The two-column hero, the band behind the contact section and the cards
-   are the family's shared styles (base.css .fam-offers); spotlight adds the larger featured card and a centred
-   trust strip row. Phones: id, text, featured card, chips, scene. */
-.tpl-spotlight .hero-offer .ttl{font-size:var(--text-m);line-height:var(--line-m)}
-.tpl-spotlight .hero-more .qr-h{margin-top:var(--space-l)}
-.tpl-spotlight .sec-offers .offers{margin-top:0}
-@media(min-width:1024px){.tpl-spotlight .trust{gap:var(--space-m)}}
+/* Spotlight ("Best offers", offer showcase; DECISIONS #76, #117). A dark hero band (white text, outlined chips) with
+   an offer slider on the right, a white trust bar overlapping its lower edge, an offer wall whose first card is
+   double width, picture tiles, icon cards, a quotes slider and a two-column FAQ. */
+.tpl-spotlight{--ink:#0F172A}
+.tpl-spotlight .sec-hero{max-width:none;padding:0}
+.tpl-spotlight .hero-band{background:var(--ink);color:#E5E7EB;padding:var(--space-l) 0 calc(var(--space-l)*3)}
+.tpl-spotlight .hero-in{display:grid;gap:var(--space-l);max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto;padding:0 var(--gutter)}
+.tpl-spotlight .hero-top{display:flex;align-items:center;justify-content:space-between;gap:var(--space-m)}
+.tpl-spotlight .hero-id{display:flex;align-items:center;gap:var(--space-m)}
+.tpl-spotlight .hero-photo{width:56px;height:56px}
+.tpl-spotlight .hero-photo.mono{font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-spotlight .who strong{color:#fff}
+.tpl-spotlight .who span{color:#9CA3AF}
+.tpl-spotlight .hero-login{position:static}
+.tpl-spotlight .hero-login a{color:var(--c-surface)}
+.tpl-spotlight .hero-text{margin:0}
+.tpl-spotlight h1{color:#fff;letter-spacing:-.02em}
+.tpl-spotlight .hero-text .lead{color:#CBD5E1}
+.tpl-spotlight .hero-text .qr-h{color:#CBD5E1}
+.tpl-spotlight .hero-text .chip{background:transparent;border-color:rgb(255 255 255/.4);color:#fff}
+.tpl-spotlight .hero-text .chip:hover{background:rgb(255 255 255/.1)}
+.tpl-spotlight .sl-hero{--sl-w:100%}
+.tpl-spotlight .sl-hero .offer{color:var(--c-onSurface);border:0;box-shadow:0 24px 48px rgb(0 0 0/.35)}
+.tpl-spotlight .sl-hero .offer .pic{aspect-ratio:16/9}
+.tpl-spotlight .sl-hero .sl-btn{background:transparent;border-color:rgb(255 255 255/.4);color:#fff}
+.tpl-spotlight .sl-hero .sl-dot{background:rgb(255 255 255/.35)}
+.tpl-spotlight .sl-hero .sl-dot[aria-current=true]{background:#fff}
+.tpl-spotlight .sl-hero .ttl{font-weight:600;font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-spotlight .scene{width:100%;max-width:none;margin:0;border-radius:var(--shape-lg)}
+@media(min-width:1024px){
+  .tpl-spotlight .hero-band{padding:var(--space-l) 0 calc(var(--space-l)*4)}
+  .tpl-spotlight .hero-in{grid-template-columns:minmax(0,1fr) 440px;column-gap:calc(var(--space-l)*3);align-items:center}
+  .tpl-spotlight .hero-top{grid-column:1/-1}
+}
+
+/* trust bar on the hero's edge */
+.tpl-spotlight .tbar{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-s);max-width:var(--wrap);margin:calc(var(--space-l)*-2) var(--gutter) 0;padding:var(--space-m);border-radius:var(--shape-lg);background:var(--c-surface);box-shadow:0 12px 32px rgb(17 24 39/.12)}
+.tpl-spotlight .tbar li{display:flex;align-items:center;gap:var(--space-s);min-height:44px;padding:0 var(--space-m);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg);color:var(--c-onSurfaceVariant);font-weight:500}
+.tpl-spotlight .tbar .ico,.tpl-spotlight .tbar strong{color:var(--accent)}
+.tpl-spotlight .tbar strong{margin-right:var(--space-s);font-weight:700}
+@media(min-width:720px){.tpl-spotlight .tbar{display:flex;flex-wrap:wrap;justify-content:center}}
+@media(min-width:1104px){.tpl-spotlight .tbar{margin-inline:auto}}
+
+/* the offer wall: the first card spans two columns, picture beside the text */
+.tpl-spotlight .wall .offer:first-child .pic{aspect-ratio:16/9}
+@media(min-width:1024px){
+  .tpl-spotlight .wall .offer:first-child{grid-column:span 2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .tpl-spotlight .wall .offer:first-child .pic{height:100%;aspect-ratio:auto}
+}
+
+/* services as picture tiles */
+.tpl-spotlight .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-m)}
+.tpl-spotlight .tile{display:flex;flex-direction:column;gap:var(--space-s);overflow:visible}
+.tpl-spotlight .tile .pic{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--shape-md)}
+.tpl-spotlight .tile p{color:var(--c-onSurfaceVariant)}
+@media(min-width:1024px){.tpl-spotlight .tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-l)}}
+
+.tpl-spotlight .hl .ico{width:40px;height:40px;padding:var(--space-s);border-radius:50%;background:var(--tint)}
+.tpl-spotlight .sl-q{--sl-w:86%}
+.tpl-spotlight .quote{display:grid;align-content:space-between;gap:var(--space-m);margin:0}
+.tpl-spotlight .quote blockquote{font-weight:500;white-space:pre-line}
+@media(min-width:720px){.tpl-spotlight .sl-q{--sl-w:calc((100% - var(--space-l))/2)}}
+@media(min-width:1024px){.tpl-spotlight .sl-q{--sl-w:calc((100% - var(--space-l)*2)/3)}}
+
+/* a two-column FAQ */
+@media(min-width:1024px){.tpl-spotlight .faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:calc(var(--space-l)*2);max-width:none;border-top:0}.tpl-spotlight .faq details{border-top:1px solid var(--c-outlineVariant);border-bottom:0}}
+
+/* contact on the pale accent band */
+.tpl-spotlight .sec-contact{background:var(--tint);box-shadow:0 0 0 100vmax var(--tint)}
+.tpl-spotlight .foot{background:var(--tint);border-top:1px solid color-mix(in srgb,var(--accent) 20%,#fff)}

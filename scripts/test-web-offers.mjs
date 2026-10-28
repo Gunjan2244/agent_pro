@@ -29,27 +29,35 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   {
     const site = fx("sample-en"), h = html(site, "classic");
     const sec = section(h, "offers"), hero = heroOf(h);
-    ok("offers (personal): grid cards with 'My pick for you', the custom one 'Details provided by the agent', no ended offer, disclaimer once", () => {
-      for (const o of site.offers.items.slice(0, 3)) assert.ok(sec.includes(`<h3>${o.title}</h3>`), o.title);
-      assert.equal((sec.match(new RegExp(dicts.en["site.offer_pick"], "g")) || []).length, 3);
+    ok("offers (classic): one slider of every live offer, the featured one first, 'My pick for you' / 'Details provided by the agent', no ended offer, disclaimer once", () => {
+      assert.ok(sec.includes('<div class="slider sl-offers" data-auto="5000" role="region" aria-roledescription="carousel"'));
+      const titles = [...sec.matchAll(/<h3>([^<]+)<\/h3>/g)].map((m) => m[1]);
+      assert.deepEqual(titles.slice(0, 4), [site.offers.featured.title, ...site.offers.items.slice(0, 3).map((o) => o.title)]);
+      assert.equal((sec.match(new RegExp(dicts.en["site.offer_pick"], "g")) || []).length, 4);
       assert.ok(sec.includes(dicts.en["site.offer_agent_note"]) && sec.includes("Free policy review this month"));
       assert.ok(!h.includes("Last season"), "ended offer (ends_on < today IST) is hidden");
       assert.equal(h.split(site.company.disclaimer).length - 1, 1, "company disclaimer once");
       assert.ok(sec.includes("Ends 31 Mar 2027") && sec.includes('<details class="more"><summary>' + dicts.en["offer_field.details"]));
-      assert.ok(!/<img/.test(sec), "no images on personal offer cards (DECISIONS #76)");
+      assert.ok(sec.includes('<button class="sl-btn sl-prev" type="button" aria-label="' + dicts.en["site.slider_prev"] + '">'), "slider controls (shown by motion.js)");
+      assert.ok(sec.includes('<div class="sl-nav" hidden>'), "controls hidden without JS");
     });
-    ok("hero banner (personal): the featured offer, not a heading, a text-link CTA (the hero keeps its one button), never an image", () => {
-      assert.ok(hero.includes(`<p class="ttl">${site.offers.featured.title}</p>`) && !/<h[23][ >]/.test(hero));
-      assert.ok(/<div class="offer feat">[\s\S]*<a class="lnk" href="#contact" data-interest="pension">/.test(hero));
-      assert.equal((hero.match(/class="btn"/g) || []).length, 1);
-      assert.ok(!sec.includes(site.offers.featured.title), "featured not repeated in the grid");
-      assert.ok(!/<div class="offer feat"><img/.test(hero));
+    ok("hero (classic): no offer card while the offers section is on; with it off, the featured offer stays in the header (not a heading, a text-link CTA, no image)", () => {
+      assert.ok(!hero.includes('class="offer'), "featured leads the slider instead");
+      assert.equal((hero.match(/class="btn"/g) || []).length, 1, "the hero's one button (WhatsApp is a ghost button)");
+      const off = fx("sample-en"); off.content = { ...off.content, hidden: ["offers"] };
+      const hh = heroOf(html(off, "classic"));
+      assert.ok(hh.includes(`<p class="ttl">${site.offers.featured.title}</p>`) && !/<h[23][ >]/.test(hh));
+      assert.ok(/<div class="offer feat">[\s\S]*<a class="lnk" href="#contact" data-interest="pension">/.test(hh));
+      assert.ok(!/<div class="offer feat"><img/.test(hh));
     });
     const so = fx("sample-offers"), hs = html(so, "spotlight", "en", { images: MANIFEST });
-    ok("spotlight: featured on the tint with the hero's one button; grid with images; trust strip with years and clients", () => {
+    ok("spotlight: an offer slider in the dark hero (featured first, titles not headings, a button each); grid with images; trust bar with counting years and clients", () => {
       const hero = heroOf(hs);
-      assert.ok(hs.includes("fam-offers") && /<div class="offer feat">[\s\S]*<a class="btn" href="#contact" data-interest="health">/.test(hero));
-      assert.equal((hero.match(/class="btn"/g) || []).length, 1, "one CTA in the hero");
+      assert.ok(hs.includes("fam-offers") && hero.includes('<div class="slider sl-hero"'));
+      const ttl = [...hero.matchAll(/<p class="ttl">([^<]+)<\/p>/g)].map((m) => m[1]);
+      assert.equal(ttl[0], so.offers.featured.title); assert.ok(ttl.length >= 2 && ttl.length <= 4, ttl.join());
+      assert.ok(/<p class="ttl">[^<]+<\/p>[\s\S]*<a class="btn" href="#contact" data-interest="health">/.test(hero));
+      assert.ok(!/<h[23][ >]/.test(hero), "the hero has only its <h1>");
       const grid = section(hs, "offers");
       assert.ok(grid.includes('src="/images/offer-pension-locked-rate-800.webp"'), "bundled demo image by key");
       assert.ok(grid.includes('src="/images/offer-simple-protection-800.webp"'), "offer-simple-protection by key");
@@ -57,8 +65,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       const { ["offer-simple-protection"]: _gone, ...noSimple } = MANIFEST;
       const fallback = section(html(so, "spotlight", "en", { images: noSimple }), "offers");
       assert.ok(fallback.includes('src="/images/interest-term-800.webp"'), "offer-simple-protection (not in manifest) -> interest-term");
-      const trust = section(hs, "highlights");
-      assert.ok(trust.includes('<ul class="trust">') && trust.includes("<strong>12</strong>") && trust.includes("<strong>850</strong>"));
+      assert.ok(hero.includes('<ul class="tbar">') && hero.includes('<strong class="cu">12</strong>') && hero.includes('<strong class="cu">850</strong>'));
       assert.ok(!section(hs, "about").includes("<strong>12</strong>"), "numbers not repeated in about");
     });
     ok("spotlight with no featured offer leads with the first offer; guide never promotes one", () => {
@@ -66,12 +73,14 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(heroOf(html(s2, "spotlight")).includes(`<p class="ttl">${so.offers.items[0].title}</p>`));
       assert.ok(!heroOf(html(s2, "guide")).includes('class="offer feat"'));
     });
-    ok("guide: 'What would you like to protect?' chips jump to #need-<interest> groups, each opening with its <h3> (no bubble); 'other' last", () => {
+    ok("guide: 'What would you like to protect?' picture tiles jump to #need-<interest> groups (each with its picture and <h3>), an index links them too; 'other' last; 'How it works' in 3 steps", () => {
       const g = html(so, "guide", "en", { images: MANIFEST }), hero = heroOf(g), sec = section(g, "offers");
       assert.ok(hero.includes(dicts.en["site.guide_question"]));
-      const chips = [...hero.matchAll(/<a class="chip" href="#need-([a-z_]+)">/g)].map((m) => m[1]);
-      assert.ok(chips.length >= 4 && chips.at(-1) === "other", chips.join());
-      for (const k of chips) assert.ok(new RegExp(`<div class="need" id="need-${k}"><h3>`).test(sec), k);
+      const tiles = [...hero.matchAll(/<a class="nt lift zoom" href="#need-([a-z_]+)"><img class="pic"/g)].map((m) => m[1]);
+      assert.ok(tiles.length >= 4 && tiles.at(-1) === "other", tiles.join());
+      for (const k of tiles) assert.ok(new RegExp(`<div class="need" id="need-${k}"><div class="need-h"><img class="pic"[^>]*><div><h3>`).test(sec), k);
+      assert.deepEqual([...sec.matchAll(/<li><a href="#need-([a-z_]+)">/g)].map((m) => m[1]), tiles, "index = tiles");
+      assert.ok(g.includes(`<p class="st-h">${dicts.en["site.steps_heading"]}</p><ol><li><span class="st-n" aria-hidden="true">1</span>${dicts.en["site.step_1"]}</li>`));
       // the agent's own service description is a plain paragraph under the group heading
       const term = (so.content.services.items || []).find((i) => i.interest === "term");
       if (term && term.description) assert.ok(sec.includes(`<p class="need-d">${esc(term.description)}</p>`));
@@ -156,19 +165,15 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   // ---- no chat-style layer (DECISIONS #87) ----
   for (const k of TEMPLATE_KEYS) for (const l of LOCALE_KEYS) {
     const s = fx("sample-" + l), t = makeT(dicts[l]), h = html(s, k, l);
-    ok(`${k}/${l}: no speech bubbles, avatars or greeting; quick-interest chips stay; FAQ ${k === "modern" ? "as open Q&A" : k === "minimal" ? "under one disclosure" : "as an accordion"}`, () => {
+    ok(`${k}/${l}: no speech bubbles, avatars or greeting; quick-interest chips (guide: need tiles) stay; FAQ as an accordion`, () => {
       assert.ok(!/class="(say|bubble|you|av)[ "]/.test(h), "no chat markup");
       for (const key of Object.keys(dicts[l]).filter((x) => x.startsWith("site.say_"))) assert.ok(!h.includes(esc(t(key, { firstName: s.profile.full_name.split(" ")[0] }))), key);
-      const chips = [...heroOf(h).matchAll(/<a class="chip" href="#(contact|need-[a-z_]+)"/g)];
+      const chips = [...heroOf(h).matchAll(k === "guide" ? /<a class="nt[ "][^>]*href="#need-[a-z_]+"/g : /<a class="chip" href="#contact"/g)];
       assert.ok(chips.length >= 1 && chips.length <= (k === "guide" ? 9 : 4));
       if (k !== "guide") assert.ok(heroOf(h).includes(`<a class="chip" href="#contact" data-interest="term">${t("interest.term")}</a>`));
       const f = section(h, "faq");
-      if (k === "modern") assert.ok(/<dl class="qa"><div><dt>[^<]+<\/dt><dd class="prose">/.test(f) && !f.includes("<details"));
-      else if (k === "minimal") assert.ok(/^id="faq"><details class="qs"><summary><h2>/.test(f) && (f.match(/<details/g) || []).length === 1);
-      else {
-        assert.ok(/<div class="faq"><details><summary>[^<]+<\/summary><p class="prose">[^<]+<\/p><\/details>/.test(f), "accordion rows");
-        assert.equal((f.match(/<details>/g) || []).length, s.content.faq.items.length);
-      }
+      assert.ok(/<div class="faq"><details><summary>[^<]+<\/summary><p class="prose">[^<]+<\/p><\/details>/.test(f), "accordion rows");
+      assert.equal((f.match(/<details>/g) || []).length, s.content.faq.items.length);
     });
   }
   ok("no photo: a CSS initials monogram in the hero, never a stock face", () => {
@@ -210,7 +215,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   ok("images: listed ones get srcset/sizes, explicit size, lazy + async, translated alt (decorative ones alt=\"\")", () => {
     const h = html(fx("sample-en"), "classic", "en", { images: MANIFEST });
     const label = dicts.en["interest.term"];
-    assert.ok(section(h, "services").includes(`<img class="pic" src="/images/interest-term-800.webp" srcset="/images/interest-term-400.webp 400w, /images/interest-term-800.webp 800w" sizes="96px" width="${MANIFEST["interest-term"].w}" height="${MANIFEST["interest-term"].h}" alt="${dicts.en["site.image_alt_interest"].replace("{interest}", label)}" loading="lazy" decoding="async">`));
+    assert.ok(section(h, "services").includes(`<img class="pic" src="/images/interest-term-800.webp" srcset="/images/interest-term-400.webp 400w, /images/interest-term-800.webp 800w" sizes="(min-width: 1024px) 340px, (min-width: 720px) 50vw, 100vw" width="${MANIFEST["interest-term"].w}" height="${MANIFEST["interest-term"].h}" alt="${dicts.en["site.image_alt_interest"].replace("{interest}", label)}" loading="lazy" decoding="async">`));
     assert.ok(/<img class="pic talk" src="\/images\/contact-talk-800\.webp"[^>]*width="800" height="600" alt="" loading="lazy" decoding="async">/.test(section(h, "contact")));
     const hi = html(fx("sample-hi"), "classic", "hi", { images: MANIFEST });
     assert.ok(hi.includes(`alt="${dicts.hi["site.image_alt_interest"].replace("{interest}", dicts.hi["interest.term"])}"`));
@@ -226,15 +231,17 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.deepEqual(files, want);
     for (const i of catalog.interests) if (MANIFEST[i.image]) assert.equal(MANIFEST[i.image].h * 16, MANIFEST[i.image].w * 9, i.image);
   });
-  ok("hero scene: only on the offers family, picked from the slug, fetchpriority=low and lazy (never the LCP image)", () => {
+  ok("hero scene (DECISIONS #117): classic's banner picture and spotlight's picture when it has no offers, picked from the slug, eager (above the fold, not high priority); none elsewhere", () => {
+    const n = (fnv1a32("demo") % 3) + 1;
+    const none = { ...fx("sample-offers"), offers: { featured: null, items: [] } };
     for (const k of TEMPLATE_KEYS) {
       const h = heroOf(html(fx("sample-offers"), k, "en", { images: MANIFEST, seed: "demo" }));
-      const n = (fnv1a32("demo") % 3) + 1;
-      if (OFFERS.includes(k)) assert.ok(new RegExp(`<img class="scene" src="/images/hero-scene-${n}-800\\.webp"[^>]*alt="" loading="lazy" decoding="async" fetchpriority="low">`).test(h), k);
+      if (k === "classic") assert.ok(new RegExp(`<img class="bn-img fade" src="/images/hero-scene-${n}-800\\.webp"[^>]*alt="" decoding="async">`).test(h), k);
       else assert.ok(!h.includes("hero-scene"), k);
       assert.equal((h.match(/fetchpriority="high"/g) || []).length, 1, k + ": the photo stays the only high-priority image");
     }
-    const picks = new Set(["a", "b", "c", "d", "e", "f"].map((s) => heroOf(html(fx("sample-offers"), "spotlight", "en", { images: MANIFEST, seed: s })).match(/hero-scene-(\d)/)[1]));
+    assert.ok(new RegExp(`<img class="scene" src="/images/hero-scene-${n}-800\\.webp"[^>]*alt="" decoding="async">`).test(heroOf(html(none, "spotlight", "en", { images: MANIFEST, seed: "demo" }))), "spotlight without offers");
+    const picks = new Set(["a", "b", "c", "d", "e", "f"].map((s) => heroOf(html(fx("sample-offers"), "classic", "en", { images: MANIFEST, seed: s })).match(/hero-scene-(\d)/)[1]));
     assert.ok(picks.size >= 2, "different slugs get different scenes");
   });
   ok("og:image: the agent's photo; without one, the family's bundled share image (absolute URL); none without a manifest", () => {

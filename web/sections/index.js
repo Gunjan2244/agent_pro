@@ -99,8 +99,10 @@ export function compose(site, t, tokens, variant, opts = {}) {
   const content = site.content || {};
   // Landmarks: the hero is the page <header> (its <h1> is the only one); every other section is a <section id> with its own <h2>.
   const wrap = opts.wrap || ((k, h) => (k === "hero" ? `<header class="sec sec-hero" id="hero">${h}</header>` : `<section class="sec sec-${k}" id="${k}">${h}</section>`));
+  // ctx.rendered: the sections that drew something, in page order (a template's top bar links only to those).
+  ctx.rendered = [];
   const body = [...ctx.visible]
-    .map((k) => { const h = ((opts.partials && opts.partials[k]) || PARTIALS[k])(content[k] || {}, ctx); return h ? wrap(k, h, ctx) : ""; })
+    .map((k) => { const h = ((opts.partials && opts.partials[k]) || PARTIALS[k])(content[k] || {}, ctx); if (h) ctx.rendered.push(k); return h ? wrap(k, h, ctx) : ""; })
     .join("\n");
   const bar = callbar(ctx);
   return `<div class="tpl tpl-${variant} fam-${ctx.family}${bar ? " has-bar" : ""}" style="--accent:${/^#[0-9a-fA-F]{6}$/.test(tokens.accent) ? tokens.accent : "var(--c-primary)"}">${opts.before ? opts.before(ctx) : ""}${body}${footer(ctx)}${bar}</div>`;

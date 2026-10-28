@@ -12,7 +12,7 @@ if [ -n "$LEFT" ]; then
 fi
 rm -rf "$OUT"; mkdir -p "$OUT"
 cd "$ROOT/web"
-for f in index.html app.js client.js hydrate.js portal-client.js join-client.js join-age.js api.js i18n.js head.js form.js route.js privacy.js legal.js manifest.js install.js reveal.js _headers sections styles templates fonts images; do cp -R "$f" "$OUT/"; done
+for f in index.html app.js client.js hydrate.js portal-client.js join-client.js join-age.js api.js i18n.js head.js form.js route.js privacy.js legal.js manifest.js install.js reveal.js motion.js _headers sections styles templates fonts images; do cp -R "$f" "$OUT/"; done
 cp -R "$ROOT/shared" "$OUT/shared"
 if [ "${WEB_DEV:-}" = "1" ]; then
   cp dev-mock.js "$OUT/"; cp -R dev-fixtures "$OUT/dev-fixtures"

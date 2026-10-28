@@ -1,7 +1,8 @@
 import { compose } from "../../sections/index.js";
-// "Best offers" family. Guide: needs first. The hero asks "What would you like to protect?" with one chip per
-// interest that has an offer or a service; each chip jumps (plain #anchor, no JS) to that interest's group of
-// offer and plan cards in the offers section. Then the trust strip, FAQ and contact.
+import { hero, offers, highlights, testimonials, before } from "./parts.js";
+// "Best offers" family · Guide (DECISIONS #76, #117): needs first. Picture tiles answer "What would you like to
+// protect?", a "How it works" strip, then plans grouped by need with an index that follows the reader.
+// site = { content, template_key, accent, locale, profile, offers, company }; tokens see makeCtx.
 export function render(site, t, tokens) {
-  return compose(site, t, tokens, "guide", { layout: "needs", companiesAfter: "highlights" });
+  return compose(site, t, tokens, "guide", { layout: "needs", companiesAfter: "highlights", before, partials: { hero, offers, highlights, testimonials } });
 }

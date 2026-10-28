@@ -12,4 +12,5 @@ window.renderSite = async (input) => (await import("./client.js")).renderSite(in
 if (root && root.hasAttribute("data-ssr")) {
   import("./hydrate.js").then((m) => m.hydrate());
   import("./reveal.js").then((m) => m.revealSections()).catch(() => {}); // cosmetic: never breaks the page
+  import("./motion.js").then((m) => m.wireMotion()).catch(() => {}); // sliders, count-up, top bar (DECISIONS #117)
 } else if (q.get("preview") !== "1") import("./client.js").then((m) => m.boot());

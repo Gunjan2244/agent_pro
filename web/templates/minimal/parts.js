@@ -1,82 +1,94 @@
-// Minimal ("Simple", DECISIONS #85): a one-page visiting card. Template-specific arrangements of the shared section
-// data; the data handling and escaping come from the shared partials' helpers. No cards and no images except the
-// portrait (the contact partial is the shared one, restyled).
+// Simple ("minimal", profile sidebar; DECISIONS #85, #117). On wide screens the agent's card (photo, name, Call /
+// WhatsApp / Email, key facts) stays pinned on the left while the page reads like a tidy résumé on the right; on
+// phones the card is a compact header. Text-led: no bundled illustrations, the portrait is the only image.
 import { esc, has, arr, tel, wa, mail, interestLabel } from "../../sections/util.js";
 import { heroParts } from "../../sections/hero.js";
 import { aboutData } from "../../sections/about.js";
 import { serviceList } from "../../sections/services.js";
+import { icon } from "../../sections/icons.js";
+import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
+import { slider, numbers } from "../../sections/ui.js";
 
-// A compact header: small portrait + "Name · designation · city" on one line, a smaller <h1>, the
-// lead, then an inline Call · WhatsApp · Email link row (the hero's call to action; the separators are CSS) and
-// the quick replies as text links. With no contact links, the hero CTA links to the form instead.
+// The page <header> holds both columns' tops: the profile card (pinned) and the intro (h1, lead, chips, featured).
+// With no contact links the card's one button is the hero CTA, linking to the form.
 export function hero(d, ctx) {
-  const x = heroParts(d, ctx, { photo: [56, 56] });
+  const x = heroParts(d, ctx, { photo: [96, 96] });
   const { t, profile: p } = ctx;
-  const c = (ctx.site.content || {}).contact || {};
-  const links = [
-    tel(ctx.phone) ? `<li><a href="${tel(ctx.phone)}">${esc(t("site.call"))}</a></li>` : "",
-    wa(c.whatsapp) ? `<li><a href="${wa(c.whatsapp)}" rel="noopener">${esc(t("site.whatsapp"))}</a></li>` : "",
-    mail(c.email) ? `<li><a href="${mail(c.email)}">${esc(t("site.email"))}</a></li>` : "",
+  const c = (ctx.site.content || {}).contact || {}, a = (ctx.site.content || {}).about || {};
+  const acts = [
+    tel(ctx.phone) ? `<a class="btn" href="${tel(ctx.phone)}">${esc(t("site.call"))}</a>` : "",
+    wa(c.whatsapp) ? `<a class="btn ghost" href="${wa(c.whatsapp)}" rel="noopener">${esc(t("site.whatsapp"))}</a>` : "",
+    mail(c.email) ? `<a class="btn ghost" href="${mail(c.email)}">${esc(t("site.email"))}</a>` : "",
+  ].filter(Boolean);
+  const btns = acts.length ? acts.join("") : x.button;
+  const { langs, code } = aboutData(a, ctx);
+  const facts = [
+    ...numbers(a, ctx).map((n) => `<li><span>${esc(n.label)}</span><strong class="cu">${esc(n.n)}</strong></li>`),
+    langs.length ? `<li><span>${esc(t("field.languages_spoken"))}</span><strong>${langs.map(esc).join(", ")}</strong></li>` : "",
+    has(c.officeHours) ? `<li><span>${esc(t("site.office_hours"))}</span><strong>${esc(c.officeHours)}</strong></li>` : "",
+    code ? `<li><strong>${esc(code)}</strong></li>` : "",
   ].join("");
-  const row = links || (x.cta ? `<li><a href="#contact">${esc(x.cta)}</a></li>` : "");
-  const who = [has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : "", x.sub].filter(Boolean).join(" · ");
-  return `${x.login}<div class="hero-in">
-<div class="hero-id">${x.face}${who ? `<p class="who">${who}</p>` : ""}</div>
+  return `<div class="hero-in">
+<aside class="pcard">${x.face}<p class="who">${has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : ""}${x.sub ? `<span>${x.sub}</span>` : ""}</p>${btns ? `<p class="pc-acts">${btns}</p>` : ""}${facts ? `<ul class="pc-facts">${facts}</ul>` : ""}${x.login.replace('class="hero-login"', 'class="pc-login"')}</aside>
+<div class="intro enter">
 ${x.h1}
 ${x.lead}
-${row ? `<ul class="links">${row}</ul>` : ""}
 ${x.chips}
 ${x.offer}
+</div>
 </div>`;
 }
 
-// One flowing text: designation, bio and the facts as a single line (no stats boxes, no chips).
+// About: the bio as prose under a small label (the numbers live in the card).
 export function about(d, ctx) {
-  const { st, langs, code, any } = aboutData(d, ctx);
-  if (!any) return "";
-  const langLine = langs.length ? `<span class="fact-k">${esc(ctx.t("field.languages_spoken"))}</span> ${langs.map(esc).join(", ")}` : "";
-  const facts = [...st, langLine, code ? esc(code) : ""].filter(Boolean);
-  return `<h2>${esc(ctx.t("section.about"))}</h2>
-${has(d.designation) ? `<p class="meta">${esc(d.designation)}</p>` : ""}
-${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}
-${facts.length ? `<ul class="facts">${facts.map((f) => `<li>${f}</li>`).join("")}</ul>` : ""}`;
+  const { any } = aboutData(d, ctx);
+  if (!any || !(has(d.bio) || has(d.designation))) return "";
+  return `<h2>${esc(ctx.t("section.about"))}</h2>${has(d.designation) ? `<p class="kicker">${esc(d.designation)}</p>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}`;
 }
 
-// "How I can help": the services as one sentence of inline links (each jumps to the form and preselects it).
+// How I can help: rows (name, description) each with an "Enquire" link that preselects the form.
 export function services(d, ctx) {
   const { items, extra } = serviceList(d, ctx);
-  const keys = [...items.map((i) => i.interest), ...extra];
-  if (!keys.length) return "";
+  const rows = [...items, ...extra.map((k) => ({ interest: k }))];
+  if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
-<p class="flow">${[...new Set(keys)].map((k) => `<a href="#contact" data-interest="${esc(k)}">${esc(interestLabel(ctx, k))}</a>`).join(", ")}</p>`;
+<ul class="rows">${rows.map((i) => `<li><div><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</div><a class="lnk" href="#contact" data-interest="${esc(i.interest)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></li>`).join("")}</ul>`;
 }
 
-// A plain list: the title in bold, then its text.
+// Offers: bordered rows (no pictures).
+export function offers(d, ctx) {
+  const list = ctx.offers.grid;
+  if (!list.length) return "";
+  const title = has(d.title) ? d.title : ctx.t("site.offers_title_default");
+  const disc = has(ctx.site.company && ctx.site.company.disclaimer) ? `<p class="fine disc">${esc(ctx.site.company.disclaimer)}</p>` : "";
+  return `<h2>${esc(title)}</h2><ul class="offers stg">${list.map((o) => offerCard(o, ctx)).join("")}</ul>${disc}`;
+}
+
+// Why choose me: a two-column list, each with its icon.
 export function highlights(d, ctx) {
   const items = arr(d.items).filter((i) => i && has(i.title));
   if (!items.length) return "";
   return `<h2>${esc(ctx.t("section.highlights"))}</h2>
-<ul class="plain">${items.map((i) => `<li><strong>${esc(i.title)}</strong>${has(i.text) ? ` <span>${esc(i.text)}</span>` : ""}</li>`).join("")}</ul>`;
+<ul class="ilist stg">${items.map((i) => `<li>${icon(i.icon)}<div><h3>${esc(i.title)}</h3>${has(i.text) ? `<p>${esc(i.text)}</p>` : ""}</div></li>`).join("")}</ul>`;
 }
 
-// Every question under one disclosure; its <summary> is the section's <h2>.
-export function faq(d, ctx) {
-  const items = arr(d.items).filter((i) => i && has(i.question) && has(i.answer));
+// Achievements: year | title rows.
+export function achievements(d, ctx) {
+  const items = arr(d.items).filter((i) => i && has(i.title));
   if (!items.length) return "";
-  return `<details class="qs"><summary><h2>${esc(ctx.t("section.faq"))}</h2></summary>
-<dl class="qa">${items.map((i) => `<div><dt>${esc(i.question)}</dt><dd class="prose">${esc(i.answer)}</dd></div>`).join("")}</dl></details>`;
+  return `<h2>${esc(ctx.t("section.achievements"))}</h2><ul class="years">${items.map((i) => `<li><span class="yr">${has(i.year) ? esc(i.year) : ""}</span><span>${esc(i.title)}</span></li>`).join("")}</ul>`;
 }
 
-// Quotes as plain text with the client's name under each (no cards, no faces).
+// Kind words: a slider, two quotes per view on wide screens.
 export function testimonials(d, ctx) {
   const items = arr(d.items).filter((i) => i && has(i.quote) && has(i.name));
   if (!items.length) return "";
-  return `<h2>${esc(ctx.t("section.testimonials"))}</h2>
-<ul class="plain">${items.map((i) => `<li><blockquote>${esc(i.quote)}</blockquote><p class="meta">${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</p></li>`).join("")}</ul>`;
+  const h = ctx.t("section.testimonials");
+  return `<h2>${esc(h)}</h2>${slider(items.map((i) => `<figure class="kw"><blockquote>${esc(i.quote)}</blockquote><figcaption class="meta">${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: h, cls: "sl-kw", auto: 7000 })}`;
 }
 
-// A plain list: the company name in bold, then its insurance types as text.
+// Companies: a plain list, the name in bold, then its insurance types as text.
 export function companies(d, ctx) {
   const list = companyList(ctx), h = companiesHeading(ctx);
   if (!list.length || !h) return "";

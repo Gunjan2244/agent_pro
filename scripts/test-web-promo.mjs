@@ -1,6 +1,7 @@
 // "For my customers" (DECISIONS #102): every template tells visitors that the agent's customers can sign in and see
-// their policies - the #portal section and the hero's "Customer login" link - in both languages, placed before
-// contact, hideable, host-aware, escaped. Run by scripts/test-web.mjs.
+// their policies - the #portal section and the header's "Customer login" link (in the top bar, the hero or the
+// profile card, by template: DECISIONS #117) - in both languages, placed before contact, hideable, host-aware,
+// escaped. Run by scripts/test-web.mjs.
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { esc } from "../web/sections/util.js";
@@ -13,7 +14,10 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   const base = (l) => ({ ...fx("sample-" + l) });
   const html = (site, key, l = site.locale || "en", privacy) => TEMPLATES[key](site, makeT(dicts[l]), tok(key, privacy));
   const section = (h, id) => { const i = h.indexOf(`id="${id}"`); return i < 0 ? "" : h.slice(i, h.indexOf("</section>", i)); };
-  const header = (h) => h.slice(h.indexOf('<header'), h.indexOf("</header>"));
+  // the page top: the template's top bar (if any) and the <header> (hero)
+  const header = (h) => h.slice(0, h.indexOf("</header>"));
+  const LOGIN = /class="(?:hero|tb|pc)-login"/;
+  const login = (hd, href, label) => new RegExp(`class="(?:hero|tb|pc)-login"><a href="${href}" rel="nofollow">${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</a>`).test(hd);
   const order = (h) => [...h.matchAll(/<(?:section|header)[^>]* id="([a-z]+)"/g)].map((m) => m[1]);
   const count = (h, re) => (h.match(re) || []).length;
 
@@ -39,7 +43,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(s.includes(`<a class="btn" href="/a/asha/my/login" rel="nofollow">${esc(d["site.portal_sign_in"])}</a>`));
       assert.ok(s.includes(esc(d["site.portal_first_time"])) && s.includes("https://wa.me/919876543210?text="));
       const hd = header(h);
-      assert.ok(hd.includes(`<p class="hero-login"><a href="/a/asha/my/login" rel="nofollow">${esc(d["site.header_portal"])}</a></p>`));
+      assert.ok(login(hd, "/a/asha/my/login", esc(d["site.header_portal"])), "header login link");
       assert.ok(!/<nav|<h2|<h3/.test(hd), "hero has no nav / h2 / h3");
       assert.equal(count(h, /<h1[ >]/g), 1); assert.equal(count(h, /<nav/g), 1, "the call bar is the only nav");
       assert.ok(h.includes(`href="/a/asha/my">${esc(d["site.footer_portal"])}`), "footer link kept");
@@ -48,13 +52,13 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     ok(`promo ${L}: portal false or missing -> neither the section nor the header link`, () => {
       for (const site of [{ ...base(l), portal: false }, (({ portal, ...x }) => x)(base(l))]) {
         const h = html(site, key, l);
-        assert.ok(!h.includes('id="portal"') && !h.includes("hero-login") && !h.includes("/login"));
+        assert.ok(!h.includes('id="portal"') && !LOGIN.test(h) && !h.includes("/login"));
       }
     });
     ok(`promo ${L}: hidden via content.hidden -> no section, the header link stays`, () => {
       const s = on(); s.content = { ...s.content, hidden: [...(s.content.hidden || []), "portal"] };
       const h = html(s, key, l);
-      assert.ok(!h.includes('id="portal"')); assert.ok(header(h).includes("hero-login"));
+      assert.ok(!h.includes('id="portal"')); assert.ok(LOGIN.test(header(h)));
     });
     ok(`promo ${L}: placed before contact, with and without a saved order; a saved order that names it is followed`, () => {
       const s = on(), saved = order(html(s, key, l));
@@ -70,15 +74,15 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       const h = html(on(), key, l, "/privacy");
       assert.ok(section(h, "portal").includes('href="/my/login"') && header(h).includes('href="/my/login"') && !h.includes("/a/asha"));
       const f = html(on(), key, l, "?s=asha&page=privacy");
-      assert.ok(f.includes('id="portal"') && !f.includes("/login") && !section(f, "portal").includes("wa.me") && !header(f).includes("hero-login"));
+      assert.ok(f.includes('id="portal"') && !f.includes("/login") && !section(f, "portal").includes("wa.me") && !LOGIN.test(header(f)));
     });
     ok(`promo ${L}: the in-app preview (privacyHref "#") shows the sign-in button and the hero link as inert "#" links`, () => {
       const p = html(on(), key, l, "#");
       assert.ok(section(p, "portal").includes('<a class="btn" href="#"'), "no sign-in button in the preview");
-      assert.ok(header(p).includes('class="hero-login"><a href="#"'), "no hero login link in the preview");
+      assert.ok(/class="(?:hero|tb|pc)-login"><a href="#"/.test(header(p)), "no header login link in the preview");
       assert.ok(!p.includes("/login") && !p.includes("/my"));
       const off = html({ ...on(), portal: false }, key, l, "#");
-      assert.ok(!off.includes("hero-login") && !off.includes('id="portal"'));
+      assert.ok(!LOGIN.test(off) && !off.includes('id="portal"'));
     });
     ok(`promo ${L}: the WhatsApp text is URL-encoded and the name escaped`, () => {
       const s = on(); s.profile = { ...s.profile, full_name: 'A&B "<i>" Verma' };
@@ -113,7 +117,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   });
   ok("promo: CSS stays on tokens (no raw sizes, colours) in the promo rules", () => {
     const css = ["web/styles/base.css", ...TEMPLATE_KEYS.map((k) => `web/templates/${k}/style.css`)].map((f) => readFileSync(new URL("../" + f, import.meta.url), "utf8")).join("\n");
-    const rules = css.split("\n").filter((x) => /\.pp|hero-login/.test(x));
+    const rules = css.split("\n").filter((x) => /\.pp|-login/.test(x));
     assert.ok(rules.length > 10);
     for (const r of rules) assert.ok(!/#[0-9a-fA-F]{3,6}\b|\b\d+(rem|em)\b/.test(r), r);
   });

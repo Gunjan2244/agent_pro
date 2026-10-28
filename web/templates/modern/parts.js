@@ -1,75 +1,101 @@
-// Modern ("Fresh", DECISIONS #85): a magazine layout. Template-specific arrangements of the shared section data;
-// the data handling and escaping come from the shared partials' helpers (heroParts, aboutData, serviceList, ...).
-import { esc, has, arr, interestLabel } from "../../sections/util.js";
+// Fresh ("modern", editorial split; DECISIONS #85, #117). A sticky top bar, a big left-aligned headline beside a tall
+// portrait with a floating badge of counting numbers, a companies marquee, about with big numbers, a bento grid of
+// services, a wide lead offer then offer rows, numbered "why choose me" columns, a rotating pull quote, the FAQ
+// beside its heading, and a dark contact section. Data handling and escaping come from the shared helpers.
+import { esc, has, arr, interestLabel, wa, tel } from "../../sections/util.js";
 import { heroParts } from "../../sections/hero.js";
 import { aboutData } from "../../sections/about.js";
 import { serviceList } from "../../sections/services.js";
 import { interestPic } from "../../sections/media.js";
 import { icon } from "../../sections/icons.js";
-import { companyList, companiesHeading, tags } from "../../sections/companies.js";
+import { offerCard } from "../../sections/offer.js";
+import { companyList, companiesHeading } from "../../sections/companies.js";
+import { slider, ticker, numbers, bigNumber, topBar } from "../../sections/ui.js";
 
-// Phones: a full-width 4:3 photo crop (or the initials on the tint), then the kicker (name · designation · city),
-// the large left-aligned <h1>, lead, one button, quick replies.
-// Wide: the photo (4:5) beside the text, two columns. The photo has explicit width/height and a CSS aspect ratio (no CLS).
+const num = (n) => String(n).padStart(2, "0");
+
+// Phones: the photo full width (4:3) above the text. Wide: text left (7), the 4:5 portrait right (5) on a tinted
+// block, with the badge of numbers overlapping its lower left corner. Explicit width/height (no CLS).
 export function hero(d, ctx) {
-  const x = heroParts(d, ctx, { photo: [640, 480] });
-  return `${x.login}<div class="hero-in">
-<div class="cover">${x.face}</div>
-<div class="hero-text">
+  const x = heroParts(d, ctx, { photo: [640, 800] });
+  const chat = wa(((ctx.site.content || {}).contact || {}).whatsapp);
+  const nums = numbers((ctx.site.content || {}).about || {}, ctx);
+  const badge = nums.length ? `<ul class="badge">${nums.map((n) => bigNumber(n)).join("")}</ul>` : "";
+  return `<div class="hero-in">
+<div class="hero-text enter">
 ${x.meta}
 ${x.h1}
 ${x.lead}
-${x.button}
+<p class="acts">${x.button}${chat ? `<a class="btn ghost" href="${chat}" rel="noopener">${esc(ctx.t("site.whatsapp"))}</a>` : ""}</p>
 ${x.chips}
 </div>
-${x.offer}
-</div>`;
+<div class="cover fade">${x.face}${badge}</div>
+</div>${ctx.visible.has("offers") ? "" : x.offer}`;
 }
 
-// Facts first (a compact row on phones, a side column on wide screens), then the bio.
+// About: the bio on the left; the numbers big on the right, then languages and the agency code.
 export function about(d, ctx) {
-  const { st, langs, code, any } = aboutData(d, ctx);
+  const { langs, code, any } = aboutData(d, ctx);
   if (!any) return "";
+  const nums = numbers(d, ctx);
   const facts = [
-    has(d.designation) ? `<li class="fact-d">${esc(d.designation)}</li>` : "",
-    ...st.map((s) => `<li class="fact-n">${s}</li>`),
-    langs.length ? `<li><span class="fact-k">${esc(ctx.t("field.languages_spoken"))}</span> ${langs.map(esc).join(", ")}</li>` : "",
-    code ? `<li>${esc(code)}</li>` : "",
+    ...nums.map((n) => bigNumber(n, "fact-n")),
+    langs.length ? `<li class="fact-t"><strong>${langs.map(esc).join(", ")}</strong><span>${esc(ctx.t("field.languages_spoken"))}</span></li>` : "",
+    code ? `<li class="fact-t"><strong>${esc(code)}</strong></li>` : "",
   ].join("");
-  return `<h2>${esc(ctx.t("section.about"))}</h2>
-<div class="about-grid">${facts ? `<ul class="facts">${facts}</ul>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}</div>`;
+  return `<div class="about-grid"><div><h2>${esc(ctx.t("section.about"))}</h2>${has(d.designation) ? `<p class="kicker">${esc(d.designation)}</p>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}</div>${facts ? `<ul class="facts">${facts}</ul>` : ""}</div>`;
 }
 
-// A numbered list (01, 02, …) with hairline dividers instead of cards; the interest thumbnail on the right.
+// Services as a bento grid: numbered tiles; the first is large with its picture, the rest compact with a thumbnail.
 export function services(d, ctx) {
   const { items, extra } = serviceList(d, ctx);
   const rows = [...items, ...extra.map((k) => ({ interest: k }))];
   if (!rows.length) return "";
-  const num = (n) => String(n).padStart(2, "0");
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
-<ol class="svc-list">${rows.map((i, n) => `<li class="svc-row"><span class="svc-num" aria-hidden="true">${num(n + 1)}</span><div class="svc-b"><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</div>${interestPic(ctx, i.interest, { sizes: "(min-width: 720px) 128px, 96px" })}</li>`).join("")}</ol>`;
+<ol class="bento stg">${rows.map((i, n) => `<li class="bt lift zoom${n === 0 ? " bt-big" : ""}">${interestPic(ctx, i.interest, { sizes: n === 0 ? "(min-width: 1024px) 360px, 100vw" : "128px" })}<div class="bt-b"><span class="bt-n" aria-hidden="true">${num(n + 1)}</span><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}<a class="lnk" href="#contact" data-interest="${esc(i.interest)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></li>`).join("")}</ol>`;
 }
 
-// A row of big icons with short text: 2 columns on phones, 4 across on wide screens; no cards.
+// Offers: the lead offer (the featured one, else the first) wide with its picture, the rest as hairline rows.
+export function offers(d, ctx) {
+  const list = ctx.visible.has("offers") ? ctx.offers.all : [];
+  if (!list.length) return "";
+  const title = has(d.title) ? d.title : ctx.t("site.offers_title_default");
+  const [lead, ...rest] = list;
+  const disc = has(ctx.site.company && ctx.site.company.disclaimer) ? `<p class="fine disc">${esc(ctx.site.company.disclaimer)}</p>` : "";
+  return `<h2>${esc(title)}</h2>${offerCard(lead, ctx, { tag: "div", image: true }).replace('class="offer"', 'class="offer of-lead lift zoom"')}${rest.length ? `<ul class="of-rows stg">${rest.map((o) => offerCard(o, ctx)).join("")}</ul>` : ""}${disc}`;
+}
+
+// Why choose me: numbered columns under a heavy rule; the icon beside the number.
 export function highlights(d, ctx) {
   const items = arr(d.items).filter((i) => i && has(i.title));
   if (!items.length) return "";
   return `<h2>${esc(ctx.t("section.highlights"))}</h2>
-<ul class="hl-row">${items.map((i) => `<li>${icon(i.icon)}<h3>${esc(i.title)}</h3>${has(i.text) ? `<p>${esc(i.text)}</p>` : ""}</li>`).join("")}</ul>`;
+<ol class="hl-cols stg">${items.map((i, n) => `<li><p class="hl-n"><span aria-hidden="true">${num(n + 1)}</span>${icon(i.icon)}</p><h3>${esc(i.title)}</h3>${has(i.text) ? `<p>${esc(i.text)}</p>` : ""}</li>`).join("")}</ol>`;
 }
 
-// Open Q&A: question and answer stacked on phones, two columns (question left) on wide screens.
+// Testimonials: one large pull quote at a time, rotating.
+export function testimonials(d, ctx) {
+  const items = arr(d.items).filter((i) => i && has(i.quote) && has(i.name));
+  if (!items.length) return "";
+  const h = ctx.t("section.testimonials");
+  return `<h2>${esc(h)}</h2>${slider(items.map((i) => `<figure class="pull"><blockquote>${esc(i.quote)}</blockquote><figcaption>${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: h, cls: "sl-pull", auto: 6500 })}`;
+}
+
+// FAQ: the heading and a call button on the left (sticky on wide screens), the accordion on the right.
 export function faq(d, ctx) {
   const items = arr(d.items).filter((i) => i && has(i.question) && has(i.answer));
   if (!items.length) return "";
-  return `<h2>${esc(ctx.t("section.faq"))}</h2>
-<dl class="qa">${items.map((i) => `<div><dt>${esc(i.question)}</dt><dd class="prose">${esc(i.answer)}</dd></div>`).join("")}</dl>`;
+  const call = tel(ctx.phone);
+  const btn = call ? `<a class="btn ghost" href="${call}">${esc(ctx.t("site.call"))}</a>` : `<a class="btn ghost" href="#contact">${esc(ctx.t("site.cta_default"))}</a>`;
+  return `<div class="faq-grid"><div class="faq-side"><h2>${esc(ctx.t("section.faq"))}</h2>${btn}</div><div class="faq">${items
+    .map((i) => `<details><summary>${esc(i.question)}</summary><p class="prose">${esc(i.answer)}</p></details>`).join("")}</div></div>`;
 }
 
-// Companies as hairline rows: the name, then its insurance types (two columns on wide screens, like the Q&A).
+// Companies: a full-width marquee band of names (with their insurance types).
 export function companies(d, ctx) {
   const list = companyList(ctx), h = companiesHeading(ctx);
   if (!list.length || !h) return "";
-  return `<h2>${esc(h)}</h2>
-<ul class="co-rows">${list.map((c) => `<li><h3>${esc(c.name)}</h3>${tags(c.types)}</li>`).join("")}</ul>`;
+  return `<h2>${esc(h)}</h2>${ticker(list.map((c) => `<h3>${esc(c.name)}</h3>${c.types.length ? `<span>${c.types.map(esc).join(", ")}</span>` : ""}`), { cls: "tk-cos", label: h })}`;
 }
+
+export const before = (ctx) => topBar(ctx, { cta: "contact" });
