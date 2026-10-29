@@ -4,7 +4,8 @@
     { "key": "hero", "labelKey": "section.hero", "icon": "badge", "pinned": true, "defaultVisible": true,
       "fields": [
         { "key": "headline", "type": "text", "labelKey": "field.headline", "required": true, "maxLength": 70 },
-        { "key": "photo", "type": "image", "labelKey": "field.photo", "aspect": "1:1" },
+        { "key": "photo", "type": "image", "labelKey": "field.photo", "aspect": "1:1",
+          "shownAs": [{ "aspect": "1:1", "round": true, "labelKey": "field.photo_shown_round" }, { "aspect": "4:5", "focusY": 25, "labelKey": "field.photo_shown_tall" }] },
         { "key": "ctaLabel", "type": "text", "labelKey": "field.cta_label", "maxLength": 30, "defaultKey": "site.cta_default" }
       ] },
     { "key": "about", "labelKey": "section.about", "icon": "person", "defaultVisible": true,

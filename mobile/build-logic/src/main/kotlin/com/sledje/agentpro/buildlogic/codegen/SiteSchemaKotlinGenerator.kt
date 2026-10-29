@@ -25,6 +25,7 @@ class SiteSchemaKotlinGenerator(private val defs: SharedDefinitions) {
         w.line("import ${Naming.FORMS_PACKAGE}.FieldOption")
         w.line("import ${Naming.FORMS_PACKAGE}.FieldSpec")
         w.line("import ${Naming.FORMS_PACKAGE}.FieldType")
+        w.line("import ${Naming.FORMS_PACKAGE}.ImageShape")
         w.line("import ${Naming.FORMS_PACKAGE}.SectionSpec")
         w.line()
         w.line("/** `shared/site-schema.json`: website sections in their default order. */")
@@ -108,6 +109,18 @@ class SiteSchemaKotlinGenerator(private val defs: SharedDefinitions) {
             }
             f.string("defaultKey")?.let { line("defaultText = Res.string.${Naming.stringResourceName(it)},") }
             f.string("aspect")?.let { line("aspect = ${Naming.kotlinString(it)},") }
+            f.array("shownAs")?.let { shapes ->
+                line("shownAs = listOf(")
+                indent {
+                    shapes.forEach { o ->
+                        o as JsonObject
+                        val round = if (o.bool("round") == true) ", round = true" else ""
+                        val focusY = o.long("focusY")?.let { ", focusY = $it" } ?: ""
+                        line("ImageShape(${Naming.kotlinString(o.string("aspect") ?: error("$where: shownAs entry without aspect"))}, ${label(o.string("labelKey"), "$where shownAs")}$round$focusY),")
+                    }
+                }
+                line("),")
+            }
             f.string("generated")?.let { line("generated = ${Naming.kotlinString(it)},") }
             if (f.bool("equals") == true) line("mustBeTrue = true,")
             f.long("maxDaysAhead")?.let { line("maxDaysAhead = $it,") }

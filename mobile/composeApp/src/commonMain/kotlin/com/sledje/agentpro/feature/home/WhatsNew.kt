@@ -38,6 +38,7 @@ import com.sledje.agentpro.core.designsystem.components.ListLeading
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.PrimaryButton
 import com.sledje.agentpro.resources.Res
+import com.sledje.agentpro.resources.ic_add_photo_alternate
 import com.sledje.agentpro.resources.ic_arrow_forward
 import com.sledje.agentpro.resources.ic_description
 import com.sledje.agentpro.resources.ic_person
@@ -51,6 +52,7 @@ import com.sledje.agentpro.resources.whats_new_not_now
 import com.sledje.agentpro.resources.whats_new_page
 import com.sledje.agentpro.resources.whats_new_pages
 import com.sledje.agentpro.resources.whats_new_pages_body
+import com.sledje.agentpro.resources.whats_new_photo_editor
 import com.sledje.agentpro.resources.whats_new_show_me
 import com.sledje.agentpro.resources.whats_new_templates
 import com.sledje.agentpro.resources.whats_new_templates_body
@@ -114,6 +116,9 @@ enum class WhatsNewItem(
 
     /** Every public website became multi-page (#122): Home, Insurance with a page per plan type, About me, Contact. */
     MultiPageWebsite(3, FeatureId.SiteBuilder, Res.string.whats_new_pages, Res.drawable.ic_description, walkthrough = true, body = Res.string.whats_new_pages_body),
+
+    /** Photos open the photo editor (zoom, move, how customers see it); small: the live site only changes if they re-pick. */
+    PhotoEditor(4, FeatureId.SiteBuilder, Res.string.whats_new_photo_editor, Res.drawable.ic_add_photo_alternate),
 }
 
 /** The sheet's body (the frame, with its "What's new" title, is the shared bottom sheet). */

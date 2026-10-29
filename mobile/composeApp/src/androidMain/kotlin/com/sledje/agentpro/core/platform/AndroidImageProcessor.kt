@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.os.Build
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,27 +15,49 @@ import java.io.ByteArrayOutputStream
 
 /**
  * [ImageProcessor] on Android: decodes with a power-of-two sample size (bounded memory), applies the
- * EXIF orientation, centre-crops to the aspect, scales to ≤ [ImageProcessor.MAX_SIDE] px and encodes
+ * EXIF orientation, crops to the aspect (the agent's [ImageCrop], else centred), scales to ≤ [ImageProcessor.MAX_SIDE] px and encodes
  * WebP (lossy), lowering the quality until it fits under the 2 MB bucket limit.
  */
 class AndroidImageProcessor : ImageProcessor {
-    override suspend fun prepare(image: PickedImage, aspect: ImageAspect?, maxSide: Int): ProcessedImage? = try {
+    override suspend fun prepare(image: PickedImage, aspect: ImageAspect?, crop: ImageCrop?, maxSide: Int): ProcessedImage? = try {
         val bytes = image.read()
-        withContext(Dispatchers.Default) { process(bytes, aspect, maxSide) }
+        withContext(Dispatchers.Default) { process(bytes, aspect, crop ?: ImageCrop.Centered, maxSide) }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         null
     }
 
-    private fun process(bytes: ByteArray, aspect: ImageAspect?, maxSide: Int): ProcessedImage? {
+    override suspend fun decodePreview(image: PickedImage, maxSide: Int): ImageBitmap? = try {
+        val bytes = image.read()
+        withContext(Dispatchers.Default) {
+            // Halve while the longer side stays at least maxSide, then scale the rest of the way.
+            decodeUpright(bytes) { w, h -> ImageGeometry.sampleSize(w, h, minSide = maxSide * minOf(w, h) / maxOf(w, h)) }?.let { upright ->
+                val (w, h) = ImageGeometry.fitWithin(upright.width, upright.height, maxSide)
+                (if (w == upright.width && h == upright.height) upright else Bitmap.createScaledBitmap(upright, w, h, true)).asImageBitmap()
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Decodes with the power-of-two [sample] size for the stored width×height (bounded memory), upright (EXIF). */
+    private fun decodeUpright(bytes: ByteArray, sample: (Int, Int) -> Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val options = BitmapFactory.Options().apply { inSampleSize = ImageGeometry.sampleSize(bounds.outWidth, bounds.outHeight, maxSide) }
+        val options = BitmapFactory.Options().apply { inSampleSize = sample(bounds.outWidth, bounds.outHeight) }
         val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
-        val upright = rotate(decoded, orientation(bytes))
-        val crop = ImageGeometry.centerCrop(upright.width, upright.height, aspect)
+        return rotate(decoded, orientation(bytes))
+    }
+
+    private fun process(bytes: ByteArray, aspect: ImageAspect?, agentCrop: ImageCrop, maxSide: Int): ProcessedImage? {
+        // A zoomed crop is a smaller part of the photo, so decode with more pixels to keep it near maxSide.
+        val minSide = (maxSide * agentCrop.zoom.coerceIn(1f, ImageCrop.MAX_ZOOM)).toInt()
+        val upright = decodeUpright(bytes) { w, h -> ImageGeometry.sampleSize(w, h, minSide) } ?: return null
+        val crop = ImageGeometry.crop(upright.width, upright.height, aspect, agentCrop)
         val (w, h) = ImageGeometry.fitWithin(crop.width, crop.height, maxSide)
         val cropped = Bitmap.createBitmap(upright, crop.left, crop.top, crop.width, crop.height)
         val scaled = if (w == cropped.width && h == cropped.height) cropped else Bitmap.createScaledBitmap(cropped, w, h, true)

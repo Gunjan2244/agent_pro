@@ -6,6 +6,7 @@ import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.splitVisibleFields
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.PickedImage
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingStep
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
@@ -63,10 +64,13 @@ class OnboardingPhotoTest {
     fun pickedPhotoIsUploadedAndSavedWithTheProfile() = runTest {
         val vm = vm()
         runCurrent()
-        vm.uploadPhoto(PickedImage { byteArrayOf(1) })
+        val crop = ImageCrop(zoom = 1.5f, centerX = 0.5f, centerY = 0.35f)
+        vm.uploadPhoto(PickedImage { byteArrayOf(1) }, crop)
         assertTrue(vm.state.value.uploadingPhoto)
         runCurrent()
         assertEquals(listOf<ImageAspect?>(ImageAspect.Square), website.processor.aspects)
+        assertEquals(listOf<ImageCrop?>(crop), website.processor.crops, "the agent's crop from the photo editor")
+        assertEquals(3, vm.profileForm.spec(OnboardingViewModel.PHOTO).shownAs.size, "the hero photo's shapes")
         assertEquals(listOf(MediaPaths.PROFILE_PHOTO), website.media.uploads)
         vm.profileForm.set(NAME, "Ramesh Kumar")
         vm.profileForm.set(MOBILE, "9876543210")

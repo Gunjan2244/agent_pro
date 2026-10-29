@@ -45,6 +45,15 @@
     <string name="website_issue_item">%1$s (आइटम %2$d): %3$s</string>
     <string name="website_photo_uploading">फ़ोटो अपलोड हो रही है…</string>
     <string name="website_photo_unreadable">यह फ़ोटो इस्तेमाल नहीं हो सकी। कोई दूसरी चुनें।</string>
+    <string name="photo_edit_title">अपनी फ़ोटो ठीक करें</string>
+    <string name="photo_edit_hint">ज़ूम करने के लिए दो उंगलियों से फैलाएँ या स्लाइडर चलाएँ, और खिसकाने के लिए खींचें। सिर्फ़ चमकीला हिस्सा आपकी वेबसाइट पर जाएगा।</string>
+    <string name="photo_edit_hint_round">अपना चेहरा गोले के अंदर रखें: ज़्यादातर डिज़ाइन आपकी फ़ोटो गोल दिखाते हैं।</string>
+    <string name="photo_edit_area">आपकी फ़ोटो। चमकीला हिस्सा आपकी वेबसाइट पर जाएगा।</string>
+    <string name="photo_edit_zoom">ज़ूम</string>
+    <string name="photo_edit_reset">पहले जैसा करें</string>
+    <string name="photo_edit_shown">ग्राहक इसे ऐसे देखेंगे</string>
+    <string name="photo_edit_use">यह फ़ोटो लगाएँ</string>
+    <string name="photo_edit_another">दूसरी फ़ोटो चुनें</string>
     <string name="website_content_too_large">आपकी वेबसाइट में बहुत ज़्यादा टेक्स्ट है। कोई सेक्शन छोटा करके फिर कोशिश करें।</string>
     <string name="website_template">टेम्पलेट</string>
     <string name="website_accent">मुख्य रंग</string>

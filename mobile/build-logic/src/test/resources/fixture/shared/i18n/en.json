@@ -24,6 +24,8 @@
   "section.services": "Services",
   "field.headline": "Headline",
   "field.photo": "Photo",
+  "field.photo_shown_round": "Round",
+  "field.photo_shown_tall": "Tall",
   "field.cta_label": "Button text",
   "field.years_experience": "Years",
   "field.show_agency_code": "Show agency code",

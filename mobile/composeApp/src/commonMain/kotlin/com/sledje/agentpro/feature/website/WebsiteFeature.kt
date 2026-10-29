@@ -37,6 +37,7 @@ import com.sledje.agentpro.feature.website.data.SiteContent
 import com.sledje.agentpro.feature.website.data.SiteLinks
 import com.sledje.agentpro.feature.website.data.SitePreviewPayload
 import com.sledje.agentpro.feature.website.data.rememberPreviewOffers
+import com.sledje.agentpro.feature.website.ui.rememberPhotoEditor
 import com.sledje.agentpro.feature.website.ui.AppearanceScreen
 import com.sledje.agentpro.feature.website.ui.AppearanceViewModel
 import com.sledje.agentpro.feature.website.ui.ChangeLinkDialog
@@ -317,12 +318,7 @@ private fun SectionRoute(host: FeatureHost, entry: NavBackStackEntry) {
     val state by vm.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var confirmDiscard by remember { mutableStateOf(false) }
-    var pickingField by rememberSaveable { mutableStateOf<String?>(null) }
-    val pick = host.deps.website.mediaPicker.rememberImagePicker { picked ->
-        val field = pickingField
-        if (picked != null && field != null) vm.onImagePicked(field, picked)
-        pickingField = null
-    }
+    val pick = rememberPhotoEditor(host.deps.website.mediaPicker, host.deps.website.imageUploader, fieldFor = vm::imageField, onResult = vm::onImagePicked)
     LaunchedEffect(state.saved) {
         if (state.saved) {
             host.nav.popBackStack()
@@ -339,7 +335,7 @@ private fun SectionRoute(host: FeatureHost, entry: NavBackStackEntry) {
         state = state,
         snackbar = snackbar,
         onBack = { back() },
-        onPickImage = { field -> pickingField = field; pick() },
+        onPickImage = pick,
         onOfferField = { field -> host.nav.navigate(OfferPickerRoute(section = key, field = field)) },
         onSave = vm::save,
         hint = if (route.fromSetup) setupHintFor(key) else null,

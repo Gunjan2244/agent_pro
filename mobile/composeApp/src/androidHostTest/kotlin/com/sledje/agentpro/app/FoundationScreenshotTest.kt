@@ -10,14 +10,22 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.sledje.agentpro.core.catalog.AppLocale
+import com.sledje.agentpro.core.catalog.SiteSchema
 import com.sledje.agentpro.core.catalog.Templates
+import com.sledje.agentpro.core.data.StoreKeys
 import com.sledje.agentpro.core.designsystem.gallery.GalleryFrame
 import com.sledje.agentpro.core.forms.FormState
+import com.sledje.agentpro.core.platform.ImageAspect
 import com.sledje.agentpro.core.ui.LocalIsOnline
 import com.sledje.agentpro.feature.auth.ui.AuthFormMode
 import com.sledje.agentpro.feature.auth.ui.AuthFormScreen
@@ -25,21 +33,21 @@ import com.sledje.agentpro.feature.auth.ui.AuthFormUiState
 import com.sledje.agentpro.feature.auth.ui.AuthFormViewModel
 import com.sledje.agentpro.feature.auth.ui.WelcomeScreen
 import com.sledje.agentpro.feature.auth.ui.WelcomeViewModel
-import com.sledje.agentpro.feature.onboarding.ui.OnboardingLinkScreen
+import com.sledje.agentpro.feature.home.WhatsNew
 import com.sledje.agentpro.feature.onboarding.ui.LaunchStep
+import com.sledje.agentpro.feature.onboarding.ui.OnboardingLinkScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingMobileScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingPhotoScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingPreviewScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateGridScreen
-import com.sledje.agentpro.feature.onboarding.ui.SiteLaunchScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingTemplateScreen
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingUiState
 import com.sledje.agentpro.feature.onboarding.ui.OnboardingViewModel
+import com.sledje.agentpro.feature.onboarding.ui.SiteLaunchScreen
 import com.sledje.agentpro.feature.onboarding.ui.SlugStatus
 import com.sledje.agentpro.feature.website.data.SiteLinks
+import com.sledje.agentpro.feature.website.ui.PhotoEditorScreen
 import com.sledje.agentpro.testing.FakeAppDependencies
-import com.sledje.agentpro.core.data.StoreKeys
-import com.sledje.agentpro.feature.home.WhatsNew
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -107,6 +115,13 @@ class FoundationScreenshotTest {
             val form = remember { FormState(OnboardingViewModel.PROFILE_FIELDS, mapOf(OnboardingViewModel.NAME to "Ramesh Kumar")) }
             OnboardingPhotoScreen(form, OnboardingUiState(), onPickPhoto = {}, onContinue = {}, onSkip = {}, onBack = {})
         },
+        "PhotoEditor" to {
+            val photo = SiteSchema.section("hero")!!.fields.first { it.key == "photo" }
+            PhotoEditorScreen(samplePhoto, ImageAspect.Square, photo.shownAs, onUse = {}, onAnother = {}, onCancel = {})
+        },
+        "PhotoEditorOpening" to {
+            PhotoEditorScreen(null, ImageAspect.Square, emptyList(), onUse = {}, onAnother = {}, onCancel = {})
+        },
         // The WebView isn't screenshotted; a surface stands in for the render.
         "OnboardingPreview" to {
             OnboardingPreviewScreen(pendingCompanies = true, onContinue = {}, onBack = {}, preview = { Box(it.background(MaterialTheme.colorScheme.surfaceContainer)) })
@@ -123,6 +138,20 @@ class FoundationScreenshotTest {
             MainShell(remember { FakeAppDependencies.ready().also { runBlocking { it.store.put(StoreKeys.WHATS_NEW_SEEN, WhatsNew.VERSION.toString()) } } })
         },
     )
+
+    /** A stand-in 4:3 photo: a head and shoulders right of centre, so the default centred crop cuts into them. */
+    private val samplePhoto: ImageBitmap by lazy {
+        ImageBitmap(800, 600).also { bmp ->
+            val canvas = Canvas(bmp)
+            val paint = Paint()
+            paint.color = Color(0xFFC9D3E3)
+            canvas.drawRect(0f, 0f, 800f, 600f, paint)
+            paint.color = Color(0xFF374151)
+            canvas.drawRect(420f, 380f, 760f, 600f, paint)
+            paint.color = Color(0xFFB98A6A)
+            canvas.drawCircle(Offset(590f, 250f), 110f, paint)
+        }
+    }
 
     private fun capture(variant: String, dark: Boolean, hindi: Boolean) = runComposeUiTest {
         val screens = screens(hindi)

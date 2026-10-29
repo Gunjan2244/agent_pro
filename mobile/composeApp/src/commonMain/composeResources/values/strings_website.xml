@@ -45,6 +45,15 @@
     <string name="website_issue_item">%1$s (item %2$d): %3$s</string>
     <string name="website_photo_uploading">Uploading photo…</string>
     <string name="website_photo_unreadable">This photo couldn't be used. Try another one.</string>
+    <string name="photo_edit_title">Adjust your photo</string>
+    <string name="photo_edit_hint">Pinch or use the slider to zoom, and drag to move it. Only the bright part goes on your website.</string>
+    <string name="photo_edit_hint_round">Keep your face inside the circle: most designs show your photo round.</string>
+    <string name="photo_edit_area">Your photo. The bright part is what goes on your website.</string>
+    <string name="photo_edit_zoom">Zoom</string>
+    <string name="photo_edit_reset">Reset</string>
+    <string name="photo_edit_shown">How customers see it</string>
+    <string name="photo_edit_use">Use this photo</string>
+    <string name="photo_edit_another">Choose another</string>
     <string name="website_content_too_large">Your website has too much text. Shorten a section and try again.</string>
     <string name="website_template">Template</string>
     <string name="website_accent">Accent colour</string>

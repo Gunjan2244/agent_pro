@@ -11,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
 import com.sledje.agentpro.core.data.StoreKeys
+import com.sledje.agentpro.feature.website.ui.rememberPhotoEditor
 import com.sledje.agentpro.feature.onboarding.ui.LaunchStep
 import com.sledje.agentpro.feature.onboarding.ui.SiteLaunchScreen
 import com.sledje.agentpro.feature.website.data.SiteLinks
@@ -133,9 +134,12 @@ fun OnboardingNavHost(deps: AppDependencies) {
                 val vm = entry.onboardingViewModel(nav, deps)
                 val state by vm.state.collectAsState()
                 Navigate(vm, state.navigateTo, nav)
-                val pickPhoto = deps.website.mediaPicker.rememberImagePicker { picked -> picked?.let(vm::uploadPhoto) }
+                val pickPhoto = rememberPhotoEditor(
+                    deps.website.mediaPicker, deps.website.imageUploader,
+                    fieldFor = { vm.profileForm.spec(it) }, onResult = { _, image, crop -> vm.uploadPhoto(image, crop) },
+                )
                 OnboardingPhotoScreen(
-                    vm.profileForm, state, onPickPhoto = pickPhoto, onContinue = vm::savePhoto, onSkip = vm::skipPhoto,
+                    vm.profileForm, state, onPickPhoto = { pickPhoto(OnboardingViewModel.PHOTO) }, onContinue = vm::savePhoto, onSkip = vm::skipPhoto,
                     onBack = { nav.popBackStack() },
                 )
             }

@@ -420,6 +420,17 @@ class SharedVerifier(private val inputs: VerifyInputs) {
         f["equals"]?.let { if (f.bool("equals") != true || type != "toggle") v += "$at: \"equals\" must be true on a toggle" }
         f["maxDaysAhead"]?.let { if ((f.long("maxDaysAhead") ?: 0) < 1 || type != "date") v += "$at: \"maxDaysAhead\" must be a whole number >= 1 on a date" }
         if (f.containsKey("requiredIf")) v += "$at: \"requiredIf\" is only for offer-schema.json (admin forms)"
+        f["shownAs"]?.let { shown ->
+            val shapes = shown as? JsonArray
+            if (type != "image" || shapes.isNullOrEmpty()) v += "$at: \"shownAs\" must be a non-empty array on an image field"
+            shapes?.forEachIndexed { i, e ->
+                val o = e as? JsonObject
+                val aspect = o?.string("aspect")
+                if (aspect == null || !ASPECT.matches(aspect)) v += "$at.shownAs[$i]: \"aspect\" must be like \"4:5\""
+                if (o?.get("round") != null && (o.bool("round") != true || aspect != "1:1")) v += "$at.shownAs[$i]: \"round\" must be true on a 1:1 shape"
+                o?.get("focusY")?.let { if ((o.long("focusY") ?: -1) !in 0..100) v += "$at.shownAs[$i]: \"focusY\" must be a whole number 0..100" }
+            }
+        }
         if (type == "offerRef" || type == "offerList") {
             if (inList) v += "$at: $type can't be inside a list"
             if (type == "offerList" && (f.long("maxItems") ?: 0) < 1) v += "$at: offerList needs \"maxItems\""
@@ -878,6 +889,9 @@ class SharedVerifier(private val inputs: VerifyInputs) {
                     f.string("defaultKey")?.let { refs += "$at defaultKey" to it }
                     f.array("options")?.filterIsInstance<JsonObject>()?.forEach { o ->
                         refs += "$at option ${o.string("key")}" to (o.string("labelKey") ?: "(missing labelKey)")
+                    }
+                    f.array("shownAs")?.filterIsInstance<JsonObject>()?.forEachIndexed { i, o ->
+                        refs += "$at shownAs[$i]" to (o.string("labelKey") ?: "(missing labelKey)")
                     }
                 }
             }

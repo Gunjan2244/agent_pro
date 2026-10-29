@@ -54,9 +54,11 @@ class WhatsNewWalkthroughUiTest {
         setContent { App(deps) }
 
         awaitText("5 new website designs")
-        onNodeWithText("1 of 5").assertExists()
-        repeat(4) { onNode(hasText("Next") and hasClickAction()).performClick() }
-        awaitText("5 of 5")
+        // Every item is pending for a fresh agent (each one's feature is on).
+        val count = WhatsNewItem.entries.size
+        onNodeWithText("1 of $count").assertExists()
+        repeat(count - 1) { onNode(hasText("Next") and hasClickAction()).performClick() }
+        awaitText("$count of $count")
         onNode(hasText("Not now") and hasClickAction()).performClick()
 
         awaitText("Nothing due today")

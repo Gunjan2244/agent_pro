@@ -7,6 +7,7 @@ import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.forms.ValidationError
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.PickedImage
 import com.sledje.agentpro.feature.onboarding.ui.SlugStatus
 import com.sledje.agentpro.feature.website.data.ContentTooLarge
@@ -133,9 +134,25 @@ class WebsiteViewModelsTest {
         assertEquals("photo", vm.state.value.uploadingField)
         runCurrent()
         assertEquals(listOf<ImageAspect?>(ImageAspect.Square), website.processor.aspects, "aspect 1:1 from the schema")
+        assertEquals(listOf<ImageCrop?>(null), website.processor.crops, "no editor: the centred crop")
         assertEquals(listOf("hero-photo"), website.media.uploads)
         assertTrue(vm.form!!.text("photo").startsWith("https://"))
         assertNull(vm.state.value.uploadingField)
+    }
+
+    @Test
+    fun theAgentsCropFromThePhotoEditorReachesTheProcessor() = runTest {
+        val vm = editor("hero")
+        runCurrent()
+        val photo = vm.imageField("photo")!!
+        assertEquals("1:1", photo.aspect)
+        assertEquals(listOf(true, false, false), photo.shownAs.map { it.round }, "round, tall and wide, from the schema")
+        assertEquals(listOf("1:1", "4:5", "4:3"), photo.shownAs.map { it.aspect })
+        val crop = ImageCrop(zoom = 2f, centerX = 0.4f, centerY = 0.3f)
+        vm.onImagePicked("photo", PickedImage { byteArrayOf(9) }, crop)
+        runCurrent()
+        assertEquals(listOf<ImageCrop?>(crop), website.processor.crops)
+        assertTrue(vm.form!!.text("photo").startsWith("https://"))
     }
 
     @Test

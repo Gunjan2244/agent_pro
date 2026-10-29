@@ -12,6 +12,7 @@ import com.sledje.agentpro.core.forms.FieldType
 import com.sledje.agentpro.core.forms.FormState
 import com.sledje.agentpro.core.forms.SectionSpec
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.PickedImage
 import com.sledje.agentpro.feature.website.data.ImageUploader
 import com.sledje.agentpro.feature.website.data.PublishIssue
@@ -41,7 +42,7 @@ data class SectionEditorUiState(
 
 /**
  * The section editor (docs/UX.md, Section editor): a FormRenderer built from the generated [SiteSchema]
- * section, filled from the draft. Images go through the photo picker → [ImageUploader] (crop to the
+ * section, filled from the draft. Images go through the photo picker → the photo editor → [ImageUploader] (crop to the
  * field's `aspect`, WebP ≤ 1024 px, upload to `site-media/<uid>/`). Save validates every field
  * (required, maxLength, min/max, formats, maxItems) and writes only the draft.
  *
@@ -80,16 +81,19 @@ class SectionEditorViewModel(
 
     val isDirty: Boolean get() = form?.isDirty == true
 
+    /** The image field at [fieldPath] (see [onImagePicked]), for the photo editor's aspect and `shownAs`. */
+    fun imageField(fieldPath: String): FieldSpec? = resolveImageField(fieldPath)?.second
+
     /**
      * An image was picked for [fieldPath]: a top-level image field key, or `list.index.key` for an image
-     * inside a list item (the path FormRenderer passes to `onPickImage`).
+     * inside a list item (the path FormRenderer passes to `onPickImage`). [crop] is the agent's, from the photo editor.
      */
-    fun onImagePicked(fieldPath: String, image: PickedImage) {
+    fun onImagePicked(fieldPath: String, image: PickedImage, crop: ImageCrop? = null) {
         val (target, spec) = resolveImageField(fieldPath) ?: return
         if (_state.value.uploadingField != null) return
         _state.update { it.copy(uploadingField = fieldPath, error = null) }
         viewModelScope.launch {
-            when (val result = uploader.upload(image, ImageAspect.parse(spec.aspect), imageName(spec))) {
+            when (val result = uploader.upload(image, ImageAspect.parse(spec.aspect), imageName(spec), crop)) {
                 is Result.Ok -> {
                     target.set(spec.key, result.value)
                     target.onFocusLost(spec.key)

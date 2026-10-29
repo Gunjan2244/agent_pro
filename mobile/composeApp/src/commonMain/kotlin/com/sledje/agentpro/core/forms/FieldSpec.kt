@@ -80,6 +80,8 @@ data class FieldSpec(
     val defaultText: StringResource? = null,
     /** Image crop aspect ratio, e.g. "1:1". */
     val aspect: String? = null,
+    /** Schema `shownAs`: the shapes the website shows the image in, previewed while the agent adjusts the crop. */
+    val shownAs: List<ImageShape> = emptyList(),
     /** Fields of each item of an [FieldType.ItemList] field. */
     val itemFields: List<FieldSpec> = emptyList(),
     /** App forms only: autocomplete hints for a text field (e.g. `PlanSuggestions.all`); any text is still allowed. */
@@ -99,6 +101,12 @@ data class FieldSpec(
     /** App forms only: one helper text under the field (e.g. the photo tips); FormRenderer shows it on image fields. */
     val helper: StringResource? = null,
 )
+
+/**
+ * One way the website shows an image (schema `shownAs`): an [aspect] such as "4:5", cut from the uploaded crop like
+ * CSS `object-fit: cover` with `object-position: 50% [focusY]%`; [round] is the circle (a 1:1 shape).
+ */
+data class ImageShape(val aspect: String, val label: StringResource, val round: Boolean = false, val focusY: Int = 50)
 
 /** A tappable substring of a consent field's label (`label` is a string resource whose text contains it). */
 data class FieldLink(val key: String, val label: StringResource)

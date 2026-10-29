@@ -200,7 +200,7 @@ class CatalogSyncGeneratorTest {
     @Test fun `single quotes are doubled and dollar tags never collide`() {
         val fx = Fixture()
         fx.replace("shared/catalog.json", "\"source\": \"registrar_live\"", "\"source\": \"it's \$site_schema\$ \$\$\"")
-        fx.replace("shared/site-schema.json", "\"aspect\": \"1:1\"", "\"aspect\": \"\$site_schema\$ and \$\$\"")
+        fx.replace("shared/site-schema.json", "\"field.photo\", \"aspect\": \"1:1\"", "\"field.photo\", \"aspect\": \"\$site_schema\$ and \$\$\"")
         val sql = CatalogSyncGenerator(fx.defs()) { now }.sql()
         assertTrue("it''s" in sql)
         assertTrue("select \$site_schema1\${" in sql, "inner tag avoids the content")

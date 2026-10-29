@@ -6,7 +6,9 @@ import androidx.compose.ui.Modifier
 import com.sledje.agentpro.core.data.AppError
 import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.Result
+import androidx.compose.ui.graphics.ImageBitmap
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.ImageProcessor
 import com.sledje.agentpro.core.platform.MediaPicker
 import com.sledje.agentpro.core.platform.PickedImage
@@ -33,15 +35,20 @@ class FakeMediaPicker(var next: PickedImage? = PickedImage { byteArrayOf(1, 2, 3
     override fun rememberImagePicker(onResult: (PickedImage?) -> Unit): () -> Unit = { opened++; onResult(next) }
 }
 
-/** "Processes" by recording the aspect; [fail] makes the image unreadable. */
+/** "Processes" by recording the aspect and the agent's crop; [fail] makes the image unreadable. */
 class FakeImageProcessor(var fail: Boolean = false) : ImageProcessor {
     val aspects = mutableListOf<ImageAspect?>()
+    val crops = mutableListOf<ImageCrop?>()
 
-    override suspend fun prepare(image: PickedImage, aspect: ImageAspect?, maxSide: Int): ProcessedImage? {
+    override suspend fun prepare(image: PickedImage, aspect: ImageAspect?, crop: ImageCrop?, maxSide: Int): ProcessedImage? {
         aspects += aspect
+        crops += crop
         if (fail) return null
         return ProcessedImage(image.read(), maxSide, maxSide, "image/webp", "webp")
     }
+
+    /** A 4×3 blank bitmap for the photo editor, or null when [fail]. */
+    override suspend fun decodePreview(image: PickedImage, maxSide: Int): ImageBitmap? = if (fail) null else ImageBitmap(4, 3)
 }
 
 class FakeSiteMediaRepository(var error: AppError? = null) : SiteMediaRepository {

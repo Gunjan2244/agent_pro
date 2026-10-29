@@ -194,6 +194,24 @@ class SharedVerifierTest {
         assertViolation(v, "site-schema.services.offered", "optionsFrom \"catalog.nothing\"")
     }
 
+    @Test fun `bad shownAs on an image field fails`() {
+        val fx = Fixture()
+        fx.replace("shared/site-schema.json", "\"focusY\": 25", "\"focusY\": 120")
+        fx.replace("shared/site-schema.json", "{ \"aspect\": \"4:5\"", "{ \"aspect\": \"tall\", \"round\": true")
+        val v = fx.verifier().checkSchemaAndTemplates()
+        assertViolation(v, "site-schema.hero.photo.shownAs[1]", "\"focusY\" must be a whole number 0..100")
+        assertViolation(v, "site-schema.hero.photo.shownAs[1]", "\"aspect\" must be like")
+        assertViolation(v, "site-schema.hero.photo.shownAs[1]", "\"round\" must be true on a 1:1 shape")
+    }
+
+    @Test fun `shownAs off an image field or with a missing label fails`() {
+        val fx = Fixture()
+        fx.replace("shared/site-schema.json", "\"type\": \"image\"", "\"type\": \"text\"")
+        fx.replace("shared/site-schema.json", "field.photo_shown_tall", "field.photo_shown_nowhere")
+        assertViolation(fx.verifier().checkSchemaAndTemplates(), "site-schema.hero.photo", "\"shownAs\" must be a non-empty array on an image field")
+        assertViolation(fx.verifier().checkI18n(), "site-schema.hero.photo shownAs[1]", "field.photo_shown_nowhere")
+    }
+
     @Test fun `template with unknown accent fails`() {
         val fx = Fixture()
         fx.replace("shared/templates/index.json", "\"defaultAccent\": \"indigo\"", "\"defaultAccent\": \"pink\"")

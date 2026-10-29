@@ -24,6 +24,8 @@
   "section.services": "हि Services",
   "field.headline": "हि Headline",
   "field.photo": "हि Photo",
+  "field.photo_shown_round": "हि Round",
+  "field.photo_shown_tall": "हि Tall",
   "field.cta_label": "हि Button text",
   "field.years_experience": "हि Years",
   "field.show_agency_code": "हि Show agency code",

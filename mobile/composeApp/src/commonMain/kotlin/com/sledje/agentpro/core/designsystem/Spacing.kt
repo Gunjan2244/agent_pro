@@ -49,6 +49,9 @@ object Dimens {
     val skeletonLine: Dp = 14.dp
     val skeletonBlock: Dp = 96.dp
 
+    /** Photo crop: the height of a "How customers see it" preview. */
+    val cropPreview: Dp = 72.dp
+
     /** The site QR code in the Share sheet (Website hub), on its own white quiet zone. */
     val qrCode: Dp = 200.dp
 

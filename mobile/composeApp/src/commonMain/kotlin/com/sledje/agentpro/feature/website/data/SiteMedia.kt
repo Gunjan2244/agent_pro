@@ -5,7 +5,9 @@ import com.sledje.agentpro.core.data.AppResult
 import com.sledje.agentpro.core.data.Result
 import com.sledje.agentpro.core.data.SupabaseProvider
 import com.sledje.agentpro.core.data.remoteCall
+import androidx.compose.ui.graphics.ImageBitmap
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.ImageProcessor
 import com.sledje.agentpro.core.platform.PickedImage
 import com.sledje.agentpro.core.platform.ProcessedImage
@@ -28,13 +30,19 @@ interface SiteMediaRepository {
 /** Why a picked file couldn't be used (not an image, or unreadable). */
 val ImageUnreadable = AppError.Validation("image", "unreadable")
 
-/** The MediaPicker → ImageProcessor → upload pipeline shared by the section editor and onboarding. */
+/**
+ * The MediaPicker → photo editor → ImageProcessor → upload pipeline shared by the section editor and onboarding.
+ * [crop] is the agent's crop from the photo editor (null: centred).
+ */
 class ImageUploader(private val processor: ImageProcessor, private val media: SiteMediaRepository) {
-    suspend fun upload(image: PickedImage, aspect: ImageAspect?, name: String): AppResult<String> {
-        val processed = processor.prepare(image, aspect) ?: return Result.Err(ImageUnreadable)
+    suspend fun upload(image: PickedImage, aspect: ImageAspect?, name: String, crop: ImageCrop? = null): AppResult<String> {
+        val processed = processor.prepare(image, aspect, crop) ?: return Result.Err(ImageUnreadable)
         if (processed.bytes.size > ImageProcessor.MAX_BYTES) return Result.Err(ImageUnreadable)
         return media.upload(processed, name)
     }
+
+    /** The photo editor's upright working copy; null when the file isn't a readable image. */
+    suspend fun preview(image: PickedImage): ImageBitmap? = processor.decodePreview(image)
 }
 
 class SupabaseSiteMediaRepository(private val supabase: SupabaseProvider) : SiteMediaRepository {

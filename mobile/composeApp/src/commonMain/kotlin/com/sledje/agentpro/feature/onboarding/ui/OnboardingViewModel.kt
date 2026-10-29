@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sledje.agentpro.app.AppEvents
 import com.sledje.agentpro.app.AppMessage
 import com.sledje.agentpro.app.OnboardingSession
+import com.sledje.agentpro.core.catalog.SiteSchema
 import com.sledje.agentpro.core.catalog.SiteSeed
 import com.sledje.agentpro.core.catalog.TemplateSpec
 import com.sledje.agentpro.core.catalog.Templates
@@ -25,6 +26,7 @@ import com.sledje.agentpro.feature.settings.data.Profile
 import com.sledje.agentpro.feature.settings.data.ProfileInput
 import com.sledje.agentpro.feature.settings.data.ProfileRepository
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.PickedImage
 import com.sledje.agentpro.feature.website.data.ImageUploader
 import com.sledje.agentpro.feature.website.data.MediaPaths
@@ -242,14 +244,14 @@ class OnboardingViewModel(
 
     // ---- Step 5 -------------------------------------------------------------------------------
 
-    /** Prepares the picked photo (square crop, WebP ≤ 1024 px) and uploads it; the form keeps its URL. */
-    fun uploadPhoto(image: PickedImage) {
+    /** Prepares the picked photo (the agent's square crop, WebP ≤ 1024 px) and uploads it; the form keeps its URL. */
+    fun uploadPhoto(image: PickedImage, crop: ImageCrop? = null) {
         val uploader = photoUploader ?: return
         if (_state.value.uploadingPhoto) return
         _state.update { it.copy(uploadingPhoto = true, error = null) }
         viewModelScope.launch {
             val aspect = ImageAspect.parse(profileForm.spec(PHOTO).aspect)
-            when (val result = uploader.upload(image, aspect, MediaPaths.PROFILE_PHOTO)) {
+            when (val result = uploader.upload(image, aspect, MediaPaths.PROFILE_PHOTO, crop)) {
                 is Result.Ok -> {
                     profileForm.set(PHOTO, result.value)
                     _state.update { it.copy(uploadingPhoto = false) }
@@ -467,12 +469,14 @@ class OnboardingViewModel(
          * agent, and the site says so itself (DECISIONS #114). No agency code or branch: each company link carries
          * its own agency code; the profile columns keep any value saved before (DECISIONS #116).
          */
+        private val HERO_PHOTO: FieldSpec = SiteSchema.section("hero")!!.fields.first { it.key == "photo" }
+
         val PROFILE_FIELDS: List<FieldSpec> = listOf(
             FieldSpec(NAME, FieldType.Text, Res.string.cat_field_name, required = true, maxLength = 80),
             FieldSpec(MOBILE, FieldType.Phone, Res.string.profile_mobile, required = true),
             FieldSpec(CITY, FieldType.Text, Res.string.cat_field_city, maxLength = 60),
-            // The same square crop as the hero photo (site-schema hero.photo, aspect 1:1).
-            FieldSpec(PHOTO, FieldType.Image, Res.string.cat_field_photo, aspect = "1:1", helper = Res.string.onboarding_photo_tips),
+            // The website shows it as the hero photo, so it takes that field's crop and shapes (site-schema hero.photo).
+            FieldSpec(PHOTO, FieldType.Image, Res.string.cat_field_photo, aspect = HERO_PHOTO.aspect, shownAs = HERO_PHOTO.shownAs, helper = Res.string.onboarding_photo_tips),
         )
     }
 }

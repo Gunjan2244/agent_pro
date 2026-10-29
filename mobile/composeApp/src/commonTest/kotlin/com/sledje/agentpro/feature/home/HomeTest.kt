@@ -148,7 +148,7 @@ class HomeViewModelTest {
         val d = deps(site = true)
         d.store.put(StoreKeys.WHATS_NEW_SEEN, "1")
         val s = vm(d).state.value
-        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite), s.walkthrough, "only what's newer than version 1")
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor), s.walkthrough, "only what's newer than version 1")
         assertTrue(s.whatsNew.isEmpty(), "no sheet while there's a walkthrough, and the old rows don't repeat")
     }
 
@@ -156,12 +156,21 @@ class HomeViewModelTest {
     fun aFreshAgentWithASiteGetsEveryPendingItemAsPagesImportantFirst() = runTest {
         val s = vm(deps(site = true)).state.value
         assertEquals(
-            listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.CustomerLogin, WhatsNewItem.ForMyCustomers),
+            listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.CustomerLogin, WhatsNewItem.ForMyCustomers, WhatsNewItem.PhotoEditor),
             s.walkthrough,
         )
         assertTrue(s.whatsNew.isEmpty())
         val portalOff = vm(deps(FeatureFlags(mapOf("customerPortal" to false)), site = true)).state.value
-        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies), portalOff.walkthrough, "a feature that's off drops its item")
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.PhotoEditor), portalOff.walkthrough, "a feature that's off drops its item")
+    }
+
+    @Test
+    fun anAgentWhoSawVersion3GetsThePhotoEditorInTheHomeSheet() = runTest {
+        val d = deps(site = true)
+        d.store.put(StoreKeys.WHATS_NEW_SEEN, "3")
+        val s = vm(d).state.value
+        assertEquals(listOf(WhatsNewItem.PhotoEditor), s.whatsNew, "a small item: the sheet")
+        assertTrue(s.walkthrough.isEmpty())
     }
 
     @Test
@@ -205,13 +214,14 @@ class HomeViewModelTest {
 
     @Test
     fun whatsNewVersionRules() {
-        assertEquals(3, WhatsNew.VERSION, "the newest item's version")
+        assertEquals(4, WhatsNew.VERSION, "the newest item's version")
         val all: (com.sledje.agentpro.core.catalog.FeatureId) -> Boolean = { true }
         assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending(null, hasSite = true, enabled = all))
         assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending("junk", hasSite = true, enabled = all), "unreadable counts as 0")
-        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite), WhatsNew.pending("1", hasSite = true, enabled = all))
-        assertEquals(listOf(WhatsNewItem.MultiPageWebsite), WhatsNew.pending("2", hasSite = true, enabled = all))
-        assertTrue(WhatsNew.pending("3", hasSite = true, enabled = all).isEmpty())
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor), WhatsNew.pending("1", hasSite = true, enabled = all))
+        assertEquals(listOf(WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor), WhatsNew.pending("2", hasSite = true, enabled = all))
+        assertEquals(listOf(WhatsNewItem.PhotoEditor), WhatsNew.pending("3", hasSite = true, enabled = all))
+        assertTrue(WhatsNew.pending("4", hasSite = true, enabled = all).isEmpty())
         assertTrue(WhatsNew.pending(null, hasSite = false, enabled = all).isEmpty())
     }
 }

@@ -2,7 +2,9 @@ package com.sledje.agentpro.feature.website
 
 import com.sledje.agentpro.core.platform.CropRect
 import com.sledje.agentpro.core.platform.ImageAspect
+import com.sledje.agentpro.core.platform.ImageCrop
 import com.sledje.agentpro.core.platform.ImageGeometry
+import com.sledje.agentpro.core.platform.ImageProcessor
 import com.sledje.agentpro.feature.website.data.DayViews
 import com.sledje.agentpro.feature.website.data.MediaPaths
 import com.sledje.agentpro.feature.website.data.SiteStatsAggregator
@@ -11,6 +13,7 @@ import com.sledje.agentpro.feature.website.ui.formatPercent
 import com.sledje.agentpro.testing.TEST_USER
 import com.sledje.agentpro.testing.viewRow
 import kotlinx.datetime.LocalDate
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -92,6 +95,42 @@ class SiteStatsAndMediaTest {
         assertEquals(800 to 600, ImageGeometry.fitWithin(800, 600, 1024))
         assertEquals(2, ImageGeometry.sampleSize(4000, 3000, 1024), "decoded ≥ 1024 on the shorter side")
         assertEquals(1, ImageGeometry.sampleSize(1500, 1200, 1024))
+        // A 4x zoom of a 50 MP photo would ask for the full image; the pixel cap (12 MP) takes it to a quarter.
+        assertEquals(4, ImageGeometry.sampleSize(8160, 6120, 4096), "≤ ${ImageProcessor.MAX_DECODE_PIXELS} pixels")
+    }
+
+    @Test
+    fun theAgentsCropZoomsAndMovesInsideTheImage() {
+        // Zoom 1, centred: the centred crop.
+        assertEquals(CropRect(500, 0, 3000, 3000), ImageGeometry.crop(4000, 3000, ImageAspect.Square, ImageCrop.Centered))
+        // Zoom 2 around (1000, 750): a 1500 px square, moved down to the top edge.
+        assertEquals(CropRect(250, 0, 1500, 1500), ImageGeometry.crop(4000, 3000, ImageAspect.Square, ImageCrop(2f, 0.25f, 0.25f)))
+        // A centre past the edge is moved back inside; zoom outside 1..4 is clamped.
+        assertEquals(CropRect(1000, 0, 3000, 3000), ImageGeometry.crop(4000, 3000, ImageAspect.Square, ImageCrop(0.5f, 1f, 0f)))
+        assertEquals(750, ImageGeometry.crop(4000, 3000, ImageAspect.Square, ImageCrop(9f)).width)
+        assertEquals(CropRect(0, 0, 4000, 3000), ImageGeometry.crop(4000, 3000, null, ImageCrop(2f)))
+    }
+
+    @Test
+    fun clampKeepsTheFrameCovered() {
+        val c = ImageGeometry.clampCrop(4000, 3000, ImageAspect.Square, ImageCrop(1f, 0f, 0.9f))
+        assertEquals(ImageCrop(1f, 0.375f, 0.5f), c, "at zoom 1 the square spans the height, so only x can move")
+        assertEquals(ImageCrop(ImageCrop.MAX_ZOOM, 0.5f, 0.5f), ImageGeometry.clampCrop(4000, 3000, ImageAspect.Square, ImageCrop(10f)))
+    }
+
+    @Test
+    fun shownPartFollowsTheWebsitesObjectPosition() {
+        // A tall 4:5 cut from a square keeps the full height and the middle 80% of the width.
+        assertClose(listOf(0.1f, 0f, 0.8f, 1f), ImageGeometry.shownPart(ImageAspect.Square, ImageAspect(4, 5), focusY = 25).toList())
+        // A wide 4:3 cut keeps 75% of the height, a quarter of the spare room above it (object-position 50% 25%).
+        val wide = ImageGeometry.shownPart(ImageAspect.Square, ImageAspect(4, 3), focusY = 25).toList()
+        assertClose(listOf(0f, 0.0625f, 1f, 0.75f), wide)
+        assertClose(listOf(0f, 0f, 1f, 1f), ImageGeometry.shownPart(ImageAspect.Square, ImageAspect.Square, focusY = 50).toList())
+    }
+
+    private fun assertClose(expected: List<Float>, actual: List<Float>) {
+        assertEquals(expected.size, actual.size)
+        expected.zip(actual).forEach { (e, a) -> assertTrue(abs(e - a) < 1e-4f, "expected $expected, got $actual") }
     }
 
     @Test
