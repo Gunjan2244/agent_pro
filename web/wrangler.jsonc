@@ -7,8 +7,11 @@
   "name": "agentpro-sites",
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
-  // Reads Supabase settings from dist/config.js at request time, so no keys live in this file.
+  // Supabase settings come from the Worker secrets SUPABASE_URL and SUPABASE_ANON_KEY (wrangler secret put), falling
+  // back to dist/config.js; the Worker also serves /config.js from them (DECISIONS #125). No keys live in this file.
   "main": "./worker.js",
+  // Public, not a secret. Local `wrangler dev`: override it in web/.dev.vars (SITE_BASE_URL=http://localhost:8787).
+  "vars": { "SITE_BASE_URL": "https://agentpro-sites.sledjesoftwares.workers.dev" },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -17,7 +20,7 @@
     // an explicit list, so static assets never invoke the Worker. The site pages of a custom domain (/insurance,
     // /insurance/<type>, /about, /contact, each also with a trailing slash for the 301) follow shared/site-pages.json
     // (DECISIONS #122; test-web-pages.mjs checks that every page path is listed).
-    "run_worker_first": ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]
+    "run_worker_first": ["/config.js", "/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]
   },
   // Throttles the portal's POSTs per client IP (10 per 60 s); worker.js skips the check when the binding is absent.
   // namespace_id is any unique integer string in the account. Unverified against the wrangler schema (see the changelog).

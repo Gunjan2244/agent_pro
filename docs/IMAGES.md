@@ -95,7 +95,7 @@ The app's photo step (UX.md) should give these tips, since it's the image that m
 - no sunglasses, no group photos;
 - no insurer uniform or logos (DECISIONS #77).
 
-The tips are in the app: UX.md, Onboarding step 5 (Your photo).
+The tips are in the app: UX.md, Onboarding step 5 (Your photo). After picking, the agent adjusts the crop in the photo editor, which previews the circle, the 4:5 About me picture and the 4:3 cover the templates cut from the square (site-schema `shownAs`; UX.md, Photo editor; DECISIONS #124).
 
 ## Generating the WebP files (`scripts/gen-site-images.py`)
 - **Run:** `python3 -I scripts/gen-site-images.py` from the repo root (Pillow 12; optional `--src` and `--out`). It reads only the top-level `design/site-images/source/*.png` (`spare/` and `needs-fix/` are ignored) and rewrites `web/images/`.

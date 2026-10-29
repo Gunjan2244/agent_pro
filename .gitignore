@@ -4,5 +4,7 @@ node_modules/
 
 # Cloudflare wrangler local cache (account id) — never commit
 .wrangler/
+# wrangler dev local vars/secrets (web/.dev.vars)
+.dev.vars
 # IDE (VS Code Java extension) compiled/copied output
 mobile/**/bin/

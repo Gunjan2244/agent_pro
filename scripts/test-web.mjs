@@ -205,15 +205,16 @@ try {
   }
 } catch (e) { if (e.code === "ENOENT") console.log("SIZE skipped (run build first)"); else throw e; }
 // hosting config (Cloudflare Workers static assets, DECISIONS #59)
-ok("wrangler.jsonc: SPA static assets; the Worker runs first only for pages, the customer portal, manifest, robots.txt, sitemap.xml (DECISIONS #65, #75, #98)", () => {
+ok("wrangler.jsonc: SPA static assets; the Worker runs first only for config.js, pages, the customer portal, manifest, robots.txt, sitemap.xml (DECISIONS #65, #75, #98)", () => {
   const raw = readFileSync(new URL("../web/wrangler.jsonc", import.meta.url), "utf8");
   const strip = raw.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
   const w = JSON.parse(strip);
   assert.equal(w.name, "agentpro-sites"); assert.equal(w.assets.directory, "./dist");
   assert.equal(w.assets.not_found_handling, "single-page-application");
   assert.equal(w.main, "./worker.js"); assert.equal(w.assets.binding, "ASSETS");
-  assert.deepEqual(w.assets.run_worker_first, ["/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
-  assert.ok(!w.routes && !w.vars, "no routes yet; no keys in the config");
+  assert.deepEqual(w.assets.run_worker_first, ["/config.js", "/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
+  assert.ok(!w.routes, "no routes yet");
+  assert.deepEqual(Object.keys(w.vars || {}), ["SITE_BASE_URL"], "the only var is the public SITE_BASE_URL; Supabase keys are Worker secrets (DECISIONS #125)");
 });
 if (existsSync(dist + "index.html")) ok("dist: _headers present, no vercel.json, no secrets in _headers", () => {
   assert.ok(existsSync(dist + "_headers")); assert.ok(!existsSync(dist + "vercel.json"));

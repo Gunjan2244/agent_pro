@@ -62,3 +62,16 @@ export function parseConfig(text) {
   }
   return out;
 }
+
+// The Worker's environment (Cloudflare secrets or vars) wins over the built config.js for these keys, so a build made
+// without them (e.g. CI without the Supabase repo secrets) still works (DECISIONS #125). BUILD_TIME is always the build's.
+const ENV_CONFIG_KEYS = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SITE_BASE_URL"];
+export function mergeConfig(built, env = {}) {
+  const out = { SUPABASE_URL: "", SUPABASE_ANON_KEY: "", SITE_BASE_URL: "", BUILD_TIME: "", ...built };
+  for (const k of ENV_CONFIG_KEYS) if (typeof env[k] === "string" && env[k].trim()) out[k] = env[k].trim();
+  return out;
+}
+
+// The /config.js the Worker serves: the same shape build-web.sh writes, so parseConfig reads it back.
+export const configScript = (cfg) =>
+  "window.AGENTPRO_CONFIG = {\n" + ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SITE_BASE_URL", "BUILD_TIME"].map((k) => `  ${k}: ${JSON.stringify(cfg[k] || "")}`).join(",\n") + "\n};\n";

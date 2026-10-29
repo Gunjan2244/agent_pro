@@ -1,5 +1,5 @@
 // Cloudflare Worker for agentpro-sites (DECISIONS #65, #75). It runs only for the paths in wrangler.jsonc
-// `run_worker_first`: /manifest.webmanifest, and the page routes /, /a/*, /privacy plus /robots.txt and /sitemap.xml.
+// `run_worker_first`: /config.js, /manifest.webmanifest, and the page routes /, /a/*, /privacy plus /robots.txt and /sitemap.xml.
 // Everything else (fonts, CSS, JS, JSON) is served straight from static assets without invoking it.
 //   page      GET|HEAD  server-side render (web/ssr.js) of a site page (DECISIONS #122: Home, /insurance,
 //                       /insurance/<type>, /about, /contact; shared/site-pages.json) or the privacy page; 301 /a/<slug> ->
@@ -10,7 +10,8 @@
 //   portal    the customer login at /a/<slug>/my/* (custom domain /my/*), GET|HEAD|POST, server-rendered, never cached (DECISIONS #98)
 //   join      the customer sign-up page at /a/<slug>/join/* (custom domain /join/*), GET|HEAD|POST, server-rendered, never cached (DECISIONS #108)
 //   robots.txt, sitemap.xml  see docs/WEB_RENDERER.md
-import { manifestFor, parseConfig, MANIFEST_PATH } from "./manifest.js";
+//   config.js  the built config.js with the Worker's env (secrets/vars) merged over it, no-store (DECISIONS #125)
+import { manifestFor, parseConfig, mergeConfig, configScript, MANIFEST_PATH } from "./manifest.js";
 import { portalServiceWorker } from "./portal-sw.js";
 import { resolveTarget, portalLinks, matchPage } from "./route.js";
 import { portalToken, portalCookie, clearPortalCookie, inviteToken, inviteCookie, clearInviteCookie, isInviteToken, joinToken, joinCookie, clearJoinCookie } from "./cookies.js";
@@ -56,10 +57,19 @@ function cached(env, key, load) {
   return m.get(key);
 }
 const json = (env, url, path) => cached(env, path, () => asset(env, url, path).then((r) => r.json()));
+// The built config.js merged with the Worker's env (mergeConfig); a missing config.js counts as empty when env has the keys.
+const loadBuiltConfig = (env, url) => cached(env, "/config.js", () => asset(env, url, "/config.js").then((r) => r.text()).then(parseConfig)).catch(() => ({}));
 async function loadConfig(env, url) {
-  const cfg = await cached(env, "/config.js", () => asset(env, url, "/config.js").then((r) => r.text()).then(parseConfig));
-  if (!cfg.SUPABASE_URL) throw new Error("config.js has no SUPABASE_URL");
+  const cfg = mergeConfig(await loadBuiltConfig(env, url), env);
+  if (!cfg.SUPABASE_URL) throw new Error("no SUPABASE_URL in the Worker env or config.js");
   return cfg;
+}
+
+// /config.js for the browser, from the same merged config, so the page and the Worker never disagree.
+async function handleConfig(request, env) {
+  const url = new URL(request.url);
+  const body = configScript(mergeConfig(await loadBuiltConfig(env, url), env));
+  return new Response(request.method === "HEAD" ? null : body, { headers: headers({ "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" }) });
 }
 // web/images/manifest.json is optional: without it the page simply has no bundled illustrations.
 const loadImages = (env, url) => json(env, url, "/images/manifest.json").then((m) => (m && typeof m === "object" && !Array.isArray(m) ? m : {})).catch(() => ({}));
@@ -596,6 +606,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const isGetHead = request.method === "GET" || request.method === "HEAD";
+    if (path === "/config.js") return isGetHead ? handleConfig(request, env) : new Response(null, { status: 405, headers: headers({ allow: "GET, HEAD" }) });
     if (path === MANIFEST_PATH || path === "/robots.txt" || path === "/sitemap.xml" || SITE_SITEMAP.test(path)) {
       if (!isGetHead) return new Response(null, { status: 405, headers: headers({ allow: "GET, HEAD" }) });
       try {

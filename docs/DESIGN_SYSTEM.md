@@ -261,6 +261,8 @@ Charts follow the dataviz method: pick the form first, colour last, and validate
 | `SegmentedControl` | Single-choice segments, e.g. `[ Customers | Dues ]`; the selected one uses `primaryContainer` |
 | `StepProgressBar` | The thin progress bar at the top of each onboarding step; TalkBack reads "Step 2 of 5" |
 | `AvatarButton` | The Home avatar that opens Settings (48dp touch target around the 40dp `Avatar`) |
+| `PhotoCropArea` | The photo editor's crop surface (DECISIONS #124): the photo under a fixed frame of the field's aspect, outside dimmed (`scrim` at 60%), a dark `scrim` surround and a white frame (2dp) in both themes, an optional thin white circle guide; pinch zooms around the fingers (1–4×), drag moves, the frame always stays covered. Radius 12 |
+| `PhotoShapePreview` | One "How customers see it" preview: the current crop cut like the website's CSS (`object-fit: cover`, `object-position: 50% focusY%`), 72dp tall (`Dimens.cropPreview`), a circle or radius 12, with a `bodyMuted` label under it. Shown in a wrapping row |
 | `AppBottomSheet` | Modal sheet with a title (radius 16 top corners, elevated surface), e.g. the setup checklist |
 
 A debug-only **Component gallery** shows every component in light, dark, EN, HI and at 200% font scale. It's the baseline for the Roborazzi screenshot tests.

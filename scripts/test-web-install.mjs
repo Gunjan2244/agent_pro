@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
 export async function run({ ok, R, dicts, catalog, fx, makeT, TEMPLATE_KEYS, LOCALE_KEYS }) {
-  const { manifestFor, manifestHref, appBase, appNames, swatchFor, parseConfig, iconPath, ICON_SIZES, MANIFEST_PATH } = await import("../web/manifest.js");
+  const { manifestFor, manifestHref, appBase, appNames, swatchFor, parseConfig, mergeConfig, configScript, iconPath, ICON_SIZES, MANIFEST_PATH } = await import("../web/manifest.js");
   const tokens = R("shared/design-tokens.json");
   const site = fx("sample-en");
 
@@ -44,6 +44,18 @@ export async function run({ ok, R, dicts, catalog, fx, makeT, TEMPLATE_KEYS, LOC
     assert.equal(parseConfig("").SUPABASE_URL, "");
     assert.equal(parseConfig(text.replace("\n};", ',\n  BUILD_TIME: "2026-10-18T10:00:00Z"\n};')).BUILD_TIME, "2026-10-18T10:00:00Z");
   });
+  ok("mergeConfig: Worker env (secrets/vars) wins for the Supabase keys and SITE_BASE_URL; blanks and BUILD_TIME stay the build's (DECISIONS #125)", () => {
+    const built = { SUPABASE_URL: "", SUPABASE_ANON_KEY: "", SITE_BASE_URL: "http://localhost:8080", BUILD_TIME: "2026-10-28T15:49:12Z" };
+    assert.deepEqual(mergeConfig(built, { SUPABASE_URL: " https://p.supabase.co ", SUPABASE_ANON_KEY: "k", SITE_BASE_URL: "https://x.dev", BUILD_TIME: "nope", ASSETS: {} }),
+      { SUPABASE_URL: "https://p.supabase.co", SUPABASE_ANON_KEY: "k", SITE_BASE_URL: "https://x.dev", BUILD_TIME: "2026-10-28T15:49:12Z" });
+    assert.deepEqual(mergeConfig({ SUPABASE_URL: "https://b.co" }, { SUPABASE_URL: "  " }).SUPABASE_URL, "https://b.co", "blank env keeps the build's value");
+    assert.equal(mergeConfig({}, {}).SITE_BASE_URL, "");
+  });
+  ok("configScript writes what parseConfig reads back (escaped)", () => {
+    const cfg = { SUPABASE_URL: "https://p.supabase.co", SUPABASE_ANON_KEY: 'a"b\\c', SITE_BASE_URL: "https://x.dev", BUILD_TIME: "2026-10-18T10:00:00Z" };
+    assert.deepEqual(parseConfig(configScript(cfg)), cfg);
+    assert.match(configScript(cfg), /^window\.AGENTPRO_CONFIG = \{\n  SUPABASE_URL: /);
+  });
 
   // --- Worker ---
   {
@@ -76,6 +88,32 @@ export async function run({ ok, R, dicts, catalog, fx, makeT, TEMPLATE_KEYS, LOC
     rpcReply = () => new Response("null");
     const gone = await get("https://sites.test/manifest.webmanifest?s=lapsed");
     ok("worker: unpublished / lapsed / unknown site -> 404, so it can't be installed", () => assert.equal(gone.status, 404));
+    {
+      // The 2026-10-28 outage: CI built config.js without the Supabase values; the Worker secrets must carry it.
+      const emptyCfg = 'window.AGENTPRO_CONFIG = {\n  SUPABASE_URL: "",\n  SUPABASE_ANON_KEY: "",\n  SITE_BASE_URL: "http://localhost:8080",\n  BUILD_TIME: "2026-10-28T15:49:12Z"\n};\n';
+      const envS = { SUPABASE_URL: "https://sec.test", SUPABASE_ANON_KEY: "seckey", SITE_BASE_URL: "https://sites.test",
+        ASSETS: { fetch: async (req) => { const p = new URL(req.url || req).pathname; return p === "/config.js" ? new Response(emptyCfg) : env.ASSETS.fetch(req); } } };
+      rpcReply = () => new Response(JSON.stringify([{ published_content: site.content, template_key: "classic", accent: "teal", locale: "en", profile: site.profile }]));
+      rpcs = [];
+      const m = await worker.fetch(new Request("https://sites.test/manifest.webmanifest?s=asha-verma"), envS);
+      ok("worker: empty built config.js + Worker secrets -> the RPC uses the secrets' URL and key", () => {
+        assert.equal(m.status, 200); assert.equal(rpcs[0].u, "https://sec.test/rest/v1/rpc/get_public_site"); assert.equal(rpcs[0].key, "seckey");
+      });
+      const c = await worker.fetch(new Request("https://sites.test/config.js"), envS);
+      const cText = await c.text();
+      ok("worker: /config.js is served from the merged config, JS, no-store", () => {
+        assert.equal(c.status, 200); assert.match(c.headers.get("content-type"), /^text\/javascript/); assert.equal(c.headers.get("cache-control"), "no-store");
+        assert.deepEqual(parseConfig(cText), { SUPABASE_URL: "https://sec.test", SUPABASE_ANON_KEY: "seckey", SITE_BASE_URL: "https://sites.test", BUILD_TIME: "2026-10-28T15:49:12Z" });
+      });
+      const h = await worker.fetch(new Request("https://sites.test/config.js", { method: "HEAD" }), envS);
+      const hBody = await h.text();
+      const post = await worker.fetch(new Request("https://sites.test/config.js", { method: "POST" }), envS);
+      ok("worker: /config.js HEAD -> 200 without a body; POST -> 405", () => {
+        assert.equal(h.status, 200); assert.equal(hBody, ""); assert.equal(post.status, 405);
+      });
+      const plain = await (await worker.fetch(new Request("https://sites.test/config.js"), env)).text();
+      ok("worker: /config.js without Worker env = the built config.js values", () => assert.equal(parseConfig(plain).SUPABASE_URL, "https://s.test"));
+    }
     rpcs = [];
     const bad = await Promise.all([get("https://sites.test/manifest.webmanifest?s=Bad%20Slug"), get("https://sites.test/manifest.webmanifest")]);
     ok("worker: malformed or missing slug -> 404 without calling the RPC", () => { assert.deepEqual(bad.map((r) => r.status), [404, 404]); assert.equal(rpcs.length, 0); });
