@@ -42,7 +42,7 @@ select tests.ok(
     where n.nspname in ('public', 'private') and has_function_privilege('authenticated', f.oid, 'EXECUTE'))
   = array['admin_link_membership', 'admin_membership_queue', 'admin_offer_usage', 'admin_review_membership', 'can_manage_company_media',
           'can_write', 'customer_signup_link', 'customer_signup_renew', 'delete_my_account', 'effective_flags', 'is_admin', 'is_admin_for', 'is_slug_available', 'list_companies', 'list_public_sites',
-          'mark_premium_paid', 'my_company_offers', 'my_entitlement', 'portal_invite', 'portal_revoke', 'portal_status', 'preview_site_offers',
+          'mark_premium_paid', 'mark_whats_new_seen', 'my_company_offers', 'my_entitlement', 'portal_invite', 'portal_revoke', 'portal_status', 'preview_site_offers',
           'publish_site', 'record_consent', 'request_company',
           'set_membership_types', 'undo_premium_payment', 'update_data_request', 'withdraw_company_request'],
   '#A authenticated can execute exactly the documented RPCs (+ can_write, is_admin, is_admin_for, can_manage_company_media for RLS; effective_flags for FeatureFlags)',

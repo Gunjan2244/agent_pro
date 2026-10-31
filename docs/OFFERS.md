@@ -356,6 +356,7 @@ WEB_RENDERER.md ("Offers", "Templates") is the full spec; this is the offers sum
 - **Why it's allowed an SDK when the renderer isn't (DECISIONS #26):** the renderer's "no SDK, < 50 KB" rule exists for public page speed and SEO. The admin panel has a handful of signed-in users; correct auth, MFA and token refresh matter far more than bytes, and supabase-js is the supported way to do them.
 - **Forms are generated from `shared/offer-schema.json`** (and the company fields), so limits always match the SQL.
 - **The admin UI copy is English only** (internal staff, provisional); offer *content* is entered in every catalog locale.
+- **Loading (DECISIONS #126; `admin/src/Skeleton.tsx`):** while the session and admin access are checked, the panel shows its own layout as a skeleton (nav and a table), not "Loading…" / "Checking access…". Each list (Membership requests as cards; Companies, Offers, Admins, Audit log as table rows, `aria-busy` on the table) shows skeletons until its first load finishes, so "Nothing here." only appears once the list really is empty. Later reloads (a filter change, after a save) keep the current rows.
 
 ### Hosting
 - A separate Cloudflare Worker with static assets (`agentpro-admin`), at `agentpro-admin.sledjesoftwares.workers.dev` for now (DECISIONS #95) and `admin.<primary domain>` once the domain exists (the `admin` slug is already reserved). Built: `admin/` (sign-in, MFA, membership requests, companies). Deploying needs the user's approval each time.

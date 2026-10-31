@@ -29,5 +29,15 @@ th { color: var(--c-onSurfaceVariant); font-weight: 500; }
 .pill.danger { color: var(--c-error); }
 @media (max-width: 720px) { .shell { grid-template-columns: 1fr; } .grid2 { grid-template-columns: 1fr; } }
 
+/* Skeletons (Skeleton.tsx): grey blocks in the shape of what's loading; they pulse unless reduced motion is on. */
+.sk { display: block; height: 14px; border-radius: var(--shape-sm); background: var(--c-surfaceContainerHigh); }
+@media (prefers-reduced-motion: no-preference) { .sk { animation: sk 1200ms ease-in-out infinite alternate; } }
+@keyframes sk { to { opacity: .5; } }
+.sk-w40 { width: 40%; }
+.sk-w60 { width: 60%; }
+.sk-nav { height: 32px; }
+.sk-h1 { width: 240px; max-width: 60%; height: 24px; margin-bottom: var(--space-m); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
 .logo-img { object-fit: contain; border-radius: var(--shape-sm); background: var(--c-surface); }
 .logo-initials { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--shape-sm); background: var(--c-surfaceContainerLow); border: 1px solid var(--c-outlineVariant); color: var(--c-onSurfaceVariant); }

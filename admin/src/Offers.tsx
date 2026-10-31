@@ -4,6 +4,7 @@ import { label } from "./catalog";
 import catalog from "../../shared/catalog.json";
 import schema from "../../shared/offer-schema.json";
 import { toOfferWebp } from "./image";
+import { SkeletonRows } from "./Skeleton";
 
 type Fields = Record<string, string>;
 type Offer = {
@@ -27,11 +28,13 @@ export function Offers() {
   const [filter, setFilter] = useState("");
   const [edit, setEdit] = useState<{ o: Offer; isNew: boolean } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const load = useCallback(async () => {
     const [o, c] = await Promise.all([
       supabase.from("offers").select("*").order("ends_at", { ascending: false }),
       supabase.from("companies").select("id,name").order("sort"),
     ]);
+    setLoaded(true);
     if (o.error) setErr(o.error.message); else setRows(o.data as Offer[]);
     setCompanies((c.data as Company[]) ?? []);
   }, []);
@@ -54,9 +57,9 @@ export function Offers() {
         <button className="primary" disabled={!companies.length} onClick={() => setEdit({ o: blank(), isNew: true })}>New offer</button>
       </div>
       {err && <div className="error" role="alert">{err}</div>}
-      <table>
+      <table aria-busy={!loaded}>
         <thead><tr><th>Offer</th><th>Company</th><th>Status</th><th>Runs</th><th /></tr></thead>
-        <tbody>{rows.filter((o) => !filter || o.company_id === filter).map((o) => (
+        <tbody>{!loaded && <SkeletonRows cols={5} />}{rows.filter((o) => !filter || o.company_id === filter).map((o) => (
           <tr key={o.id}>
             <td>{o.content.en?.title || <span className="muted">Untitled</span>}<div className="muted">{o.internal_name}</div></td>
             <td>{name(o.company_id)}</td>

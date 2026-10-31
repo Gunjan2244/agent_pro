@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { adminRoles, label } from "./catalog";
 import { callAdmin } from "./adminApi";
+import { SkeletonRows } from "./Skeleton";
 
 export type AdminRow = {
   user_id: string; email: string; role: string; company_id: string | null; invited_by: string | null;
@@ -17,6 +18,7 @@ export function Admins({ selfId, onLoaded }: { selfId: string; onLoaded?: (rows:
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -27,6 +29,7 @@ export function Admins({ selfId, onLoaded }: { selfId: string; onLoaded?: (rows:
       setRows(r.admins ?? []);
       onLoaded?.(r.admins ?? []);
     } catch (e) { setErr((e as Error).message); }
+    setLoaded(true);
   }, [onLoaded]);
   useEffect(() => { void load(); }, [load]);
 
@@ -43,9 +46,10 @@ export function Admins({ selfId, onLoaded }: { selfId: string; onLoaded?: (rows:
       <h1>Admins</h1>
       {err && <div className="error" role="alert">{err}</div>}
       <Invite companies={companies} busy={busy} onInvite={(a) => run("invite", a)} />
-      <table>
+      <table aria-busy={!loaded}>
         <thead><tr><th>Email</th><th>Role</th><th>Scope</th><th>MFA</th><th>Last sign-in</th><th>Status</th><th></th></tr></thead>
         <tbody>
+          {!loaded && <SkeletonRows cols={7} />}
           {rows.map((r) => {
             const self = r.user_id === selfId;
             return (
@@ -71,7 +75,7 @@ export function Admins({ selfId, onLoaded }: { selfId: string; onLoaded?: (rows:
           })}
         </tbody>
       </table>
-      {rows.length === 0 && !err && <p className="muted">No admins loaded.</p>}
+      {loaded && rows.length === 0 && !err && <p className="muted">No admins loaded.</p>}
     </>
   );
 }

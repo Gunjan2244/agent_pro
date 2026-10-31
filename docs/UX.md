@@ -40,7 +40,7 @@ Any screen (when lapsed) ─→ Plan ended screen ─→ Checkout · Continue re
 
 ## Global UX rules
 1. **Every data screen has four states** (`ScreenState`):
-   - **Loading:** skeleton.
+   - **Loading:** skeleton, shaped like what is coming. Never "Loading…" text: the website shell (in-app previews) and the admin panel follow this too (DECISIONS #126).
    - **Empty:** one sentence and one button.
    - **Error:** a message and Retry.
    - **Content:** with pull-to-refresh.
@@ -172,7 +172,7 @@ Home has at most 3 blocks, top to bottom:
 - **Every step is tappable (DECISIONS #105, supersedes the next-only rule of #103).** The first undone item, in order, shows a primary icon and title with "Next step" under it as the suggestion, but no step blocks another. Order: Profile, Companies, Publish, About, Share, First customer, Customer login. Items whose feature is off are hidden and not counted ("1 of 7").
 - **Each item opens its screen:** Profile and Companies → Settings → Profile; Publish → the Website tab; About → the About section editor, with a soft prompt card at the top ("Replace this text with a few lines in your own words…"; shown only when opened from this list); Share → Link & domain; First customer → the Customers tab with the new-customer form; Customer login → the Customers tab (pick a customer; no hint).
 - **When an item ticks:** Companies when the agent has a pending or approved company link, or a "not listed" request (checked online once; it stays undone offline); First customer once any customer exists; Customer login once an invite has been sent from this device (a local mark, like Share).
-- **What's new: walkthrough and sheet (DECISIONS #103, #121; CLAUDE.md, Rolling out to existing users):** how agents who already have a website learn about new things. New sign-ups never see either one: finishing onboarding marks everything seen. Signing out doesn't reset it.
+- **What's new: walkthrough and sheet (DECISIONS #103, #121; CLAUDE.md, Rolling out to existing users):** how agents who already have a website learn about new things. New sign-ups never see either one: finishing onboarding marks everything seen. What the agent has seen is kept on their account as well as the phone (DECISIONS #127), so reinstalling the app, clearing its storage, signing out and in, or moving to a new phone never brings back items they already saw.
   - **Versioned items:** each item (`WhatsNewItem`) records the release that brought it (`since`). An agent sees only the items newer than the version they last saw, and only those whose feature is on. **Any way out marks them all seen:** Show me, Not now, Got it, closing the sheet, tapping a row, or Back. So nothing repeats, and later items still show.
   - **Important item → full-screen walkthrough.** If any new item is important, all the new items show as **full-screen pages on the first Home of the app run**, important ones first, before the agent does anything else. Important means it changes their public website, needs them to act or decide, adds a required step, or moves something they use.
     - **Page layout:** top bar "What's new" (no back arrow), "n of N" when there are several pages, a round tinted icon, the title and a short line.
@@ -184,6 +184,7 @@ Home has at most 3 blocks, top to bottom:
     - **Version 2, important:** **5 new website designs**, "Your website has a fresh new look. See all five designs and pick the one you like." Show me → Website → Appearance → Template (the template grid, #120).
     - **Version 3, important:** **Your website now has pages**, "Home, Insurance (with a page for each plan), About me and Contact. Your menu links them, and each page can be found on Google." (DECISIONS #122.) Show me → Website → the agent's website preview. An agent who saw version 1 sees the version 2 and 3 pages; one who saw version 2 sees only this one. One who saw nothing gets 5 pages, the important ones first.
     - **Version 4, small (sheet row):** **Adjust your photo: zoom, move it and see how customers will see it** (DECISIONS #124). Show me → Website → Content → Hero (the section editor with the photo). An agent who saw version 3 gets just this row in the Home sheet; one who saw less gets it as a page after the important ones.
+    - **Version 5, small (sheet row):** **Change your photo any time from your profile** (DECISIONS #128). Show me → Settings → Profile. An agent who saw version 4 gets just this row in the Home sheet; one who saw less gets it as a page along with the others.
 
 **Plan row:** at most one, shown above Today only when it matters, and it opens Plan & billing.
 - In the last 5 days of the trial: "Trial ends in 3 days · Continue for ₹499/year".
@@ -470,7 +471,7 @@ This screen has two sections.
 | About | Privacy notice (built: opens the Notice screen), Privacy policy, Terms, Plan terms, Domain terms, Version |
 | — | Sign out, Delete account (the user types DELETE) |
 
-- **Profile (built, DECISIONS #89):** for now the screen holds **Your companies**: the same cards as onboarding step 4 (Your work), one per company link, with a status pill from the catalog (`membershipStatuses`: Waiting for approval, Approved, Not approved, Removed; the pill is the only place the status is worded) and, where there is something extra to say, one detail line:
+- **Profile (built, DECISIONS #89, #128):** at the top, the agent's **photo** (round, initials while there is none or it loads) with **Add photo** or **Change photo**, which opens the picker and the **Adjust your photo** editor (Website tab, Photo editor); the buttons wait while it uploads ("Uploading photo…"), offline shows the button disabled, an unusable file says "This photo couldn't be used. Try another one.". A saved photo shows the snackbar "Photo updated. Publish to show it on your website." (it is also written to the site's draft hero photo). Below it the screen holds **Your companies**: the same cards as onboarding step 4 (Your work), one per company link, with a status pill from the catalog (`membershipStatuses`: Waiting for approval, Approved, Not approved, Removed; the pill is the only place the status is worded) and, where there is something extra to say, one detail line:
 
 | Status (pill) | Detail line | Actions |
 |---|---|---|

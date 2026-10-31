@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { SkeletonRows } from "./Skeleton";
 
 const PAGE = 50;
 type Entry = {
@@ -16,6 +17,7 @@ export function AuditLog({ adminEmails }: { adminEmails: Record<string, string> 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -26,6 +28,7 @@ export function AuditLog({ adminEmails }: { adminEmails: Record<string, string> 
     if (from) q = q.gte("at", new Date(`${from}T00:00:00`).toISOString());
     if (to) q = q.lt("at", new Date(new Date(`${to}T00:00:00`).getTime() + 86400000).toISOString());
     const { data, error } = await q.range(page * PAGE, page * PAGE + PAGE - 1);
+    setLoaded(true);
     if (error) { setErr(error.message); return; }
     setRows((data as Entry[]) ?? []);
   }, [kind, action, entity, from, to, page]);
@@ -49,9 +52,10 @@ export function AuditLog({ adminEmails }: { adminEmails: Record<string, string> 
         <label>To<input type="date" value={to} onChange={(e) => f(setTo)(e.target.value)} /></label>
       </div>
       {err && <div className="error" role="alert">{err}</div>}
-      <table>
+      <table aria-busy={!loaded}>
         <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Changes</th><th>IP</th></tr></thead>
         <tbody>
+          {!loaded && <SkeletonRows cols={6} />}
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{new Date(r.at).toLocaleString("en-IN")}</td>
@@ -64,7 +68,7 @@ export function AuditLog({ adminEmails }: { adminEmails: Record<string, string> 
           ))}
         </tbody>
       </table>
-      {rows.length === 0 && !err && <p className="muted">Nothing here.</p>}
+      {loaded && rows.length === 0 && !err && <p className="muted">Nothing here.</p>}
       <div className="row" style={{ marginTop: "var(--space-m)" }}>
         <button disabled={page === 0} onClick={() => setPage(page - 1)}>Newer</button>
         <button disabled={rows.length < PAGE} onClick={() => setPage(page + 1)}>Older</button>

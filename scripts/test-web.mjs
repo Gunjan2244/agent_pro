@@ -151,7 +151,7 @@ import { readdirSync } from "node:fs";
 const dist = new URL("../web/dist/", import.meta.url).pathname;
 try {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(d + e.name + "/") : [d + e.name]));
-  const shared = ["app.js", "client.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/pages.css", "styles/fonts.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
+  const shared = ["app.js", "client.js", "api.js", "i18n.js", "head.js", "form.js", "route.js", "tokens.css", "styles/base.css", "styles/pages.css", "styles/fonts.css", "styles/shell.css", ...walk(dist + "sections/").map((f) => f.slice(dist.length))];
   // Server-rendered page (DECISIONS #75): first paint needs only CSS; this is the deferred JS that wires behaviour.
   {
     const css = ["tokens.css", "styles/base.css", "styles/fonts.css", `templates/${TEMPLATE_KEYS[0]}/style.css`];
@@ -273,6 +273,14 @@ import { readdirSync as rd } from "node:fs";
   ok("index.html loads fonts.css and preloads Inter latin 400", () => {
     const h = readFileSync(web + "index.html", "utf8");
     assert.ok(h.includes('href="/styles/fonts.css"') && h.includes('href="/fonts/inter-latin-400-normal.woff2"') && /as="font"[^>]*crossorigin/.test(h));
+  });
+  ok("index.html shows a page-shaped skeleton while loading, not \"Loading…\" text; only the shell links shell.css", () => {
+    const h = readFileSync(web + "index.html", "utf8");
+    const main = h.match(/<main id="root" aria-busy="true">([\s\S]*?)<\/main>/)[1];
+    assert.ok(h.includes('href="/styles/shell.css"') && /<div class="sk" aria-hidden="true">/.test(main));
+    for (const part of ["sk-bar", "sk-photo", "sk-h", "sk-btn", "sk-cards"]) assert.ok(main.includes(part), part);
+    assert.ok(/<p class="sk-sr">Loading…<\/p>/.test(main) && !main.includes('class="state"'));
+    assert.ok(!readFileSync(web + "ssr.js", "utf8").includes("shell.css"));
   });
   if (existsSync(web + "dist/index.html")) ok("dist contains fonts/", () => assert.ok(existsSync(web + "dist/fonts/inter-latin-400-normal.woff2") && existsSync(web + "dist/fonts/LICENSE-Inter-OFL.txt")));
 }

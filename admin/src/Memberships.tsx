@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { SkeletonCards } from "./Skeleton";
 import { label, membershipStatuses, rejectReasons, statusEntry, typeLabel } from "./catalog";
 
 type Row = {
@@ -16,6 +17,7 @@ export function Memberships() {
   const [companies, setCompanies] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -23,6 +25,7 @@ export function Memberships() {
       supabase.rpc("admin_membership_queue", { company_id: null, status }),
       supabase.from("companies").select("id,slug,name"),
     ]);
+    setLoaded(true);
     if (q.error) { setErr(q.error.message); return; }
     setRows((q.data as Row[]) ?? []);
     setCompanies(Object.fromEntries(((c.data as Company[]) ?? []).map((x) => [x.id, x.name.en])));
@@ -38,7 +41,7 @@ export function Memberships() {
         ))}
       </div>
       {err && <div className="error" role="alert">{err}</div>}
-      {rows.length === 0 && !err && <p className="muted">Nothing here.</p>}
+      {!loaded ? <SkeletonCards /> : rows.length === 0 && !err && <p className="muted">Nothing here.</p>}
       {rows.map((r) => (
         <div className="card" key={r.id}>
           <div className="row" style={{ marginBottom: 0 }}>

@@ -1,0 +1,29 @@
+/* The static shell's loading skeleton (WEB_RENDERER.md "Loading skeleton"). index.html is the only page that links this
+   file: it shows while the in-app preview, ?mock or the backend-error fallback fetches the site and its template, so
+   server-rendered pages never load it. Template-neutral page shape: top bar (name, call button), hero (photo, name and
+   designation, two headline lines, subheadline, button), one section (heading, three cards). Blocks pulse like the
+   app's skeleton (1200 ms each way) and hold still under prefers-reduced-motion. */
+.sk{max-width:calc(1080px + var(--space-l)*2);margin:0 auto;padding:0 var(--space-m)}
+@media(min-width:720px){.sk{padding:0 var(--space-l)}}
+.sk-b{display:block;height:16px;border-radius:var(--shape-sm);background:var(--c-surfaceContainer)}
+@media(prefers-reduced-motion:no-preference){.sk-b{animation:sk 1200ms ease-in-out infinite alternate}}
+@keyframes sk{to{opacity:.5}}
+.sk-bar{display:flex;align-items:center;justify-content:space-between;min-height:64px}
+.sk-call{width:96px;height:40px;border-radius:var(--shape-lg)}
+.sk-hero{display:grid;gap:var(--space-m);padding:calc(var(--space-l)*2) 0 var(--space-l)}
+.sk-id{display:flex;align-items:center;gap:var(--space-m);margin-bottom:var(--space-s)}
+.sk-photo{width:96px;height:96px;border-radius:50%;flex:none}
+@media(min-width:1024px){.sk-photo{width:160px;height:160px}}
+.sk-who{display:grid;gap:var(--space-s);flex:1}
+.sk-h{height:32px;max-width:720px}
+.sk-btn{width:200px;height:48px;border-radius:var(--shape-md);margin-top:var(--space-s)}
+.sk-sec{padding:var(--space-l) 0}
+.sk-h2{height:24px;margin-bottom:var(--space-l)}
+.sk-cards{display:grid;gap:var(--space-m)}
+@media(min-width:720px){.sk-cards{grid-template-columns:repeat(3,1fr)}}
+.sk-card{height:120px;border-radius:var(--shape-md)}
+.sk-w40{width:40%;max-width:240px}
+.sk-w60{width:60%;max-width:320px}
+.sk-w80{width:80%;max-width:560px}
+/* read by screen readers only; #root's aria-busy says the page is still coming */
+.sk-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

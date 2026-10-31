@@ -7,6 +7,7 @@ import { Memberships } from "./Memberships";
 import { Offers } from "./Offers";
 import { Admins, type AdminRow } from "./Admins";
 import { AuditLog } from "./AuditLog";
+import { ShellSkeleton } from "./Skeleton";
 
 const IDLE_MS = 30 * 60 * 1000;
 type Access = "checking" | "none" | "ok";
@@ -59,10 +60,10 @@ export function App() {
   }, [session, signOut]);
 
   if (!configured) return <div className="center"><h1>Not configured</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).</p></div>;
-  if (!ready) return <div className="center muted">Loading…</div>;
+  if (!ready) return <ShellSkeleton />;
   if (!session) return <SignIn denied={access === "none"} />;
   if (!aal2) return <MfaGate onDone={() => setSession({ ...session })} onCancel={signOut} />;
-  if (access !== "ok") return <div className="center muted">Checking access…</div>;
+  if (access !== "ok") return <ShellSkeleton />;
 
   return (
     <div className="shell">

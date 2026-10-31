@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { toLogoWebp } from "./logo";
+import { SkeletonRows } from "./Skeleton";
 
 const BUCKET = "company-media";
 const pathOf = (url: string | null) => url?.split(`/${BUCKET}/`)[1];
@@ -19,8 +20,10 @@ export function Companies() {
   const [rows, setRows] = useState<Company[]>([]);
   const [edit, setEdit] = useState<{ c: Company; isNew: boolean } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const load = useCallback(async () => {
     const { data, error } = await supabase.from("companies").select("id,slug,name,website_url,disclaimer,allow_custom_offers,is_active,sort,logo_url,logo_permission_at,logo_permission_ref,logo_permission_until").order("sort").order("slug");
+    setLoaded(true);
     if (error) setErr(error.message); else setRows(data as Company[]);
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -31,9 +34,9 @@ export function Companies() {
       <h1>Companies</h1>
       <div className="row"><button className="primary" onClick={() => setEdit({ c: blank(), isNew: true })}>New company</button></div>
       {err && <div className="error" role="alert">{err}</div>}
-      <table>
+      <table aria-busy={!loaded}>
         <thead><tr><th>Logo</th><th>Name</th><th>Slug</th><th>Status</th><th>Sort</th><th /></tr></thead>
-        <tbody>{rows.map((c) => (
+        <tbody>{!loaded && <SkeletonRows cols={6} />}{rows.map((c) => (
           <tr key={c.id}>
             <td>{c.logo_url && !ended(c)
               ? <img className="logo-img" src={c.logo_url} alt="" width={24} height={24} />
