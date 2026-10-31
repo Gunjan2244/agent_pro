@@ -1,6 +1,6 @@
 # Status — read this first
 
-_Last updated: 2026-11-01 (plan pages, "We're taking you to …", agent-editable key features, featured plans, offers on plans, five templates redesigned, DECISIONS #130; backend APPLIED to `AGENT_PRO`, web/admin/app on branch `feature/official-plans`, not deployed)._
+_Last updated: 2026-11-01 (stray backslash before quotes in app text removed; plan pages, "We're taking you to …", agent-editable key features, featured plans, offers on plans, five templates redesigned, DECISIONS #130; backend APPLIED to `AGENT_PRO`, web/admin/app on branch `feature/official-plans`, not deployed)._
 
 ## Current state
 - **Plan pages (2026-11-01, user request; DECISIONS #130): backend LIVE on `AGENT_PRO`; web, admin and app on local branch `feature/official-plans` (on top of #129), NOT deployed.**
