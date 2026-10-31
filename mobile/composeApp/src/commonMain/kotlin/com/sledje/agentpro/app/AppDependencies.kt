@@ -17,6 +17,8 @@ import com.sledje.agentpro.feature.customers.data.NoCustomerDraftRepository
 import com.sledje.agentpro.feature.enquiries.data.EnquiryLive
 import com.sledje.agentpro.feature.enquiries.data.EnquiryRepository
 import com.sledje.agentpro.feature.offers.data.CompanyRepository
+import com.sledje.agentpro.feature.offers.data.NoPlansRepository
+import com.sledje.agentpro.feature.offers.data.PlansRepository
 import com.sledje.agentpro.feature.policies.data.PolicyRepository
 import com.sledje.agentpro.feature.portal.data.NoPortalRepository
 import com.sledje.agentpro.feature.portal.data.PortalRepository
@@ -55,6 +57,9 @@ interface AppDependencies {
 
     /** Customer portal invites (online only; DECISIONS: customer portal). Tests that don't care get the offline stub. */
     val portal: PortalRepository get() = NoPortalRepository
+
+    /** The agent's choice of their companies' official plans for the website (DECISIONS #129). Tests get the offline stub. */
+    val plans: PlansRepository get() = NoPlansRepository
 
     /** In-app consents recorded through `record_consent` (docs/PRIVACY.md; P1-4). */
     val consents: ConsentRepository

@@ -23,17 +23,44 @@ export function normalizeOffers(o) {
   return { featured: ok(o.featured), items: Array.isArray(o.items) ? o.items.map(ok).filter(Boolean) : [] };
 }
 
-// The payload's approved companies (DECISIONS #90): [{name, insurance_types}] only, so a logo, slug or id never reaches
-// a site even if a payload carried one. Malformed entries are dropped; at most 20.
+// The payload's approved companies (DECISIONS #90): [{name, insurance_types}], plus (DECISIONS #129) the insurer's
+// official `website` (https only) for the disclosure footer and the agent's `agency_code` there (only when the agent
+// shows it). A logo, slug or id never reaches a site even if a payload carried one. Malformed entries are dropped;
+// at most 20.
+const httpsUrl = (v, max = 500) => (typeof v === "string" && v.length <= max && /^https:\/\/[^\s"'<>]+$/i.test(v.trim()) ? v.trim() : null);
 export function normalizeCompanies(v) {
   if (!Array.isArray(v)) return [];
-  return v.filter((c) => c && typeof c === "object" && typeof c.name === "string" && c.name.trim()).slice(0, 20).map((c) => ({
-    name: c.name.trim().slice(0, 120),
-    insurance_types: Array.isArray(c.insurance_types) ? [...new Set(c.insurance_types.filter((k) => typeof k === "string" && /^[a-z_]{1,40}$/.test(k)))] : [],
-  }));
+  return v.filter((c) => c && typeof c === "object" && typeof c.name === "string" && c.name.trim()).slice(0, 20).map((c) => {
+    const out = {
+      name: c.name.trim().slice(0, 120),
+      insurance_types: Array.isArray(c.insurance_types) ? [...new Set(c.insurance_types.filter((k) => typeof k === "string" && /^[a-z_]{1,40}$/.test(k)))] : [],
+    };
+    const site = httpsUrl(c.website, 200);
+    if (site) out.website = site;
+    if (typeof c.agency_code === "string" && /^[A-Za-z0-9 ./-]{1,30}$/.test(c.agency_code.trim())) out.agency_code = c.agency_code.trim();
+    return out;
+  });
 }
 
-// RPC row -> { portal, content, template_key, accent, locale, canonical_host, published_at, profile, offers, company, companies }.
+// The payload's official plans (DECISIONS #129): the plans the agent chose (or, with no choice, every plan of their
+// approved companies for the insurance types they deal in there), already resolved by the backend. Only facts and the
+// insurer's own link: {id, company, name, plan_no, uin, interest, url, image_url}; at most 100; malformed ones dropped.
+export function normalizePlans(v) {
+  if (!Array.isArray(v)) return [];
+  const str = (x, max, re) => (typeof x === "string" && x.trim() && x.trim().length <= max && (!re || re.test(x.trim())) ? x.trim() : null);
+  return v.filter((p) => p && typeof p === "object").map((p) => ({
+    id: str(p.id, 40, /^[0-9a-f-]{36}$/i),
+    company: str(p.company, 120),
+    name: str(p.name, 120),
+    plan_no: str(p.plan_no, 12, /^[A-Za-z0-9-]+$/),
+    uin: str(p.uin, 24, /^[A-Z0-9]+$/),
+    interest: str(p.interest, 40, /^[a-z_]+$/),
+    url: httpsUrl(p.url),
+    image_url: httpsUrl(p.image_url),
+  })).filter((p) => p.name && p.company && p.url && p.interest).slice(0, 100);
+}
+
+// RPC row -> { portal, content, template_key, accent, locale, canonical_host, published_at, profile, offers, company, companies, plans }.
 // `company` keeps only the disclaimer (the offers' fine print); the company *names* come only through `companies`.
 export function normalizeSite(row) {
   if (Array.isArray(row)) row = row[0];
@@ -44,7 +71,7 @@ export function normalizeSite(row) {
   return {
     content, template_key: row.template_key, accent: row.accent, locale: row.locale, canonical_host: row.canonical_host || null,
     published_at: row.published_at || null, profile: row.profile || {}, offers: normalizeOffers(row.offers), company: disclaimer ? { disclaimer } : null,
-    companies: normalizeCompanies(row.companies), portal: row.portal === true,
+    companies: normalizeCompanies(row.companies), plans: normalizePlans(row.plans), portal: row.portal === true,
   };
 }
 

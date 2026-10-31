@@ -42,9 +42,9 @@ select tests.ok(
     where n.nspname in ('public', 'private') and has_function_privilege('authenticated', f.oid, 'EXECUTE'))
   = array['admin_link_membership', 'admin_membership_queue', 'admin_offer_usage', 'admin_review_membership', 'can_manage_company_media',
           'can_write', 'customer_signup_link', 'customer_signup_renew', 'delete_my_account', 'effective_flags', 'is_admin', 'is_admin_for', 'is_slug_available', 'list_companies', 'list_public_sites',
-          'mark_premium_paid', 'mark_whats_new_seen', 'my_company_offers', 'my_entitlement', 'portal_invite', 'portal_revoke', 'portal_status', 'preview_site_offers',
+          'mark_premium_paid', 'mark_whats_new_seen', 'my_company_offers', 'my_company_plans', 'my_entitlement', 'portal_invite', 'portal_revoke', 'portal_status', 'preview_site_offers',
           'publish_site', 'record_consent', 'request_company',
-          'set_membership_types', 'undo_premium_payment', 'update_data_request', 'withdraw_company_request'],
+          'set_membership_types', 'set_site_plans', 'undo_premium_payment', 'update_data_request', 'withdraw_company_request'],
   '#A authenticated can execute exactly the documented RPCs (+ can_write, is_admin, is_admin_for, can_manage_company_media for RLS; effective_flags for FeatureFlags)',
   (select string_agg(f.proname, ',' order by f.proname) from pg_proc f join pg_namespace n on n.oid = f.pronamespace
     where n.nspname in ('public', 'private') and has_function_privilege('authenticated', f.oid, 'EXECUTE')));
@@ -78,10 +78,10 @@ select tests.ok(not exists (
 
 select tests.ok(not exists (
   select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname = 'public' and c.relkind = 'r' and c.relname not in ('profiles', 'app_config', 'audit_log', 'companies', 'offers', 'admins')
+   where n.nspname = 'public' and c.relkind = 'r' and c.relname not in ('profiles', 'app_config', 'audit_log', 'companies', 'offers', 'admins', 'company_plans')
      and not exists (select 1 from pg_indexes i where i.schemaname = 'public' and i.tablename = c.relname
                       and i.indexdef like '%(agent_id, updated_at)%')),
-  '#A every agent table has an (agent_id, updated_at) index (audit_log, companies, offers and admins are not agent-owned)');
+  '#A every agent table has an (agent_id, updated_at) index (audit_log, companies, offers, company_plans and admins are not agent-owned)');
 
 select tests.ok(
   (select array_agg(tablename::text order by tablename) from pg_publication_tables where pubname = 'supabase_realtime')

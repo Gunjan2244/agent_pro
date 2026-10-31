@@ -38,6 +38,7 @@ import com.sledje.agentpro.core.features.AppFeature
 import com.sledje.agentpro.core.features.BottomNavItem
 import com.sledje.agentpro.core.features.FeatureHost
 import com.sledje.agentpro.feature.customers.CustomerFormRoute
+import com.sledje.agentpro.feature.offers.SitePlansRoute
 import com.sledje.agentpro.feature.settings.ProfileRoute
 import com.sledje.agentpro.feature.website.WebsiteContentRoute
 import com.sledje.agentpro.feature.website.WebsiteLinkRoute
@@ -160,6 +161,7 @@ internal fun FeatureHost.openWhatsNewItem(item: WhatsNewItem) {
         WhatsNewItem.MultiPageWebsite -> if (openTab("website")) nav.navigate(WebsitePreviewRoute)
         WhatsNewItem.PhotoEditor -> if (openTab("website")) nav.navigate(WebsiteSectionRoute("hero"))
         WhatsNewItem.ProfilePhoto -> nav.navigate(ProfileRoute)
+        WhatsNewItem.OfficialPlans -> if (openTab("website")) nav.navigate(SitePlansRoute)
     }
 }
 

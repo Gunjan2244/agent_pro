@@ -18,7 +18,7 @@ import { pageHref, planHref, contactHref } from "./links.js";
 import { pageUrl } from "../route.js";
 
 // The interests that get their own page: those the agent names (services items, then `offered`), then those of the
-// live offers; on a "Best offers" site that names none, every active catalog interest (as planList does, so its
+// live offers, then those of the agent's official plans (DECISIONS #129); on a "Best offers" site that names none, every active catalog interest (as planList does, so its
 // Insurance page is never empty). Only real plan types: an interest with no insurance type ("other") has no page.
 export function planKeys(ctx) {
   const all = arr(ctx.catalog.interests);
@@ -29,6 +29,8 @@ export function planKeys(ctx) {
   for (const i of arr(sv.items)) if (i) add(i.interest);
   for (const k of arr(sv.offered)) add(k);
   for (const o of arr(ctx.offers && ctx.offers.all)) add(interestOf(o));
+  // then the plan types of the official plans the agent shows (DECISIONS #129), so each one has its page
+  for (const p of arr(ctx.site.plans)) if (p) add(p.interest);
   if (!out.length && ctx.family === "offers") for (const i of all.slice().sort((a, b) => a.order - b.order)) add(i.key);
   return out;
 }

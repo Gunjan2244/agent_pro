@@ -185,6 +185,7 @@ Home has at most 3 blocks, top to bottom:
     - **Version 3, important:** **Your website now has pages**, "Home, Insurance (with a page for each plan), About me and Contact. Your menu links them, and each page can be found on Google." (DECISIONS #122.) Show me → Website → the agent's website preview. An agent who saw version 1 sees the version 2 and 3 pages; one who saw version 2 sees only this one. One who saw nothing gets 5 pages, the important ones first.
     - **Version 4, small (sheet row):** **Adjust your photo: zoom, move it and see how customers will see it** (DECISIONS #124). Show me → Website → Content → Hero (the section editor with the photo). An agent who saw version 3 gets just this row in the Home sheet; one who saw less gets it as a page after the important ones.
     - **Version 5, small (sheet row):** **Change your photo any time from your profile** (DECISIONS #128). Show me → Settings → Profile. An agent who saw version 4 gets just this row in the Home sheet; one who saw less gets it as a page along with the others.
+    - **Version 6, important:** **Your companies' official plans are on your website**, "Your Insurance page now lists the official plans of your approved companies, with a link to each company's website, and every page says whose agent you are. Choose which plans to show." (DECISIONS #129.) Show me → Website → Plans on your site. Being important, it takes any still-unseen small items (versions 4–5) with it as pages after it.
 
 **Plan row:** at most one, shown above Today only when it matters, and it opens Plan & billing.
 - In the last 5 days of the trial: "Trial ends in 3 days · Continue for ₹499/year".
@@ -311,6 +312,13 @@ Name\* and mobile\* are always shown. Email, DOB, address, city, nominee and not
   - **Record** saves it and shows Undo.
 - **As built (Phase 7):** "Next due becomes …" uses the same rule as `mark_premium_paid` (`DueDateCalculator`). After **Record** the sheet closes and "Premium recorded" shows with **Undo** (5 s), which calls `undo_premium_payment`; if a newer payment exists the app says "Only the latest payment can be undone". **Record premium paid** is disabled offline and when the policy has no due date ("No due date set"). Edit is in the overflow menu; the customer is a row that opens Customer detail.
 
+### Website → Plans on your site (DECISIONS #129)
+- **Top bar** "Plans on your site" with back. A muted intro line: only the official name, plan number and UIN show on the website, with a link to the company's site; the list holds the approved companies' plans for the insurance types the agent chose with each.
+- **ToggleRow "Show all my companies' plans"** (on by default: new plans appear by themselves). Turning it off starts with every plan ticked, so nothing disappears by surprise.
+- **One group per company** (approval order): the company name with **Select all** / **Clear** (only while choosing one by one), then a `ListRow` per plan (name; "Plan No. … · UIN …") with a checkbox (disabled while automatic).
+- **Sticky Save** (enabled when something changed and online); helper text for a save error or "No plan selected: your website will show none." A snackbar confirms "Saved. Your website shows these plans now." The live site follows at once: no Publish needed.
+- **States:** skeleton while loading; the error with Retry; empty: "No plans yet. Plans appear here once a company has approved your link and has plans for the insurance types you chose."
+
 ### Customer login pages (the agent's website, `/a/<slug>/my`; DECISIONS #96–#100)
 Not part of the app: the customer sees these in a browser or the installed web app (WEB_RENDERER.md, "Customer login (portal)"). They use the website theme (white background, the agent's accent, 3 spacing values, 4 type sizes), work without JS, are mobile-first (one column, 48 px targets) and exist in English and Hindi.
 - **Sign in:** "Sign in to see your policies"; mobile and 6-digit PIN; **Sign in**. Below: "New here or forgot your PIN? Ask {name} to send you a login link" with a WhatsApp button (a new link also resets the PIN). Errors are inline and generic ("That mobile number and PIN don't match. Try again."); a lock says "Too many tries. Wait {minutes} minutes, or ask {name} for a new link", a hard lock "This login is locked. Ask {name} to send you a new link."; too many requests says "Too many requests. Please try again later."
@@ -339,6 +347,7 @@ Not part of the app: the customer opens the link the agent shared (WEB_RENDERER.
   - **Appearance:** template name and accent.
   - **Link & domain:** the current address, or "Get your own domain".
   - **Stats:** "120 views this week".
+  - **Plans on your site** (DECISIONS #129; contributed by the Offers feature, order 5): opens the plans screen below.
 - **Sticky bar**, always shown once the site exists: **Publish** (primary; enabled only while the draft differs from the published version, and online) and **My website →** (text button; opens the preview).
 - **As built (Phase 8):**
   - The status is **Draft** until the first publish, **Unpublished changes** while `draft_content` differs from `published_content`, otherwise **Live** (with an icon each: hourglass / sync / check).

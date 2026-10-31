@@ -27,4 +27,17 @@
     <string name="offer_picker_copy_message">बदलने पर यह आपकी अपनी प्रति बन जाता है। कंपनी के बदलाव इसमें नहीं आएँगे, और आपकी साइट पर \'एजेंट द्वारा दी गई जानकारी\' दिखेगा।</string>
     <string name="offer_picker_copy_confirm">प्रति बनाएँ</string>
     <string name="offer_picker_copy_full">आपके अपने ऑफ़र की सीमा पूरी हो चुकी है। पहले एक हटाएँ।</string>
+    <!-- वेबसाइट → आपकी साइट पर प्लान (DECISIONS #129) -->
+    <string name="plans_title">आपकी साइट पर प्लान</string>
+    <string name="plans_intro">ये आपकी स्वीकृत कंपनियों के आधिकारिक प्लान हैं, उन बीमा प्रकारों के लिए जिनमें आप हर कंपनी के साथ काम करते हैं। आपकी वेबसाइट पर हर प्लान का केवल आधिकारिक नाम, प्लान नंबर और UIN दिखता है, साथ में कंपनी की अपनी वेबसाइट का लिंक।</string>
+    <string name="plans_auto">मेरी कंपनियों के सभी प्लान दिखाएँ</string>
+    <string name="plans_auto_help">आपकी कंपनियों के नए प्लान अपने आप दिखेंगे। एक-एक करके प्लान चुनने के लिए इसे बंद करें।</string>
+    <string name="plans_select_all">सभी चुनें</string>
+    <string name="plans_clear_all">हटाएँ</string>
+    <string name="plans_no">प्लान नं. %1$s</string>
+    <string name="plans_uin">UIN %1$s</string>
+    <string name="plans_save">सहेजें</string>
+    <string name="plans_saved">सहेज लिया गया। आपकी वेबसाइट पर अब ये प्लान दिखेंगे।</string>
+    <string name="plans_none_selected">कोई प्लान नहीं चुना गया: आपकी वेबसाइट पर कोई प्लान नहीं दिखेगा।</string>
+    <string name="plans_empty">अभी कोई प्लान नहीं है। जब कोई कंपनी आपका जुड़ाव स्वीकार कर ले और आपके चुने बीमा प्रकारों के प्लान हों, तब प्लान यहाँ दिखेंगे।</string>
 </resources>

@@ -6,7 +6,7 @@ import * as api from "./api.js";
 import { loadDict, makeT, localeKeys, pickLocale } from "./i18n.js";
 import { headData, applyHead } from "./head.js";
 import { wireForm, consentFor, preselectInterest } from "./form.js";
-import { recordViewOnce, normalizeOffers, normalizeCompanies } from "./api.js";
+import { recordViewOnce, normalizeOffers, normalizeCompanies, normalizePlans } from "./api.js";
 import { resolveTarget as resolve, siteLinks, matchPage, previewHash } from "./route.js";
 import { makeCtx, pageMeta } from "./sections/index.js";
 import { esc } from "./sections/util.js";
@@ -162,7 +162,7 @@ async function showDraft() {
 export async function renderSite(input) {
   const site = typeof input === "string" ? JSON.parse(input) : input;
   const company = site.company && typeof site.company.disclaimer === "string" ? { disclaimer: site.company.disclaimer } : null;
-  draft = { ...site, profile: site.profile || {}, offers: normalizeOffers(site.offers), company, companies: normalizeCompanies(site.companies) };
+  draft = { ...site, profile: site.profile || {}, offers: normalizeOffers(site.offers), company, companies: normalizeCompanies(site.companies), plans: normalizePlans(site.plans) };
   if (!previewWired) { previewWired = true; window.addEventListener("hashchange", () => { if (previewHash(location.hash)) showDraft(); }); }
   await showDraft();
 }

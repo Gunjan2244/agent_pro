@@ -258,13 +258,61 @@
    "insurance_types": [
     "life",
     "accident"
-   ]
+   ],
+   "website": "https://www.samplelife.example"
   },
   {
    "name": "Example Health Insurance Co.",
    "insurance_types": [
     "health"
-   ]
+   ],
+   "website": "https://examplehealth.example"
+  }
+ ],
+ "plans": [
+  {
+   "id": "9e000001-0000-4000-8000-000000000001",
+   "company": "सैंपल लाइफ़ एश्योरेंस",
+   "name": "Sample Life Secure Term",
+   "plan_no": "901",
+   "uin": "999N101V01",
+   "interest": "term",
+   "insurance_type": "life",
+   "url": "https://www.samplelife.example/plans/secure-term",
+   "image_url": null
+  },
+  {
+   "id": "9e000002-0000-4000-8000-000000000002",
+   "company": "सैंपल लाइफ़ एश्योरेंस",
+   "name": "Sample Life Family Saver",
+   "plan_no": "902",
+   "uin": "999N102V02",
+   "interest": "endowment",
+   "insurance_type": "life",
+   "url": "https://www.samplelife.example/plans/family-saver",
+   "image_url": null
+  },
+  {
+   "id": "9e000003-0000-4000-8000-000000000003",
+   "company": "सैंपल लाइफ़ एश्योरेंस",
+   "name": "Sample Life Golden Years Pension",
+   "plan_no": null,
+   "uin": "999N103V01",
+   "interest": "pension",
+   "insurance_type": "life",
+   "url": "https://www.samplelife.example/plans/golden-years",
+   "image_url": null
+  },
+  {
+   "id": "9e000004-0000-4000-8000-000000000004",
+   "company": "Example Health Insurance Co.",
+   "name": "Example Family Health Shield",
+   "plan_no": null,
+   "uin": null,
+   "interest": "health",
+   "insurance_type": "health",
+   "url": "https://examplehealth.example/family-shield",
+   "image_url": null
   }
  ]
 }

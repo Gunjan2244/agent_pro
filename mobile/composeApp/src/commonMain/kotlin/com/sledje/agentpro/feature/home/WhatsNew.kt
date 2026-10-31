@@ -53,6 +53,8 @@ import com.sledje.agentpro.resources.whats_new_page
 import com.sledje.agentpro.resources.whats_new_pages
 import com.sledje.agentpro.resources.whats_new_pages_body
 import com.sledje.agentpro.resources.whats_new_photo_editor
+import com.sledje.agentpro.resources.whats_new_plans
+import com.sledje.agentpro.resources.whats_new_plans_body
 import com.sledje.agentpro.resources.whats_new_profile_photo
 import com.sledje.agentpro.resources.whats_new_show_me
 import com.sledje.agentpro.resources.whats_new_templates
@@ -124,6 +126,12 @@ enum class WhatsNewItem(
 
     /** The agent can change their photo from Settings → Profile; small: nothing changes unless they use it. */
     ProfilePhoto(5, FeatureId.SiteBuilder, Res.string.whats_new_profile_photo, Res.drawable.ic_person),
+
+    /**
+     * Important (#129): every public website gained the companies' official plans and the agent's disclosure footer;
+     * Show me opens Website → Plans on your site, where the agent chooses which plans to show.
+     */
+    OfficialPlans(6, FeatureId.Offers, Res.string.whats_new_plans, Res.drawable.ic_description, walkthrough = true, body = Res.string.whats_new_plans_body),
 }
 
 /** The sheet's body (the frame, with its "What's new" title, is the shared bottom sheet). */

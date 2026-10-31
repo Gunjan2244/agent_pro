@@ -5,13 +5,14 @@ import { SignIn, MfaGate } from "./Auth";
 import { Companies } from "./Companies";
 import { Memberships } from "./Memberships";
 import { Offers } from "./Offers";
+import { Plans } from "./Plans";
 import { Admins, type AdminRow } from "./Admins";
 import { AuditLog } from "./AuditLog";
 import { ShellSkeleton } from "./Skeleton";
 
 const IDLE_MS = 30 * 60 * 1000;
 type Access = "checking" | "none" | "ok";
-type Page = "memberships" | "companies" | "offers" | "admins" | "audit";
+type Page = "memberships" | "companies" | "plans" | "offers" | "admins" | "audit";
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -71,13 +72,14 @@ export function App() {
         <strong>Agent PRO Admin</strong>
         <button className={page === "memberships" ? "active" : ""} onClick={() => setPage("memberships")}>Membership requests</button>
         <button className={page === "companies" ? "active" : ""} onClick={() => setPage("companies")}>Companies</button>
+        <button className={page === "plans" ? "active" : ""} onClick={() => setPage("plans")}>Plans</button>
         <button className={page === "offers" ? "active" : ""} onClick={() => setPage("offers")}>Offers</button>
         {role === "owner" && <button className={page === "admins" ? "active" : ""} onClick={() => setPage("admins")}>Admins</button>}
         {role === "owner" && <button className={page === "audit" ? "active" : ""} onClick={() => setPage("audit")}>Audit log</button>}
         <span className="muted">{session.user.email}</span>
         <button onClick={signOut}>Sign out</button>
       </nav>
-      <main className="main">{page === "memberships" ? <Memberships /> : page === "offers" ? <Offers />
+      <main className="main">{page === "memberships" ? <Memberships /> : page === "offers" ? <Offers /> : page === "plans" ? <Plans />
         : page === "admins" && role === "owner" ? <Admins selfId={session.user.id} onLoaded={onAdmins} />
         : page === "audit" && role === "owner" ? <AuditLog adminEmails={emails} /> : <Companies />}</main>
     </div>

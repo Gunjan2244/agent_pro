@@ -92,3 +92,20 @@
 .help{display:grid;justify-items:start;gap:var(--space-m);padding:var(--space-l);border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
 .help h2,.help .lead{margin:0}
 @media(min-width:720px){.help{padding:calc(var(--space-l)*2)}}
+
+/* Official plans (DECISIONS #129) */
+.sec-insurerPlans .lead{margin-bottom:var(--space-l);font-size:var(--text-s);line-height:var(--line-s)}
+.ip-groups,.iplans{display:grid;gap:var(--space-m)}
+details.ip-co{border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md)}
+.ip-co summary{display:flex;align-items:center;gap:var(--space-m);padding:var(--space-m);cursor:pointer}
+.ip-co h3{margin:0 0 var(--space-m)}
+.ip-co summary h3{margin:0;flex:1}
+details.ip-co .iplans{padding:0 var(--space-m) var(--space-m)}
+.iplan{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--space-s) var(--space-m);align-items:center;padding:var(--space-s);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-sm);background:var(--c-surface)}
+.iplan .pic{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-sm)}
+.iplan:not(:has(.pic)){grid-template-columns:1fr}
+.ip-b{display:grid;gap:var(--space-s);justify-items:start}
+.ip-m{color:var(--c-muted)}
+.ip-m span{white-space:nowrap}
+.ip-a{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--space-l)}
+@media(min-width:720px){.iplans{grid-template-columns:1fr 1fr}.iplan:has(.pic){grid-template-columns:96px minmax(0,1fr)}}

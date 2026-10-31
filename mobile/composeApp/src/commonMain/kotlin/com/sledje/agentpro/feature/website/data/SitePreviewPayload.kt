@@ -26,6 +26,7 @@ object SitePreviewPayload {
         company: JsonObject? = null,
         companies: JsonArray? = null,
         portalEnabled: Boolean = false,
+        plans: JsonArray? = null,
     ): JsonObject {
         val accent = site.accent?.key ?: Templates.fromKey(templateKey)?.defaultAccent?.key
         val showAgencyCode = ((content["about"] as? JsonObject)?.get("showAgencyCode") as? JsonPrimitive)?.booleanOrNull == true
@@ -42,6 +43,8 @@ object SitePreviewPayload {
             if (company != null) put("company", company)
             // The agent's approved companies, `[{name, insurance_types}]` (DECISIONS #90), for the "Companies I represent" section.
             if (companies != null) put("companies", companies)
+            // The official plans the site shows (DECISIONS #129), as the live site resolves them.
+            if (plans != null) put("plans", plans)
             put(
                 "profile",
                 buildJsonObject {
@@ -57,7 +60,7 @@ object SitePreviewPayload {
     }
 
     /**
-     * The payload with the `preview_site_offers` answer ([previewOffers] = `{companies, company, offers}`) merged in; null = none.
+     * The payload with the `preview_site_offers` answer ([previewOffers] = `{companies, company, offers, plans}`) merged in; null = none.
      * [companies] replaces the answer's list (onboarding step 6 also shows the links still waiting for confirmation).
      */
     fun buildWithPreviewOffers(
@@ -75,6 +78,7 @@ object SitePreviewPayload {
             company = previewOffers?.get("company") as? JsonObject,
             companies = companies ?: previewOffers?.get("companies") as? JsonArray,
             portalEnabled = portalEnabled,
+            plans = previewOffers?.get("plans") as? JsonArray,
         )
 
     fun json(

@@ -16,7 +16,7 @@
 \set PV_U1 '''abcdef01-0000-4000-8000-000000000001'''
 \set PV_CONTENT '''{"en":{"title":"Term cover offer","summary":"Lower premium this month","disclaimer":"T&C apply"},"hi":{"title":"टर्म कवर ऑफ़र","summary":"इस महीने कम प्रीमियम","disclaimer":"नियम व शर्तें लागू"}}'''
 \set PV_BASE '''{"hero":{"headline":"Esha Patel"},"contact":{"phone":"9876500001"}}'''
-\set PV_NONE '''{"companies":[],"company":null,"offers":{"featured":null,"items":[]}}'''
+\set PV_NONE '''{"companies":[],"company":null,"offers":{"featured":null,"items":[]},"plans":[]}'''
 
 begin;
 -- Setup: G (no site row), E and B are approved for C1. Running live offers besides O1 (sort 1): Q1 sort 0 (image,
@@ -101,13 +101,13 @@ select tests.ok(tests.pv_featured(:'pv_spot'::jsonb) = 'Q1'
                 and (:'pv_spot')::jsonb #> '{offers,featured,image_url}' = 'null'::jsonb
                 and tests.pv_keys((:'pv_spot')::jsonb #> '{offers,items}') = array['O1', 'Q2'],
   '#PV offers family, offers shown, nothing picked: the first auto offer featured (no image) + 2 items (3 in all)', :'pv_spot');
-select tests.ok((select array(select jsonb_object_keys(:'pv_spot'::jsonb) order by 1)) = array['companies', 'company', 'offers']
+select tests.ok((select array(select jsonb_object_keys(:'pv_spot'::jsonb) order by 1)) = array['companies', 'company', 'offers', 'plans']
                 and (:'pv_spot')::jsonb -> 'companies' = '[{"name":"एक्मे लाइफ","insurance_types":["life"]}]'::jsonb
                 and (:'pv_spot')::jsonb -> 'company' = '{"disclaimer":"बीमा आग्रह की विषय वस्तु है।"}'::jsonb
                 and (:'pv_spot')::jsonb #>> '{offers,featured,title}' = 'टर्म कवर ऑफ़र'
                 and (:'pv_spot')::jsonb #>> '{offers,featured,interest}' = 'health'
                 and (:'pv_spot')::jsonb #> '{offers,items,1,cta}' = '{"kind":"call"}'::jsonb,
-  '#PV only {companies, company, offers}; companies = [{name, insurance_types}] and company = {disclaimer} in the site''s language; offers resolved in it with interest and CTA', :'pv_spot');
+  '#PV only {companies, company, offers, plans}; companies = [{name, insurance_types}] and company = {disclaimer} in the site''s language; offers resolved in it with interest and CTA', :'pv_spot');
 select tests.ok(tests.pv_featured(public.preview_site_offers(:PV_BASE, 'guide')) = 'Q1',
   '#PV the guide template (offers family) features too');
 select tests.ok(public.preview_site_offers(:PV_BASE, 'classic') #> '{offers,featured}' = 'null'::jsonb
@@ -199,8 +199,8 @@ begin
   if v_live is null then
     return 'no live site';
   end if;
-  if jsonb_build_object('companies', v_live -> 'companies', 'company', v_live -> 'company', 'offers', v_live -> 'offers') is distinct from v_prev then
-    return 'live ' || jsonb_build_object('companies', v_live -> 'companies', 'company', v_live -> 'company', 'offers', v_live -> 'offers')::text
+  if jsonb_build_object('companies', v_live -> 'companies', 'company', v_live -> 'company', 'offers', v_live -> 'offers', 'plans', v_live -> 'plans') is distinct from v_prev then
+    return 'live ' || jsonb_build_object('companies', v_live -> 'companies', 'company', v_live -> 'company', 'offers', v_live -> 'offers', 'plans', v_live -> 'plans')::text
            || ' <> preview ' || coalesce(v_prev::text, 'null');
   end if;
   return null;

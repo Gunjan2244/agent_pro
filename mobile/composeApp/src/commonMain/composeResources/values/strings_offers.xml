@@ -27,4 +27,17 @@
     <string name="offer_picker_copy_message">Editing makes this your own copy. It won\'t update when the company changes it, and your site will show \'Details provided by the agent\'.</string>
     <string name="offer_picker_copy_confirm">Make a copy</string>
     <string name="offer_picker_copy_full">You already have the most own offers allowed. Remove one first.</string>
+    <!-- Website → Plans on your site (DECISIONS #129): the agent's choice of their companies' official plans. -->
+    <string name="plans_title">Plans on your site</string>
+    <string name="plans_intro">These are the official plans of your approved companies, for the insurance types you deal in with each. Your website shows only each plan\'s official name, plan number and UIN, with a link to the company\'s own website.</string>
+    <string name="plans_auto">Show all my companies\' plans</string>
+    <string name="plans_auto_help">New plans your companies add appear by themselves. Turn this off to choose plans one by one.</string>
+    <string name="plans_select_all">Select all</string>
+    <string name="plans_clear_all">Clear</string>
+    <string name="plans_no">Plan No. %1$s</string>
+    <string name="plans_uin">UIN %1$s</string>
+    <string name="plans_save">Save</string>
+    <string name="plans_saved">Saved. Your website shows these plans now.</string>
+    <string name="plans_none_selected">No plan selected: your website will show none.</string>
+    <string name="plans_empty">No plans yet. Plans appear here once a company has approved your link and has plans for the insurance types you chose.</string>
 </resources>

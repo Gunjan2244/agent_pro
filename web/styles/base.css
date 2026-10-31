@@ -37,6 +37,8 @@ h3{font-size:var(--text-s);line-height:var(--line-s);font-weight:600}
 a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .lnk{font-weight:600;text-decoration:none}
 .lnk::after{content:" \2192"}
+.lnk.ext::after{content:" \2197"}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* quick-interest chips (links) and tags (static labels) */
 .qr-h{margin-top:var(--space-l);color:var(--c-onSurfaceVariant);font-weight:500}
 .qr{display:flex;flex-wrap:wrap;gap:var(--space-s);margin-top:var(--space-s)}
@@ -186,6 +188,8 @@ a:focus-visible,.btn:focus-visible,summary:focus-visible,input:focus-visible,sel
 /* ---- footer: a pale band aligned to the same grid ---- */
 .foot{padding:var(--space-l) max(var(--gutter),calc((100% - var(--wrap))/2));background:var(--c-surfaceContainerLow);color:var(--c-muted)}
 .foot p+p{margin-top:var(--space-s)}
+.disclose{max-width:var(--measure);margin-top:var(--space-m)}
+.disclose a{color:inherit}
 
 /* ---- bundled illustrations (docs/IMAGES.md) ---- */
 .scene{width:100%;max-width:400px;margin:calc(var(--space-l)*2) auto 0}

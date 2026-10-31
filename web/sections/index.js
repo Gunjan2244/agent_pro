@@ -10,6 +10,7 @@ import { contact } from "./contact.js";
 import { companies } from "./companies.js";
 import { portalPromo, portalBase } from "./portal-promo.js";
 import { footer } from "./footer.js";
+import { insurerPlans, sitePlans, INSURER_PLANS } from "./insurer-plans.js";
 import { esc, url, tel, wa, firstName } from "./util.js";
 import { pickOffers, todayIST, interestOf } from "./offer.js";
 import { pageHead, pageTitle, plans, planKeys, planOffers, helpBand, INNER, TEASERS } from "./pages.js";
@@ -18,7 +19,8 @@ import { linksFrom, planPath } from "../route.js";
 
 export const PARTIALS = { hero, about, companies, services, offers, highlights, achievements, testimonials, faq, portal: portalPromo, contact };
 // Parts that exist only on a page of a multi-page site (DECISIONS #122), never in content.sectionOrder.
-const PAGE_PARTIALS = { plans };
+// insurerPlans (DECISIONS #129): the official plans the agent chose, on Insurance and on each plan page.
+const PAGE_PARTIALS = { plans, [INSURER_PLANS]: insurerPlans };
 const DEFAULT_ORDER = Object.keys(PARTIALS).filter((k) => k !== "companies" && k !== "portal");
 
 // "Companies I represent" (DECISIONS #90) comes from the payload, not from the agent's content, so an order that
@@ -108,7 +110,9 @@ export function makeCtx(site, t, tokens, variant, opts = {}, P = null) {
       ctx.offers = { hero: null, grid: mine, all: mine };
       if (!(opts.inner && opts.inner[ctx.page.key])) ctx.layout = "grid";
       // A plan page: that type's offers (a note card when there are none) unless offers are hidden, then the others.
-      if (ctx.page.key === "plan") keys = [...(ctx.allVisible.has("offers") ? ["offers"] : []), "plans"];
+      if (ctx.page.key === "plan") keys = [...(ctx.allVisible.has("offers") ? ["offers"] : []), ...(sitePlans(ctx, ctx.page.plan).length ? [INSURER_PLANS] : []), "plans"];
+      // Insurance: the official plans (DECISIONS #129) after the plan types and the offers.
+      else if (ctx.page.key === "insurance" && sitePlans(ctx).length) keys.push(INSURER_PLANS);
     }
     ctx.visible = new Set(keys);
     ctx.teasers = new Set(def.teasers || []);
