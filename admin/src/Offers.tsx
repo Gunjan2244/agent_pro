@@ -9,7 +9,7 @@ import { SkeletonRows } from "./Skeleton";
 type Fields = Record<string, string>;
 type Offer = {
   id: string; company_id: string; status: string; content: { en?: Fields; hi?: Fields }; internal_name: string | null;
-  image_url: string | null; cta_kind: string; cta_url: string | null; interest: string | null; starts_at: string; ends_at: string; sort: number;
+  image_url: string | null; cta_kind: string; cta_url: string | null; interest: string | null; plan_id?: string | null; starts_at: string; ends_at: string; sort: number;
 };
 type Company = { id: string; name: { en: string } };
 type Entry = { key: string; labelKey: string };
@@ -44,7 +44,7 @@ export function Offers() {
   if (edit) return <OfferForm {...edit} companies={companies} onDone={() => { setEdit(null); void load(); }} onCancel={() => setEdit(null)} />;
   const blank = (): Offer => ({
     id: crypto.randomUUID(), company_id: filter || companies[0]?.id || "", status: "draft", content: { en: {}, hi: {} }, internal_name: null,
-    image_url: null, cta_kind: "enquire", cta_url: null, interest: null, starts_at: `${today()}T00:00:00+05:30`,
+    image_url: null, cta_kind: "enquire", cta_url: null, interest: null, plan_id: null, starts_at: `${today()}T00:00:00+05:30`,
     ends_at: new Date(Date.now() + 90 * 864e5).toISOString(), sort: 0,
   });
   return (
@@ -79,6 +79,12 @@ function OfferForm({ o: initial, isNew, companies, onDone, onCancel }: { o: Offe
   const [end, setEnd] = useState(istDate(initial.ends_at));
   const [msg, setMsg] = useState<string | null>(null);
   const [usage, setUsage] = useState<{ published_sites: number; draft_sites: number } | null>(null);
+  // The official plan the offer is on (DECISIONS #130): sites show it only while they show that plan; its plan type
+  // follows the plan. No plan = a company-wide offer.
+  const [plans, setPlans] = useState<{ id: string; name: string; interest: string }[]>([]);
+  useEffect(() => {
+    void supabase.from("company_plans").select("id, name, interest").eq("company_id", o.company_id).eq("is_active", true).order("sort").order("name").then(({ data }) => setPlans(data ?? []));
+  }, [o.company_id]);
   const set = <K extends keyof Offer>(k: K, v: Offer[K]) => setO((p) => ({ ...p, [k]: v }));
   const loc = (l: "en" | "hi", k: string, v: string) => setO((p) => ({ ...p, content: { ...p.content, [l]: { ...(p.content[l] ?? {}), [k]: v } } }));
 
@@ -96,7 +102,7 @@ function OfferForm({ o: initial, isNew, companies, onDone, onCancel }: { o: Offe
     }
     return {
       company_id: o.company_id, content, internal_name: o.internal_name?.trim() || null, image_url: o.image_url, cta_kind: o.cta_kind,
-      cta_url: o.cta_kind === "link" ? o.cta_url?.trim() || null : null, interest: o.interest || null, sort: o.sort,
+      cta_url: o.cta_kind === "link" ? o.cta_url?.trim() || null : null, interest: o.interest || null, plan_id: o.plan_id || null, sort: o.sort,
       starts_at: `${start}T00:00:00+05:30`, ends_at: `${end}T23:59:59+05:30`,
     };
   };
@@ -151,7 +157,9 @@ function OfferForm({ o: initial, isNew, companies, onDone, onCancel }: { o: Offe
           <label>Ends on (IST)<input type="date" required value={end} onChange={(e) => setEnd(e.target.value)} /></label>
           <label>Button<select value={o.cta_kind} onChange={(e) => set("cta_kind", e.target.value)}>{ctaKinds.map((k) => <option key={k.key} value={k.key}>{label(k.labelKey)}</option>)}</select></label>
           {o.cta_kind === "link" && <label>Link (https)<input type="url" pattern="https://.*" value={o.cta_url ?? ""} onChange={(e) => set("cta_url", e.target.value)} /></label>}
-          <label>Plan type<select value={o.interest ?? ""} onChange={(e) => set("interest", e.target.value || null)}><option value="">None</option>{interests.map((k) => <option key={k.key} value={k.key}>{label(k.labelKey)}</option>)}</select></label>
+          <label>Official plan<select value={o.plan_id ?? ""} onChange={(e) => { const pl = plans.find((x) => x.id === e.target.value); set("plan_id", pl ? pl.id : null); if (pl) set("interest", pl.interest); }}><option value="">None (company-wide offer)</option>{plans.map((pl) => <option key={pl.id} value={pl.id}>{pl.name}</option>)}</select>
+            <span className="muted">Shown only on the sites of agents who show this plan, with a link to the plan's page.</span></label>
+          <label>Plan type<select value={o.interest ?? ""} disabled={Boolean(o.plan_id)} onChange={(e) => set("interest", e.target.value || null)}><option value="">None</option>{interests.map((k) => <option key={k.key} value={k.key}>{label(k.labelKey)}</option>)}</select></label>
           <label>Sort<input type="number" value={o.sort} onChange={(e) => set("sort", Number(e.target.value))} /></label>
         </div>
         <div>

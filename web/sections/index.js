@@ -11,6 +11,8 @@ import { companies } from "./companies.js";
 import { portalPromo, portalBase } from "./portal-promo.js";
 import { footer } from "./footer.js";
 import { insurerPlans, sitePlans, INSURER_PLANS } from "./insurer-plans.js";
+import { FEATURED, PLAN_PAGE, GO, featured, planParts, defaultPlanPage, goPage, ppHead } from "./plan-page.js";
+import { featuredPlans, planBySlug, docUrl } from "./plan-data.js";
 import { esc, url, tel, wa, firstName } from "./util.js";
 import { pickOffers, todayIST, interestOf } from "./offer.js";
 import { pageHead, pageTitle, plans, planKeys, planOffers, helpBand, INNER, TEASERS } from "./pages.js";
@@ -20,7 +22,8 @@ import { linksFrom, planPath } from "../route.js";
 export const PARTIALS = { hero, about, companies, services, offers, highlights, achievements, testimonials, faq, portal: portalPromo, contact };
 // Parts that exist only on a page of a multi-page site (DECISIONS #122), never in content.sectionOrder.
 // insurerPlans (DECISIONS #129): the official plans the agent chose, on Insurance and on each plan page.
-const PAGE_PARTIALS = { plans, [INSURER_PLANS]: insurerPlans };
+// featuredPlans (DECISIONS #130): Home's "Plans I recommend", right after the plan types.
+const PAGE_PARTIALS = { plans, [INSURER_PLANS]: insurerPlans, [FEATURED]: featured };
 const DEFAULT_ORDER = Object.keys(PARTIALS).filter((k) => k !== "companies" && k !== "portal");
 
 // "Companies I represent" (DECISIONS #90) comes from the payload, not from the agent's content, so an order that
@@ -103,7 +106,14 @@ export function makeCtx(site, t, tokens, variant, opts = {}, P = null) {
     // `"order": "page"`: the page's own layout fixes the order (Contact: the contact block, then the FAQ beside the
     // portal card); otherwise the content's sectionOrder decides, as on one page.
     if (def.order === "page") keys.sort((a, b) => def.sections.indexOf(a) - def.sections.indexOf(b));
-    if (inner) {
+    if (ctx.page.key === PLAN_PAGE || ctx.page.key === GO) {
+      // A plan's own page and the "We're taking you to …" page (DECISIONS #130) are drawn whole by compose: the plan
+      // page's offers are those on that plan.
+      const p = planBySlug(ctx, ctx.page.slug);
+      const mine = p ? ctx.offers.all.filter((o) => o && o.plan_id === p.id) : [];
+      ctx.offers = { hero: null, grid: mine, all: mine };
+      keys = [];
+    } else if (inner) {
       // Inner pages are shared layouts (DECISIONS #122): no hero, so no offer is held back for a hero banner.
       const all = ctx.offers.all;
       const mine = ctx.page.plan ? all.filter((o) => interestOf(o) === ctx.page.plan) : all;
@@ -113,6 +123,14 @@ export function makeCtx(site, t, tokens, variant, opts = {}, P = null) {
       if (ctx.page.key === "plan") keys = [...(ctx.allVisible.has("offers") ? ["offers"] : []), ...(sitePlans(ctx, ctx.page.plan).length ? [INSURER_PLANS] : []), "plans"];
       // Insurance: the official plans (DECISIONS #129) after the plan types and the offers.
       else if (ctx.page.key === "insurance" && sitePlans(ctx).length) keys.push(INSURER_PLANS);
+    }
+    // Home: "Plans I recommend" (the featured official plans, DECISIONS #130) right after the plan types (else after
+    // the offers, else after the hero).
+    if (!inner && featuredPlans(ctx).length) {
+      let at = keys.indexOf("services");
+      if (at < 0) at = keys.indexOf("offers");
+      if (at < 0) at = keys.indexOf("hero");
+      keys.splice(at + 1, 0, FEATURED);
     }
     ctx.visible = new Set(keys);
     ctx.teasers = new Set(def.teasers || []);
@@ -126,11 +144,13 @@ export function makeCtx(site, t, tokens, variant, opts = {}, P = null) {
 function sitePages(site, t, tokens, variant, opts, defs) {
   const want = tokens.page && tokens.page.key ? tokens.page : { key: "home", path: "" };
   const base = makeCtx(site, t, tokens, variant, opts);
-  const plansDef = defs.pages.find((d) => d.path.includes("{interest}"));
+  const plansDef = defs.pages.find((d) => d.key === "plan");
+  const detailDef = defs.pages.find((d) => d.key === PLAN_PAGE);
+  const goDef = defs.pages.find((d) => d.key === GO);
   const keys = planKeys(base);
   const list = [];
   for (const def of defs.pages) {
-    if (def === plansDef) continue;
+    if (def === plansDef || def === detailDef || def === goDef) continue;
     const page = { key: def.key, def, path: def.path };
     let exists = def.key === "home" || def.key === "contact";
     if (!exists) exists = (def.key === "insurance" && keys.length > 0)
@@ -140,9 +160,19 @@ function sitePages(site, t, tokens, variant, opts, defs) {
   }
   if (plansDef && list.some((p) => p.key === plansDef.parent)) {
     const at = list.findIndex((p) => p.key === plansDef.parent) + 1;
-    list.splice(at, 0, ...keys.map((k) => ({ key: plansDef.key, def: plansDef, path: planPath(plansDef, k), plan: k })));
+    // each plan type's page, then (DECISIONS #130) one page per official plan of that type the site shows
+    list.splice(at, 0, ...keys.flatMap((k) => [
+      { key: plansDef.key, def: plansDef, path: planPath(plansDef, k), plan: k },
+      ...(detailDef ? sitePlans(base, k).filter((p) => p.slug).map((p) => ({ key: detailDef.key, def: detailDef, path: planPath(detailDef, k, p.slug), plan: k, slug: p.slug })) : []),
+    ]));
   }
-  const current = list.find((p) => p.key === want.key && (p.plan || "") === (want.plan || "")) || null;
+  let current = list.find((p) => p.key === want.key && (p.plan || "") === (want.plan || "") && (p.slug || "") === (want.slug || "")) || null;
+  // The "We're taking you to …" page exists for every document of a plan the site shows; it is never listed (no
+  // menu, no sitemap: noindex).
+  if (!current && goDef && want.key === GO) {
+    const p = planBySlug(base, want.slug);
+    if (p && docUrl(p, want.doc)) current = { key: GO, def: goDef, path: want.path, slug: want.slug, doc: want.doc };
+  }
   return { list, current };
 }
 
@@ -175,8 +205,9 @@ export function pageMeta(site, t, tokens, page) {
   else if (page.key === "plan") description = lead || tx("site.plan_desc", { plan: title, name });
   else if (page.key === "about") description = (c.about || {}).bio || lead;
   else if (page.key === "contact") description = [tx("site.page_contact_lead"), (c.contact || {}).officeAddress].filter(Boolean).join(" ");
-  const sections = page.key === "plan" ? [] : [...ctx.visible];
-  return { key: page.key, path: page.path, plan: page.plan || null, title, description: description || "", sections, services: page.key === "plan" ? [page.plan] : page.key === "insurance" ? planKeys(ctx) : [] };
+  else if (page.key === PLAN_PAGE) { const p = planBySlug(ctx, page.slug); description = p ? [p.company, ...(p.features || []).slice(0, 2)].filter(Boolean).join(". ") : ""; }
+  const sections = page.key === "plan" || page.key === PLAN_PAGE || page.key === GO ? [] : [...ctx.visible];
+  return { key: page.key, path: page.path, plan: page.plan || null, title, description: description || "", sections, services: page.key === "plan" || page.key === PLAN_PAGE ? [page.plan] : page.key === "insurance" ? planKeys(ctx) : [] };
 }
 
 // Sticky Call / WhatsApp bar for phones (both families), only when the numbers exist. It is position:fixed from
@@ -200,6 +231,14 @@ export function compose(site, t, tokens, variant, opts = {}) {
   if (tokens.pagesOnly) return P ? P.list.map(({ key, path, plan }) => ({ key, path, plan })) : [];
   if (P && !P.current) return "";
   const ctx = makeCtx(site, t, tokens, variant, opts, P);
+  const accent = /^#[0-9a-fA-F]{6}$/.test(tokens.accent) ? tokens.accent : "var(--c-primary)";
+  // "We're taking you to <insurer>'s website" (DECISIONS #130): a page of its own, no template chrome.
+  if (ctx.page && ctx.page.key === GO) { const g = goPage(ctx); return g ? `<div class="tpl tpl-${variant} pg-go" style="--accent:${accent}">${g}</div>` : ""; }
+  // A plan's own page (DECISIONS #130): the template's page header (its pagehead, else the shared one) shows the plan
+  // (ctx.ppHead), then the template's arrangement of the plan's parts (opts.planPage, else the shared one).
+  const pp = ctx.page && ctx.page.key === PLAN_PAGE ? planParts(ctx) : null;
+  if (ctx.page && ctx.page.key === PLAN_PAGE && !pp) return "";
+  if (pp) ctx.ppHead = (pic) => ppHead(pp, { pic });
   // Landmarks: the hero (or an inner page's header) is the page <header> (its <h1> is the only one); every other
   // section is a <section id> with its own <h2>.
   const wrap = opts.wrap || ((k, h) => (k === "hero" ? `<header class="sec sec-hero" id="hero">${h}</header>` : `<section class="sec sec-${k}" id="${k}">${h}</section>`));
@@ -210,6 +249,7 @@ export function compose(site, t, tokens, variant, opts = {}) {
   const parts = drawSections(site, t, tokens, variant, opts, P, ctx).filter(([, h]) => h);
   for (const [k] of parts) ctx.rendered.push(k);
   let html = parts.map(([k, h]) => wrap(k, h, ctx));
+  if (pp) html = [(opts.planPage || defaultPlanPage)(pp, ctx)];
   // Two sections the page model pairs (Contact: the FAQ beside "For my customers") share one row when both are there.
   const pair = inner && ctx.page.def.pair;
   if (pair) {
@@ -219,5 +259,5 @@ export function compose(site, t, tokens, variant, opts = {}) {
   const help = inner && ctx.page.def.helpBand ? helpBand(ctx) : "";
   const after = inner && opts.afterInner ? opts.afterInner(ctx) : "";
   const bar = callbar(ctx);
-  return `<div class="tpl tpl-${variant} fam-${ctx.family}${ctx.page ? " pg-" + ctx.page.key : ""}${bar ? " has-bar" : ""}" style="--accent:${/^#[0-9a-fA-F]{6}$/.test(tokens.accent) ? tokens.accent : "var(--c-primary)"}">${opts.before ? opts.before(ctx) : ""}${head}${html.join("\n")}${help}${after}${footer(ctx)}${bar}</div>`;
+  return `<div class="tpl tpl-${variant} fam-${ctx.family}${ctx.page ? " pg-" + ctx.page.key : ""}${bar ? " has-bar" : ""}" style="--accent:${accent}">${opts.before ? opts.before(ctx) : ""}${head}${html.join("\n")}${help}${after}${footer(ctx)}${bar}</div>`;
 }

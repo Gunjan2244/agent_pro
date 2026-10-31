@@ -57,6 +57,15 @@ export function normalizePlans(v) {
     interest: str(p.interest, 40, /^[a-z_]+$/),
     url: httpsUrl(p.url),
     image_url: httpsUrl(p.image_url),
+    // the plan page (DECISIONS #130): its address, key features (the agent's own words when features_own), where and
+    // when the insurer's words were copied, the insurer's documents, and its place on Home (featured 1–6)
+    slug: str(p.slug, 80, /^[a-z0-9]+(-[a-z0-9]+)*$/),
+    features: Array.isArray(p.features) ? p.features.map((f) => str(f, 400)).filter(Boolean).slice(0, 5) : [],
+    features_own: p.features_own === true,
+    features_url: httpsUrl(p.features_url),
+    features_checked_on: str(p.features_checked_on, 10, /^\d{4}-\d{2}-\d{2}$/),
+    docs: Object.fromEntries(["brochure", "policy", "cis", "calculator"].map((k) => [k, httpsUrl((p.docs || {})[k])]).filter(([, u]) => u)),
+    featured: Number.isInteger(p.featured) && p.featured >= 1 && p.featured <= 6 ? p.featured : null,
   })).filter((p) => p.name && p.company && p.url && p.interest).slice(0, 100);
 }
 

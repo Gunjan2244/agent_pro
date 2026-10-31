@@ -10,9 +10,11 @@ import { interestPic } from "../../sections/media.js";
 import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
-import { slider, ticker, numbers, bigNumber, topBar } from "../../sections/ui.js";
+import { slider, ticker, numbers, bigNumber, topBar, tr } from "../../sections/ui.js";
 import { planOrEnquire } from "../../sections/pages.js";
 import { contactHref } from "../../sections/links.js";
+import { sec, box, band, grid } from "../../sections/plan-page.js";
+import { featuredPlans as featuredList, planFacts, planPageHref, planPicture, planOffers } from "../../sections/plan-data.js";
 
 const num = (n) => String(n).padStart(2, "0");
 
@@ -101,3 +103,25 @@ export function companies(d, ctx) {
 }
 
 export const before = (ctx) => topBar(ctx, { cta: "contact" });
+
+// Plans I recommend (DECISIONS #130): large editorial rows, the picture beside the plan type and company, the name in
+// big type, its facts, the offer on it, "Read about the plan".
+export function featuredPlans(d, ctx) {
+  const list = featuredList(ctx), h = tr(ctx, "site.featured_heading");
+  if (!list.length || !h) return "";
+  const lead = tr(ctx, "site.featured_lead"), read = tr(ctx, "site.pp_view");
+  const rows = list.map((p) => {
+    const href = planPageHref(ctx, p), off = planOffers(ctx, p)[0], facts = planFacts(ctx, p);
+    const body = `${planPicture(ctx, p, { sizes: "(min-width: 1024px) 420px, 100vw" })}<span class="fr-b"><span class="kicker">${esc(interestLabel(ctx, p.interest))} · ${esc(p.company)}</span><strong class="fr-h">${esc(p.name)}</strong>${facts ? `<span class="meta">${esc(facts)}</span>` : ""}${off ? `<span class="fr-off">${esc(off.title)}</span>` : ""}${href && read ? `<span class="lnk">${esc(read)}</span>` : ""}</span>`;
+    return `<li class="frow">${href ? `<a href="${esc(href)}">${body}</a>` : `<div>${body}</div>`}</li>`;
+  }).join("");
+  return `<h2>${esc(h)}</h2>${lead ? `<p class="lead sub">${esc(lead)}</p>` : ""}<ul class="frows">${rows}</ul>`;
+}
+
+// A plan's page: the big title over a row of facts and a wide picture (style.css), then numbered key features, the
+// agent's note and the offer beside the documents as a table and the buttons; related plans as numbered rows.
+export function planPage(x) {
+  const main = box("features", x.numbered, "pl-block") + box("about", x.about, "pl-block") + box("offer", x.offer, "pl-block pl-offer") + x.fine;
+  const side = box("docs", x.docs, "pl-docs-box") + (x.ask ? `<p class="pl-acts">${x.ask}</p>` : "");
+  return band("facts", x.facts) + grid(main, side) + sec("similar", x.similarRows, "alt");
+}

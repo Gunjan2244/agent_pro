@@ -9,6 +9,7 @@ import { pageMeta } from "./sections/index.js";
 import { manifestHref, appBase, appNames, swatchFor, iconPath } from "./manifest.js";
 import { privacyHtml } from "./privacy.js";
 import { esc } from "./sections/util.js";
+import { docUrl } from "./sections/plan-data.js";
 
 // Template keys the registry lists and this bundle can render, in registry order.
 export function templateKeys(registry) {
@@ -119,9 +120,13 @@ export function renderDocument({ site, target, url, dict, shared, notices, confi
   if (sitePage) tokens.page = sitePage;
   const inner = TEMPLATES[key](site, t, tokens);
   if (!inner) return null;
-  const d = headData(site, { origin, path: base, canonicalHost, noindex, t, catalog, schema, images, family, page: pageMeta(site, t, tokens, sitePage) });
+  // "We're taking you to <insurer>'s website" (DECISIONS #130): never indexed; opens the insurer's page after 5 s
+  // with a meta refresh (no script), to the plan's own address from the payload (never one from the URL).
+  const go = sitePage && sitePage.key === "go" ? goUrl(site, sitePage) : "";
+  const d = headData(site, { origin, path: base, canonicalHost, noindex: noindex || Boolean(go), t, catalog, schema, images, family, page: pageMeta(site, t, tokens, sitePage) });
   // What installable() adds client-side in the fallback render: manifest, icons, apple title (DECISIONS #65).
   const extra = [`<link rel="manifest" href="${attr(manifestHref(target))}">`];
+  if (go) extra.push(`<meta http-equiv="refresh" content="5;url=${attr(go)}">`, '<meta name="referrer" content="no-referrer">');
   if (swatch) extra.push(`<link rel="icon" href="${attr(iconPath(swatch.key, 192))}">`, `<link rel="apple-touch-icon" href="${attr(iconPath(swatch.key, 192))}">`);
   extra.push(`<meta name="apple-mobile-web-app-title" content="${attr(appNames(site).short)}">`);
   return page({
@@ -130,6 +135,12 @@ export function renderDocument({ site, target, url, dict, shared, notices, confi
     headHtml: head({ locale, ...d, extra, css: [...(sitePage && sitePage.key !== "home" ? ["/styles/pages.css"] : []), `/templates/${key}/style.css`] }),
     body: `<main id="root" data-ssr>${inner}</main>\n${bootScript}`,
   });
+}
+
+// The insurer address a /go/<slug>/<doc> page opens: the payload plan's own link for that document ("" if none).
+function goUrl(site, page) {
+  const p = ((site && site.plans) || []).find((x) => x && x.slug === page.slug);
+  return p ? docUrl(p, page.doc).replace(/&amp;/g, "&") : "";
 }
 
 // 404 body for an unknown, unpublished or lapsed site: no agent data, noindex, no scripts.

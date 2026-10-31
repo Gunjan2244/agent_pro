@@ -10,6 +10,7 @@ import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
 import { slider, numbers, menuItems } from "../../sections/ui.js";
 import { pageHead, planOrEnquire } from "../../sections/pages.js";
+import { featuredSection, sec, band } from "../../sections/plan-page.js";
 
 // The page <header> holds both columns' tops: the profile card (pinned) and the intro (h1, lead, chips, featured).
 // With no contact links the card's one button is the hero CTA, linking to the form.
@@ -113,3 +114,10 @@ export function companies(d, ctx) {
   return `<h2>${esc(h)}</h2>
 <ul class="plain">${list.map((c) => `<li><strong>${esc(c.name)}</strong>${c.types.length ? ` <span>${c.types.map(esc).join(", ")}</span>` : ""}</li>`).join("")}</ul>`;
 }
+
+// Plans I recommend (DECISIONS #130): hairline rows with a small picture, like the rest of the résumé column.
+export const featuredPlans = (d, ctx) => featuredSection(d, ctx, { layout: "rows" });
+
+// A plan's page in the résumé column (the profile card stays pinned): the picture, then one labelled block each for
+// the key features, the offer, the documents and similar plans.
+export const planPage = (x) => band("pic", x.pic && `<div class="pl-pic">${x.pic}</div>`) + sec("features", x.features) + sec("about", x.about) + sec("offer", x.offer) + sec("docs", x.docs) + sec("similar", x.similarList) + band("fine", x.fine);

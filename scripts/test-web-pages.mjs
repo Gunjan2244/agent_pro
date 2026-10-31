@@ -26,7 +26,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
 
   // ---- the page model and routing ----
   ok("site-pages.json: Home, Insurance, a plan page per type, About, Contact; every label/title/lead key in EN and HI; sections are schema sections", () => {
-    assert.deepEqual(PAGES.pages.map((p) => p.key), ["home", "insurance", "plan", "about", "contact"]);
+    assert.deepEqual(PAGES.pages.map((p) => p.key), ["home", "insurance", "plan", "planDetail", "about", "contact", "go"]); // planDetail and go: DECISIONS #130
     const known = new Set([...schema.sections.map((s) => s.key), "plans"]);
     for (const p of PAGES.pages) {
       for (const k of ["labelKey", "titleKey", "leadKey"]) if (p[k]) for (const l of LOCALE_KEYS) assert.ok(dicts[l][p[k]], `${l} ${p[k]}`);
@@ -38,7 +38,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     const w = JSON.parse(readFileSync(new URL("web/wrangler.jsonc", root), "utf8").split("\n").filter((l) => !l.trim().startsWith("//")).join("\n"));
     const rwf = w.assets.run_worker_first;
     for (const p of PAGES.pages.filter((x) => x.path)) {
-      const path = "/" + p.path.replace("{interest}", "*");
+      const path = "/" + (p.path.includes("{") ? p.path.slice(0, p.path.indexOf("/{")) + "/*" : p.path);
       assert.ok(rwf.includes(path) || rwf.includes(path.replace(/\/\*$/, "/*")), path);
       if (!p.path.includes("{")) assert.ok(rwf.includes(path + "/") || rwf.includes(path + "/*"), path + "/");
     }
@@ -56,7 +56,11 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     assert.equal(g(L(P, "/a/demo/my")).page, "portal"); assert.equal(g(L(P, "/a/demo/join")).page, "join");
     const m = (p) => { const x = matchPage(PAGES, p); return x && [x.key, x.plan || null]; };
     assert.deepEqual([m(""), m("insurance"), m("insurance/term"), m("about"), m("contact")], [["home", null], ["insurance", null], ["plan", "term"], ["about", null], ["contact", null]]);
-    for (const bad of ["foo", "insurance/", "insurance/Term", "insurance/a/b", "about/x", "insurance/te rm", "insurance/<x>"]) assert.equal(matchPage(PAGES, bad), null, bad);
+    for (const bad of ["foo", "insurance/", "insurance/Term", "insurance/a/B", "insurance/a/b/c", "about/x", "insurance/te rm", "insurance/<x>", "go/x", "go/x/unknown", "go/X/plan", "insurance/term/-x"]) assert.equal(matchPage(PAGES, bad), null, bad);
+    // a plan's own page and the "We're taking you to …" page (DECISIONS #130)
+    const d = matchPage(PAGES, "insurance/term/lics-digi-term"), g2 = matchPage(PAGES, "go/lics-digi-term/brochure");
+    assert.deepEqual([d.key, d.plan, d.slug], ["planDetail", "term", "lics-digi-term"]);
+    assert.deepEqual([g2.key, g2.slug, g2.doc], ["go", "lics-digi-term", "brochure"]);
   });
   ok("links: path (primary, custom), query (?s= fallback / mock), hash (in-app preview); interest + anchor; previewHash", () => {
     assert.deepEqual(linksFrom("/a/demo/privacy"), { mode: "path", base: "/a/demo/" });
@@ -75,8 +79,8 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   });
 
   // ---- which pages a site has ----
-  ok("pages: the EN demo has Home, Insurance, one page per plan type it offers, About and Contact (all five templates)", () => {
-    for (const k of TEMPLATE_KEYS) assert.deepEqual(pagesOf(en, k).map((p) => p.path), ["", "insurance", "insurance/term", "insurance/health", "insurance/child", "insurance/pension", "insurance/endowment", "about", "contact"], k);
+  ok("pages: the EN demo has Home, Insurance, one page per plan type it offers (each followed by its official plans' own pages, DECISIONS #130), About and Contact (all five templates)", () => {
+    for (const k of TEMPLATE_KEYS) assert.deepEqual(pagesOf(en, k).map((p) => p.path), ["", "insurance", "insurance/term", "insurance/term/sample-life-secure-term", "insurance/health", "insurance/health/example-family-health-shield", "insurance/child", "insurance/pension", "insurance/pension/sample-life-golden-years-pension", "insurance/endowment", "insurance/endowment/sample-life-family-saver", "about", "contact"], k);
   });
   ok("pages: a page left with no content is dropped (and renders \"\", so it 404s); not-offered or unknown plan types have no page", () => {
     const s = fx("sample-en");
@@ -109,9 +113,10 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
         assert.ok(inner.includes('<nav class="callbar"'), "the sticky bar is on every page");
         // the menu: top bar (or minimal's card) with the pages, the current one aria-current="page" (plan: Insurance "true")
         const menu = k === "minimal" ? between(inner, '<ul class="pc-nav">', "</ul>") : between(inner, '<ul class="tb-links">', "</ul>");
-        const cur = p.key === "plan" ? "insurance" : p.key;
+        const sub = p.key === "plan" || p.key === "planDetail"; // a plan type's page and a plan's own page (DECISIONS #130)
+        const cur = sub ? "insurance" : p.key;
         const href = "/a/demo/" + (cur === "home" ? "" : cur);
-        assert.ok(menu.includes(`<a href="${href}" aria-current="${p.key === "plan" ? "true" : "page"}">${esc(dicts[loc][PAGES.pages.find((x) => x.key === cur).labelKey])}</a>`), label + " menu");
+        assert.ok(menu.includes(`<a href="${href}" aria-current="${sub ? "true" : "page"}">${esc(dicts[loc][PAGES.pages.find((x) => x.key === cur).labelKey])}</a>`), label + " menu");
         assert.equal(count(menu, /aria-current/g), 1);
         assert.ok(!/href="#(about|services|offers|faq|contact)"/.test(inner), "no in-page section anchors in the menu or links");
         assert.ok(!/>(site|section|field)\.[a-z_]+</.test(inner) && !/\{[a-z]+\}/.test(inner), "no raw keys or placeholders");

@@ -3,6 +3,8 @@
 import { esc, has, arr, tel, httpsUrl, interestLabel } from "./util.js";
 import { pic, interestPic } from "./media.js";
 import { contactHref } from "./links.js";
+import { planById, planPageHref } from "./plan-data.js";
+import { tr } from "./ui.js";
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 // Today in Asia/Kolkata as YYYY-MM-DD (a tab left open over midnight hides an offer that has just ended).
@@ -71,7 +73,9 @@ function offerPic(o, ctx) {
 
 // opts: { tag: "li" | "div", image: bool, featured: bool (hero banner: no image, title not a heading),
 //         button: bool (the CTA is the section's one button: the offers family's hero),
-//         ttl: bool (the title is a <p class="ttl">, not a heading: a card inside the hero, which has only its <h1>) }
+//         ttl: bool (the title is a <p class="ttl">, not a heading: a card inside the hero, which has only its <h1>),
+//         noPlan: bool (no "View plan" link: the card is on that plan's own page) }
+// An offer on an official plan the site shows (offers.plan_id, DECISIONS #130) links to the plan's page.
 export function offerCard(o, ctx, opts = {}) {
   const { t } = ctx;
   const tag = opts.tag || "li";
@@ -79,12 +83,18 @@ export function offerCard(o, ctx, opts = {}) {
   const ends = formatDate(o.ends_on, ctx.locale);
   const img = opts.image && !opts.featured ? offerPic(o, ctx) : "";
   const title = opts.featured || opts.ttl ? `<p class="ttl">${esc(o.title)}</p>` : `<h3>${esc(o.title)}</h3>`;
+  const plan = opts.noPlan ? null : planById(ctx, o.plan_id);
+  const planH = plan ? planPageHref(ctx, plan) : "";
+  const onL = plan ? tr(ctx, "site.offer_on_plan", { plan: plan.name }) : "";
+  const onPlan = onL ? `<p class="on-plan">${esc(onL)}</p>` : "";
+  const viewL = tr(ctx, "site.pp_view");
+  const view = planH && viewL ? `<a class="lnk" href="${esc(planH)}">${esc(viewL)}</a>` : "";
   return `<${tag} class="offer${opts.featured ? " feat" : ""}">${img}<div class="offer-b">
 <p class="offer-top">${has(o.badge) ? `<span class="pill">${esc(o.badge)}</span>` : ""}<span class="src">${esc(src)}</span></p>
-${title}${has(o.summary) ? `<p class="sum">${esc(o.summary)}</p>` : ""}
+${title}${onPlan}${has(o.summary) ? `<p class="sum">${esc(o.summary)}</p>` : ""}
 ${has(o.details) ? `<details class="more"><summary>${esc(t("offer_field.details"))}</summary><p class="prose">${esc(o.details)}</p></details>` : ""}
 <div class="offer-f">${ends ? `<p class="ends">${esc(t("site.offer_ends", { date: ends }))}</p>` : ""}
-${offerCta(o, ctx, opts.button ? "btn" : "lnk")}
+${view}${offerCta(o, ctx, opts.button ? "btn" : "lnk")}
 ${has(o.disclaimer) ? `<p class="fine">${esc(o.disclaimer)}</p>` : ""}</div>
 </div></${tag}>`;
 }

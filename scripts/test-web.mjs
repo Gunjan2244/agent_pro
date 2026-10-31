@@ -166,18 +166,21 @@ try {
       // 26 -> 34 KB raw, 7 -> 9 KB gzip: the lively redesign (DECISIONS #117: top bar, sliders, tickers, dark bands)
       // 34 -> 36 KB raw: multi-page sites (DECISIONS #122: the menu's current page, Home's teasers and contact band, each
       // template's skin of the inner pages); the inner pages' shared layouts are in styles/pages.css, not on Home
-      assert.ok(size(c) < 36 * 1024, tpl + ": SSR first-paint CSS over 36KB raw");
-      assert.ok(gz(c) < 9 * 1024, tpl + ": SSR first-paint CSS over 9KB gzip");
+      // 36 -> 40 KB raw, 9 -> 10 KB gzip: plan pages (DECISIONS #130: Home's "Plans I recommend" cards and rows, the
+      // default plan picture, each template's skin of its plan page and featured plans)
+      assert.ok(size(c) < 40 * 1024, tpl + ": SSR first-paint CSS over 40KB raw");
+      assert.ok(gz(c) < 10 * 1024, tpl + ": SSR first-paint CSS over 10KB gzip");
       // an inner page (Insurance, a plan type, About, Contact) also loads styles/pages.css (DECISIONS #122)
       const ci = [...c.slice(0, 3), "styles/pages.css", c[3]];
       console.log(`SIZE SSR first paint ${tpl} inner page: ${(size(ci) / 1024).toFixed(1)} KB raw, ${(gz(ci) / 1024).toFixed(1)} KB gzip`);
       // 44 -> 45 KB raw, 11 -> 11.5 KB gzip (DECISIONS #129): the official-plans list (Insurance and plan pages) and the
       // footer disclosure
-      assert.ok(size(ci) < 45 * 1024, tpl + ": inner-page first-paint CSS over 45KB raw");
-      assert.ok(gz(ci) < 11.5 * 1024, tpl + ": inner-page first-paint CSS over 11.5KB gzip");
+      // 45 -> 53 KB raw, 11.5 -> 13 KB gzip (DECISIONS #130): the plan page and the "We're taking you to …" page
+      assert.ok(size(ci) < 53 * 1024, tpl + ": inner-page first-paint CSS over 53KB raw");
+      assert.ok(gz(ci) < 13 * 1024, tpl + ": inner-page first-paint CSS over 13KB gzip");
     }
     console.log(`SIZE SSR hydration JS (deferred): ${(size(hydrateJs) / 1024).toFixed(1)} KB raw, ${(gz(hydrateJs) / 1024).toFixed(1)} KB gzip; + install.js ${(size([...hydrateJs, "install.js"]) / 1024).toFixed(1)} KB raw; + privacy.js on the privacy page ${(size([...hydrateJs, "privacy.js"]) / 1024).toFixed(1)} KB raw`);
-    assert.ok(size(css) < 36 * 1024, "SSR first-paint CSS over 36KB");
+    assert.ok(size(css) < 40 * 1024, "SSR first-paint CSS over 40KB");
     assert.ok(size([...hydrateJs, "install.js"]) < 30 * 1024, "SSR hydration JS over 30KB");
   }
   // a template's own modules: render.js plus any template partials (parts.js, DECISIONS #85)
@@ -191,16 +194,16 @@ try {
     // 5 templates) took it from ~51KB to ~78KB raw (~30KB gzip); WP5c's template partials (modern/minimal parts.js and
     // their layouts, DECISIONS #85) add up to ~6KB; the 2026-10-22 redesign (one layout system in base.css, the companies
     // partials) another ~7KB, so the cap is 100KB (unminified, commented source); the SSR path keeps its own caps above.
-    assert.ok(raw < 180 * 1024, tpl + " over 180KB"); // 170 -> 180KB: official plans and the footer disclosure (DECISIONS #129: sections/insurer-plans.js, footer.js, api.js normalizePlans, their CSS), ~9KB of commented source; 124 -> 170KB: multi-page sites (DECISIONS #122: sections/pages.js, links.js, the page model in index.js, styles/pages.css, route.js page helpers), ~41KB of commented source; 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB; 106 -> 124KB: the lively redesign (DECISIONS #117: ui.js, template parts, top bar / slider / ticker CSS), ~14KB
+    assert.ok(raw < 216 * 1024, tpl + " over 216KB"); // 180 -> 216KB: plan pages (DECISIONS #130: sections/plan-page.js, plan-data.js, the template arrangements, base.css and pages.css plan styles), ~30KB of commented source; 170 -> 180KB: official plans and the footer disclosure (DECISIONS #129: sections/insurer-plans.js, footer.js, api.js normalizePlans, their CSS), ~9KB of commented source; 124 -> 170KB: multi-page sites (DECISIONS #122: sections/pages.js, links.js, the page model in index.js, styles/pages.css, route.js page helpers), ~41KB of commented source; 100 -> 106KB: customer-accounts promo (DECISIONS #102), ~5KB; 106 -> 124KB: the lively redesign (DECISIONS #117: ui.js, template parts, top bar / slider / ticker CSS), ~14KB
     // privacy page / platform pages load the shared core + their own module (privacy.js, legal.js are lazy-imported, no template)
     // install.js + manifest.js are imported after the site renders (Add to home screen, DECISIONS #65)
     const later = [...shared, ...own(tpl), `templates/${tpl}/style.css`, "manifest.js", "install.js"].reduce((a, f) => a + readFileSync(dist + f).length, 0);
     if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${tpl} + install modules (after render): ${(later / 1024).toFixed(1)} KB raw`);
-    assert.ok(later < 187 * 1024, tpl + " + install modules over 187KB"); // 177 -> 187KB: DECISIONS #129, same reason as above; 131 -> 177KB: DECISIONS #122, same reason; 113 -> 131KB: DECISIONS #117 // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
+    assert.ok(later < 223 * 1024, tpl + " + install modules over 223KB"); // 187 -> 223KB: DECISIONS #130, same reason as above; 177 -> 187KB: DECISIONS #129, same reason as above; 131 -> 177KB: DECISIONS #122, same reason; 113 -> 131KB: DECISIONS #117 // 106 -> 112KB, same reason; 113KB: the hero's fixed designation (DECISIONS #114)
     for (const extra of ["privacy.js", "legal.js"]) {
       const sz = [...shared, extra].reduce((a, f) => a + readFileSync(dist + f).length, 0);
       if (tpl === TEMPLATE_KEYS[0]) console.log(`SIZE ${extra} page: ${(sz / 1024).toFixed(1)} KB raw`);
-      assert.ok(sz < 168 * 1024, extra + " page over 168KB"); // 158 -> 168KB: DECISIONS #129 (sections/insurer-plans.js, footer.js, normalizePlans); 112 -> 158KB: DECISIONS #122 (the count includes every sections/ file and pages.css); 102 -> 112KB: DECISIONS #117 (sections/ui.js and base.css's lively parts); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
+      assert.ok(sz < 200 * 1024, extra + " page over 200KB"); // 168 -> 200KB: DECISIONS #130 (sections/plan-page.js, plan-data.js and their CSS); 158 -> 168KB: DECISIONS #129 (sections/insurer-plans.js, footer.js, normalizePlans); 112 -> 158KB: DECISIONS #122 (the count includes every sections/ file and pages.css); 102 -> 112KB: DECISIONS #117 (sections/ui.js and base.css's lively parts); // 100 -> 102KB for the customer sign-up page (DECISIONS #108: the join routes in route.js and the #signup section, ~1KB); 94 -> 100KB for the customer-accounts promo (DECISIONS #102, portal-promo.js + CSS, ~5KB); counts every sections/ file (and all of base.css), which these pages never fully load
     }
     const fontKB = (...n) => n.reduce((a, f) => a + statSync(dist + "fonts/" + f).size, 0) / 1024;
     console.log(`FONTS (woff2, fetched on demand): EN page ${fontKB("inter-latin-400-normal.woff2", "inter-latin-500-normal.woff2", "inter-latin-600-normal.woff2", "inter-latin-700-normal.woff2").toFixed(1)} KB max (latin 400-700), +${fontKB("noto-sans-devanagari-devanagari-400-normal.woff2", "noto-sans-devanagari-devanagari-500-normal.woff2", "noto-sans-devanagari-devanagari-600-normal.woff2").toFixed(1)} KB Devanagari for Hindi, preload ${fontKB("inter-latin-400-normal.woff2").toFixed(1)} KB`);
@@ -214,7 +217,7 @@ ok("wrangler.jsonc: SPA static assets; the Worker runs first only for config.js,
   assert.equal(w.name, "agentpro-sites"); assert.equal(w.assets.directory, "./dist");
   assert.equal(w.assets.not_found_handling, "single-page-application");
   assert.equal(w.main, "./worker.js"); assert.equal(w.assets.binding, "ASSETS");
-  assert.deepEqual(w.assets.run_worker_first, ["/config.js", "/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]);
+  assert.deepEqual(w.assets.run_worker_first, ["/config.js", "/", "/a/*", "/my", "/my/*", "/join", "/join/*", "/privacy", "/insurance", "/insurance/*", "/about", "/about/", "/contact", "/contact/", "/go/*", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml"]); // /go/* (DECISIONS #130): "We're taking you to …"
   assert.ok(!w.routes, "no routes yet");
   assert.deepEqual(Object.keys(w.vars || {}), ["SITE_BASE_URL"], "the only var is the public SITE_BASE_URL; Supabase keys are Worker secrets (DECISIONS #125)");
 });

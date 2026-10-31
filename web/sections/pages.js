@@ -16,6 +16,7 @@ import { icon } from "./icons.js";
 import { tr, ticker, slider, numbers, bigNumber } from "./ui.js";
 import { pageHref, planHref, contactHref } from "./links.js";
 import { pageUrl } from "../route.js";
+import { planBySlug } from "./plan-data.js";
 
 // The interests that get their own page: those the agent names (services items, then `offered`), then those of the
 // live offers, then those of the agent's official plans (DECISIONS #129); on a "Best offers" site that names none, every active catalog interest (as planList does, so its
@@ -40,6 +41,9 @@ export const planDesc = (ctx, key) => { const i = arr(((ctx.site.content || {}).
 // The page's title (its <h1>) and lead line.
 export function pageTitle(ctx, page = ctx.page) {
   if (page.key === "plan") return { title: interestLabel(ctx, page.plan), lead: planDesc(ctx, page.plan) };
+  // A plan's own page (DECISIONS #130): the official plan name; the "We're taking you to …" page: its heading.
+  if (page.key === "planDetail") { const p = planBySlug(ctx, page.slug); return { title: p ? p.name : "", lead: "" }; }
+  if (page.key === "go") { const p = planBySlug(ctx, page.slug); return { title: p ? tr(ctx, "site.go_title", { company: p.company }) : "", lead: "" }; }
   const d = page.def || {};
   const title = tr(ctx, d.titleKey || d.labelKey) || ctx.profile.full_name || "";
   let lead = d.leadKey ? tr(ctx, d.leadKey) : "";
@@ -53,7 +57,12 @@ export function crumb(ctx) {
   const add = (p) => { if (p && tr(ctx, p.def.labelKey)) parts.push(`<a href="${esc(pageUrl(ctx.links, p.path))}">${esc(tr(ctx, p.def.labelKey))}</a>`); };
   const pages = ctx.pages || [];
   add(pages.find((p) => p.key === "home"));
-  if (ctx.page.def.parent) add(pages.find((p) => p.key === ctx.page.def.parent && !p.plan));
+  if (ctx.page.key === "planDetail") {
+    // Home › Insurance › <plan type> › <plan>
+    add(pages.find((p) => p.key === "insurance"));
+    const tp = pages.find((p) => p.key === "plan" && p.plan === ctx.page.plan);
+    if (tp) parts.push(`<a href="${esc(pageUrl(ctx.links, tp.path))}">${esc(interestLabel(ctx, tp.plan))}</a>`);
+  } else if (ctx.page.def.parent) add(pages.find((p) => p.key === ctx.page.def.parent && !p.plan));
   parts.push(`<span aria-current="page">${esc(pageTitle(ctx).title)}</span>`);
   return `<p class="crumb">${parts.join('<span class="sep" aria-hidden="true">›</span>')}</p>`;
 }
@@ -72,6 +81,8 @@ export function pageHead(ctx, { pic = true } = {}) {
     const img = pic ? interestPic(ctx, k, { sizes: "(min-width: 1024px) 420px, (min-width: 720px) 40vw, 100vw", eager: true }) : "";
     return `<div class="ph-in ph-split${img ? "" : " no-pic"}">${img ? `<div class="ph-pic fade">${img}</div>` : ""}<div class="ph-text enter">${crumb(ctx)}${h1}${has(lead) ? `<p class="lead">${esc(lead)}</p>` : ""}<p class="ph-act"><a class="btn" href="${esc(contactHref(ctx, k))}" data-interest="${esc(k)}">${esc(ask)}</a>${waBtn(ctx)}</p></div></div>`;
   }
+  // A plan's own page (DECISIONS #130): compose provides the plan's header (sections/plan-page.js ppHead).
+  if (page.key === "planDetail") return ctx.ppHead ? ctx.ppHead(pic) : "";
   if (page.key === "about") {
     // The About story: the photo (4:5) beside the agent's own words, numbers that count up, languages, agency code.
     const a = (ctx.site.content || {}).about || {};
@@ -87,7 +98,7 @@ export function pageHead(ctx, { pic = true } = {}) {
     return `<div class="ph-in ph-split ph-story${photo ? "" : " no-pic"}">${photo ? `<div class="ph-pic fade">${photo}</div>` : ""}<div class="ph-text enter">${crumb(ctx)}${h1}${has(kicker) ? `<p class="kicker">${esc(kicker)}</p>` : ""}${on && has(a.bio) ? `<p class="prose">${esc(a.bio)}</p>` : ""}${nums.length ? `<ul class="ph-nums">${nums.map((n) => bigNumber(n)).join("")}</ul>` : ""}${facts ? `<ul class="facts">${facts}</ul>` : ""}</div></div>`;
   }
   // Insurance lists its plan types as chips here only when the plan cards (the services section) are hidden.
-  const plans = page.key === "insurance" && !ctx.visible.has("services") ? (ctx.pages || []).filter((p) => p.plan) : [];
+  const plans = page.key === "insurance" && !ctx.visible.has("services") ? (ctx.pages || []).filter((p) => p.key === "plan") : [];
   const chips = plans.length ? `<ul class="qr">${plans.map((p) => `<li><a class="chip" href="${esc(pageUrl(ctx.links, p.path))}">${esc(interestLabel(ctx, p.plan))}</a></li>`).join("")}</ul>` : "";
   return `<div class="ph-in"><div class="ph-text enter">${crumb(ctx)}${h1}${has(lead) ? `<p class="lead">${esc(lead)}</p>` : ""}${chips}</div></div>`;
 }
@@ -97,7 +108,7 @@ const offerCount = (ctx, key) => arr(ctx.offers && ctx.offers.all).filter((o) =>
 // Insurance: one card per plan type (picture, name, the agent's description, "See plan", "N offers"); the whole
 // card is the link. 3 per row on desktop, compact rows with the picture on the left on phones (base.css).
 export function planCards(d, ctx) {
-  const list = (ctx.pages || []).filter((p) => p.plan);
+  const list = (ctx.pages || []).filter((p) => p.key === "plan");
   if (!list.length) return "";
   const see = tr(ctx, "site.see_plan") || tr(ctx, "site.see_plans");
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2><ul class="ptypes stg">${list.map((p, n) => {
@@ -122,7 +133,7 @@ export function planOffers(d, ctx) {
 // The plan page's "Other plans": small picture chips (thumbnail + name) in a row that scrolls sideways.
 export function plans(d, ctx) {
   const h = tr(ctx, "site.plan_others");
-  const others = (ctx.pages || []).filter((p) => p.plan && p.plan !== ctx.page.plan);
+  const others = (ctx.pages || []).filter((p) => p.key === "plan" && p.plan !== ctx.page.plan);
   if (!h || !others.length) return "";
   return `<h2>${esc(h)}</h2><ul class="pchips">${others.map((p) => `<li><a class="pchip" href="${esc(pageUrl(ctx.links, p.path))}">${interestPic(ctx, p.plan, { sizes: "48px", cls: "pic" })}<span>${esc(interestLabel(ctx, p.plan))}</span></a></li>`).join("")}</ul>`;
 }

@@ -718,8 +718,8 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   const cssFiles = [pick(dist + "tokens.css", src + "tokens.css"), pick(dist + "styles/base.css", src + "styles/base.css"), pick(dist + "styles/fonts.css", src + "styles/fonts.css"), pick(dist + "styles/portal.css", src + "styles/portal.css")];
   if (!cssFiles[3]) pending("portal first-paint CSS budget", "no styles/portal.css yet");
   else if (cssFiles.some((f) => !f)) pending("portal first-paint CSS budget", "tokens/base/fonts css not found");
-  else await check("portal first-paint CSS (tokens+base+fonts+portal.css) <= 30 KB raw (26 -> 30 KB: base.css carries the sites' lively parts, DECISIONS #117)", () => {
-    const n = cssFiles.reduce((a, f) => a + readFileSync(f).length, 0); console.log(`SIZE portal first paint: ${(n / 1024).toFixed(1)} KB raw`); assert.ok(n <= 30 * 1024, `${n} bytes`);
+  else await check("portal first-paint CSS (tokens+base+fonts+portal.css) <= 33 KB raw (30 -> 33 KB: base.css carries the plan cards and default plan picture, DECISIONS #130; 26 -> 30 KB: the sites' lively parts, DECISIONS #117)", () => {
+    const n = cssFiles.reduce((a, f) => a + readFileSync(f).length, 0); console.log(`SIZE portal first paint: ${(n / 1024).toFixed(1)} KB raw`); assert.ok(n <= 33 * 1024, `${n} bytes`);
   });
   await check("portal pages link only same-origin CSS (tokens, base, fonts, portal) and no external resources", () => {
     assert.ok(/href="\/styles\/portal\.css"/.test(loginHtml), "portal.css not linked");

@@ -246,7 +246,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     const x = await r.text();
     assert.equal(r.status, 200); assert.match(r.headers.get("content-type"), /^application\/xml/);
     const locs = [...x.matchAll(/<loc>([^<]+)<\/loc><lastmod>2026-10-01T10:00:00.000Z<\/lastmod>/g)].map((m) => m[1].replace("https://sites.test/a/demo/", ""));
-    assert.deepEqual(locs, ["", "insurance", "insurance/term", "insurance/health", "insurance/child", "insurance/pension", "insurance/endowment", "about", "contact", "privacy"]);
+    assert.deepEqual(locs, ["", "insurance", "insurance/term", "insurance/term/sample-life-secure-term", "insurance/health", "insurance/health/example-family-health-shield", "insurance/child", "insurance/pension", "insurance/pension/sample-life-golden-years-pension", "insurance/endowment", "insurance/endowment/sample-life-family-saver", "about", "contact", "privacy"]);
     // every listed page is served (200) and has its own canonical
     for (const p of locs) {
       const pr = await get("https://sites.test/a/demo/" + p);

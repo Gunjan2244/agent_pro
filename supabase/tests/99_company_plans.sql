@@ -126,8 +126,7 @@ select tests.throws($$select public.set_site_plans(array['9d000003-0000-4000-800
 select tests.throws($$select public.set_site_plans(array['9d000005-0000-4000-8000-000000000005']::uuid[])$$,
   '#PL an inactive plan can''t be chosen', '%unknown_plan%');
 select tests.throws($$select public.set_site_plans(array[null]::uuid[])$$, '#PL null ids are invalid', '%invalid_plans%');
-select tests.ok(public.set_site_plans(array[:L4, :L1, :L4]::uuid[]) = jsonb_build_object('choice', 'custom', 'selected', jsonb_build_array(:L4, :L1),
-                  'plans', (:'mp')::jsonb -> 'plans'),
+select tests.ok(public.set_site_plans(array[:L4, :L1, :L4]::uuid[]) = (:'mp')::jsonb || jsonb_build_object('choice', 'custom', 'selected', jsonb_build_array(:L4, :L1)),
   '#PL set_site_plans keeps the agent''s order, drops duplicates, returns my_company_plans');
 reset role;
 
@@ -138,9 +137,10 @@ select tests.ok((select array_agg(e ->> 'name' order by o) from jsonb_array_elem
                   = array['Ktwo Family Floater', 'Kone Term Shield'],
   '#PL the site shows the chosen plans in the chosen order', (:'gp')::jsonb ->> 'plans');
 select tests.ok((select array_agg(k order by k) from jsonb_object_keys((:'gp')::jsonb #> '{plans,1}') k)
-                  = array['company', 'id', 'image_url', 'insurance_type', 'interest', 'name', 'plan_no', 'uin', 'url']
+                  = array['company', 'docs', 'featured', 'features', 'features_checked_on', 'features_own', 'features_url', 'id', 'image_url',
+                          'insurance_type', 'interest', 'name', 'plan_no', 'slug', 'uin', 'url']
                 and (:'gp')::jsonb #>> '{plans,1,url}' = 'https://www.kone.example/term',
-  '#PL a site plan is facts and the insurer''s link only');
+  '#PL a site plan is facts, the insurer''s links and key features (DECISIONS #130 adds slug, features, docs, featured)');
 select tests.ok((:'gp')::jsonb -> 'companies'
                   = '[{"name":"Kone Life","website":"https://www.kone.example","insurance_types":["life"]},{"name":"Ktwo Health","website":"https://ktwo.example","insurance_types":["health"]}]'::jsonb,
   '#PL companies carry the insurer''s website; no agency code unless the agent shows it', (:'gp')::jsonb ->> 'companies');

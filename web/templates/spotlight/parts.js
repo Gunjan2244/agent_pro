@@ -13,6 +13,7 @@ import { planList } from "../../sections/offers.js";
 import { slider, tr, topBar } from "../../sections/ui.js";
 import { tagList } from "../../sections/services.js";
 import { pageHead, planOrEnquire } from "../../sections/pages.js";
+import { featuredSection, sec } from "../../sections/plan-page.js";
 
 const HERO_MAX = 4;
 const heroList = (ctx) => (ctx.visible.has("offers") ? ctx.offers.all : ctx.offers.hero ? [ctx.offers.hero] : []).slice(0, HERO_MAX);
@@ -81,4 +82,14 @@ export function testimonials(d, ctx) {
   if (!items.length) return "";
   const h = ctx.t("section.testimonials");
   return `<h2>${esc(h)}</h2>${slider(items.map((i) => `<figure class="card quote"><blockquote>${esc(i.quote)}</blockquote><figcaption class="meta">${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: h, cls: "sl-q", auto: 6000 })}`;
+}
+
+// Plans I recommend (DECISIONS #130): picture cards, three across.
+export const featuredPlans = (d, ctx) => featuredSection(d, ctx, { layout: "grid" });
+
+// A plan's page: the offer on it first, in the tinted band (the page is about offers), then the key features as a
+// checklist, the documents as tiles and similar plans as cards (the shared help band closes the page).
+export function planPage(x, ctx) {
+  const band = x.offer ? sec("offer", x.offer, "band") : "";
+  return band + sec("features", x.checks) + sec("about", x.about) + sec("docs", x.docTiles, "alt") + sec("similar", x.similar);
 }

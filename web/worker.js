@@ -166,6 +166,8 @@ export async function handlePage(request, env) {
     // content) is only known from the render, and a page that no longer exists must 404, never 304.
     const body = renderDocument({ site, target: { ...target, path: clean }, url, dict, shared, notices, config: cfg });
     if (body == null) return unavailablePage(request, env, url);
+    // The "We're taking you to …" page (DECISIONS #130) is never indexed and never cached long.
+    if (matchPage(defs, clean)?.key === "go") return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: htmlHeaders({ "x-robots-tag": "noindex, nofollow", "cache-control": "public, max-age=300" }) });
     const ims = Date.parse(request.headers.get("if-modified-since") || "");
     if (lm != null && !Number.isNaN(ims) && ims >= lm) return new Response(null, { status: 304, headers: htmlHeaders(extra) });
     return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: htmlHeaders(extra) });
@@ -547,7 +549,7 @@ const iso = (v) => { const ms = Date.parse(v); return Number.isNaN(ms) ? null : 
 export function handleRobots(request) {
   const url = new URL(request.url);
   // Preview, install and mock pages are for the agent and developers, never for search.
-  const body = ["User-agent: *", "Allow: /", "Disallow: /*?preview", "Disallow: /*&preview", "Disallow: /*?install", "Disallow: /*&install", "Disallow: /*?mock", "Disallow: /*&mock", "Disallow: /a/*/my", "Disallow: /my", "Disallow: /a/*/join", "Disallow: /join", "", `Sitemap: ${url.origin}/sitemap.xml`, ""].join("\n");
+  const body = ["User-agent: *", "Allow: /", "Disallow: /*?preview", "Disallow: /*&preview", "Disallow: /*?install", "Disallow: /*&install", "Disallow: /*?mock", "Disallow: /*&mock", "Disallow: /a/*/my", "Disallow: /my", "Disallow: /a/*/join", "Disallow: /join", "Disallow: /a/*/go/", "Disallow: /go/", "", `Sitemap: ${url.origin}/sitemap.xml`, ""].join("\n");
   return text(body, "text/plain; charset=utf-8", "public, max-age=3600");
 }
 

@@ -3,6 +3,11 @@
 // website, and optionally a picture. Agents then choose which of their companies' plans (for the insurance types they
 // deal in there) appear on their websites. No benefits or descriptions are stored: a site shows only these facts and
 // links to the insurer. Never deleted: "Withdrawn" hides a plan from every site at once.
+// Plan pages (DECISIONS #130): each plan also has its address on the sites (slug, set once from the name), up to 5 key
+// features copied WORD FOR WORD from the insurer's plan page (every agent's default; agents may reword them on their
+// own site), where and when they were copied, and links to the insurer's documents (brochure, policy document,
+// customer information sheet, premium calculator), each on the company's website. Without a picture, sites show the
+// default picture of the plan type. The offers on a plan are listed here (they are made in Offers, on a plan).
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { label, typeLabel } from "./catalog";
@@ -13,7 +18,10 @@ import { SkeletonRows } from "./Skeleton";
 type Plan = {
   id: string; company_id: string; name: string; plan_no: string | null; uin: string | null; interest: string; insurance_type: string;
   url: string; image_url: string | null; is_active: boolean; sort: number; checked_on: string;
+  slug?: string; key_features: string[]; features_url: string | null; features_checked_on: string | null;
+  brochure_url: string | null; policy_url: string | null; cis_url: string | null; calculator_url: string | null;
 };
+const DOCS: [keyof Plan, string][] = [["brochure_url", "Sales brochure"], ["policy_url", "Policy document"], ["cis_url", "Customer information sheet"], ["calculator_url", "Premium calculator"]];
 type Company = { id: string; name: { en: string }; website_url: string | null };
 type Interest = { key: string; labelKey: string; insuranceType: string | null; deprecated?: boolean };
 // Plan types: catalog interests that have an insurance type ("other" has none and is never a plan type).
@@ -33,6 +41,10 @@ const ERRORS: Record<string, string> = {
   company_plans_uin_format: "A UIN has only capital letters and digits (6 to 24), e.g. 512N339V02.",
   company_plans_plan_no_format: "A plan number has only letters, digits and hyphens (up to 12).",
   company_plans_company_name_key: "This company already has a plan with this name.",
+  invalid_features: "Up to 5 key features, each 3 to 400 characters.",
+  invalid_slug: "The address may use only lower-case letters, digits and single hyphens.",
+  company_plans_slug_key: "Another plan already uses this address.",
+  company_plans_doc_urls_https: "Document links must start with https://",
 };
 const readable = (m: string) => Object.entries(ERRORS).find(([k]) => m.includes(k))?.[1] ?? m;
 
@@ -64,6 +76,7 @@ export function Plans() {
   const blank = (): Plan => ({
     id: crypto.randomUUID(), company_id: company, name: "", plan_no: null, uin: null, interest: planTypes[0]?.key ?? "term",
     insurance_type: planTypes[0]?.insuranceType ?? "life", url: co?.website_url ?? "https://", image_url: null, is_active: true, sort: 0, checked_on: today(),
+    key_features: [], features_url: null, features_checked_on: null, brochure_url: null, policy_url: null, cis_url: null, calculator_url: null,
   });
   const needle = q.trim().toLowerCase();
   const shown = rows.filter((p) => p.company_id === company && (!type || p.interest === type) && (showWithdrawn || p.is_active)
@@ -104,13 +117,24 @@ function PlanForm({ p: initial, isNew, company, onDone, onCancel }: { p: Plan; i
   const [msg, setMsg] = useState<string | null>(null);
   const set = <K extends keyof Plan>(k: K, v: Plan[K]) => setP((x) => ({ ...x, [k]: v }));
   const site = host(company?.website_url ?? null);
-  const urlOk = (() => { const h = host(p.url); return Boolean(h && site && (h === site || h.endsWith("." + site))); })();
+  const onSite = (u: string | null) => { const h = host(u); return Boolean(h && site && (h === site || h.endsWith("." + site))); };
+  const urlOk = onSite(p.url) && [p.features_url, ...DOCS.map(([k]) => p[k] as string | null)].every((u) => !u || onSite(u));
+  const kf = p.key_features.length ? p.key_features : [""];
+  const setKf = (i: number, v: string) => set("key_features", Object.assign([...kf], { [i]: v }));
+  const [offers, setOffers] = useState<{ id: string; internal_name: string | null; status: string; ends_at: string }[]>([]);
+  useEffect(() => {
+    if (isNew) return;
+    void supabase.from("offers").select("id, internal_name, status, ends_at").eq("plan_id", p.id).order("ends_at", { ascending: false }).then(({ data }) => setOffers(data ?? []));
+  }, [isNew, p.id]);
 
   const save = async (patch: Partial<Plan> = {}) => {
     setMsg(null);
     const r = {
       name: p.name.trim(), plan_no: p.plan_no?.trim() || null, uin: p.uin?.trim().toUpperCase() || null, interest: p.interest,
-      insurance_type: typeOf(p.interest), url: p.url.trim(), image_url: p.image_url, is_active: p.is_active, sort: p.sort, checked_on: p.checked_on, ...patch,
+      insurance_type: typeOf(p.interest), url: p.url.trim(), image_url: p.image_url, is_active: p.is_active, sort: p.sort, checked_on: p.checked_on,
+      key_features: p.key_features.map((f) => f.trim()).filter(Boolean), features_url: p.features_url?.trim() || null,
+      features_checked_on: p.key_features.some((f) => f.trim()) ? p.features_checked_on || today() : null,
+      brochure_url: p.brochure_url?.trim() || null, policy_url: p.policy_url?.trim() || null, cis_url: p.cis_url?.trim() || null, calculator_url: p.calculator_url?.trim() || null, ...patch,
     };
     const { error } = isNew ? await supabase.from("company_plans").insert({ id: p.id, company_id: p.company_id, ...r }) : await supabase.from("company_plans").update(r).eq("id", p.id);
     if (error) setMsg(readable(error.message)); else onDone();
@@ -147,16 +171,40 @@ function PlanForm({ p: initial, isNew, company, onDone, onCancel }: { p: Plan; i
           <label>Sort<input type="number" value={p.sort} onChange={(e) => set("sort", Number(e.target.value))} /></label>
         </div>
         <div>
+          <h2>Key features (the company's own words)</h2>
+          <div className="muted">Copy up to 5 points WORD FOR WORD from the plan page on {site || "the company's website"}; never write your own. Every agent's site shows them, with "From the company's website · checked on …". Agents may replace them with their own words on their own site and go back to these at any time.</div>
+          {kf.map((f, i) => <label key={i}>Point {i + 1}<textarea rows={2} maxLength={400} value={f} onChange={(e) => setKf(i, e.target.value)} /></label>)}
+          {kf.length < 5 && <button type="button" onClick={() => set("key_features", [...kf, ""])}>Add a point</button>}
+          <div className="grid2">
+            <label>Copied from (page on the company's website)<input type="url" pattern="https://.*" value={p.features_url ?? ""} onChange={(e) => set("features_url", e.target.value || null)} placeholder="Default: the plan page" />
+              {p.features_url && !onSite(p.features_url) && <span className="error">Must be a page on {site}.</span>}</label>
+            <label>Copied on<input type="date" value={p.features_checked_on ?? ""} onChange={(e) => set("features_checked_on", e.target.value || null)} /></label>
+          </div>
+        </div>
+        <div>
+          <h2>Documents (links to the company's website)</h2>
+          <div className="muted">Visitors open each one through a page that says "We're taking you to the company's website". Never upload the company's files here.</div>
+          <div className="grid2">{DOCS.map(([k, l]) => (
+            <label key={k}>{l}<input type="url" pattern="https://.*" value={(p[k] as string | null) ?? ""} onChange={(e) => set(k, (e.target.value || null) as never)} />
+              {p[k] && !onSite(p[k] as string) && <span className="error">Must be a page on {site}.</span>}</label>))}</div>
+          {p.slug && <div className="muted">Address on agents' sites: /insurance/{p.interest}/{p.slug}</div>}
+        </div>
+        <div>
           <h2>Picture (optional, 16:9)</h2>
           {p.image_url && <img src={p.image_url} alt="" width={320} height={180} style={{ display: "block", marginBottom: 8, objectFit: "cover" }} />}
           {isNew ? <div className="muted">Save the plan first, then add a picture.</div> : <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />}
           {p.image_url && <button type="button" onClick={() => set("image_url", null)}>Remove picture</button>}
-          <div className="muted">Cropped to 16:9 and saved as WebP under 512 KB. Use your own or licensed artwork: never the company's logo or its brochure images. Without a picture, websites show the plan type's illustration.</div>
+          <div className="muted">Cropped to 16:9 and saved as WebP under 512 KB. Use your own or licensed artwork: never the company's logo or its brochure images. Without a picture, websites show the default picture of the plan type ({label(planTypes.find((t) => t.key === p.interest)?.labelKey ?? "")}).</div>
         </div>
+        {!isNew && <div>
+          <h2>Offers on this plan</h2>
+          <div className="muted">An offer on a plan appears only on the sites of agents who show this plan. Make offers in Offers and choose this plan there.</div>
+          {offers.length ? <ul>{offers.map((o) => <li key={o.id}>{o.internal_name || o.id} · {o.status} · ends {o.ends_at.slice(0, 10)}</li>)}</ul> : <div className="muted">No offers on this plan yet.</div>}
+        </div>}
         {msg && <div className="error" role="alert">{msg}</div>}
         <div className="row">
           <button className="primary" disabled={!urlOk}>Save</button>
-          {!isNew && <button type="button" onClick={() => void save({ checked_on: today() })}>Checked today</button>}
+          {!isNew && <button type="button" onClick={() => void save({ checked_on: today(), ...(p.key_features.some((f) => f.trim()) ? { features_checked_on: today() } : {}) })}>Checked today</button>}
           {!isNew && p.is_active && <button type="button" className="danger" onClick={() => { if (confirm("Withdraw this plan? It disappears from every agent's website now.")) void save({ is_active: false }); }}>Withdraw</button>}
           {!isNew && !p.is_active && <button type="button" onClick={() => void save({ is_active: true })}>Restore</button>}
           <button type="button" onClick={onCancel}>Cancel</button>

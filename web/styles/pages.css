@@ -95,17 +95,61 @@
 
 /* Official plans (DECISIONS #129) */
 .sec-insurerPlans .lead{margin-bottom:var(--space-l);font-size:var(--text-s);line-height:var(--line-s)}
-.ip-groups,.iplans{display:grid;gap:var(--space-m)}
+.ip-groups{display:grid;gap:var(--space-m)}
 details.ip-co{border:1px solid var(--c-outlineVariant);border-radius:var(--shape-md)}
 .ip-co summary{display:flex;align-items:center;gap:var(--space-m);padding:var(--space-m);cursor:pointer}
 .ip-co h3{margin:0 0 var(--space-m)}
 .ip-co summary h3{margin:0;flex:1}
-details.ip-co .iplans{padding:0 var(--space-m) var(--space-m)}
-.iplan{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--space-s) var(--space-m);align-items:center;padding:var(--space-s);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-sm);background:var(--c-surface)}
-.iplan .pic{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-sm)}
-.iplan:not(:has(.pic)){grid-template-columns:1fr}
-.ip-b{display:grid;gap:var(--space-s);justify-items:start}
-.ip-m{color:var(--c-muted)}
-.ip-m span{white-space:nowrap}
-.ip-a{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--space-l)}
-@media(min-width:720px){.iplans{grid-template-columns:1fr 1fr}.iplan:has(.pic){grid-template-columns:96px minmax(0,1fr)}}
+details.ip-co .pcards{padding:0 var(--space-m) var(--space-m)}
+
+/* ---- a plan's own page (DECISIONS #130; sections/plan-page.js). Templates restyle it in their style.css ---- */
+.pl-co{margin-top:var(--space-s);color:var(--c-onSurfaceVariant);font-weight:500}
+.pl-tags{display:flex;flex-wrap:wrap;gap:var(--space-s);margin-top:var(--space-m)}
+.pl-hd .ph-pic .pic{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-lg)}
+.pl-grid{display:grid;gap:var(--space-l)}
+@media(min-width:1024px){.pl-grid{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:calc(var(--space-l)*2);align-items:start}.pl-grid.solo{grid-template-columns:minmax(0,1fr)}.pl-side{position:sticky;top:calc(var(--space-l)*3)}}
+.pl-main,.pl-side{display:grid;gap:var(--space-l);align-content:start}
+.pl-block h2,.pl-card h2{margin-bottom:var(--space-m)}
+.pl-card{padding:var(--space-l);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg);background:var(--c-surface)}
+.pl-kf{display:grid;gap:var(--space-s);padding-left:var(--space-l);list-style:disc;color:var(--c-onSurfaceVariant)}
+.pl-kf.num{list-style:decimal}
+.pl-src{margin-top:var(--space-m);color:var(--c-muted)}
+.pl-checks{display:grid;gap:var(--space-m)}
+@media(min-width:720px){.pl-checks{grid-template-columns:1fr 1fr}}
+.pl-checks li{display:flex;gap:var(--space-s);align-items:flex-start;color:var(--c-onSurfaceVariant)}
+.pl-checks .ico{flex:0 0 auto;color:var(--accent)}
+.pl-docs-l,.pl-talk-l{margin:calc(var(--space-s)*-1) 0 var(--space-s);color:var(--c-muted)}
+.pl-docs li{border-bottom:1px solid var(--c-outlineVariant)}
+.pl-docs a{display:flex;align-items:center;gap:var(--space-s);min-height:52px;color:var(--c-onSurface);text-decoration:none}
+.pl-docs .ico{flex:0 0 auto;color:var(--accent)}
+.pd-n{flex:1;font-weight:500}
+.pd-w{display:inline-flex;align-items:center;gap:calc(var(--space-s)/2);color:var(--accent);font-weight:600;white-space:nowrap}
+.pd-w .ico{width:16px;height:16px}
+.pl-docs .pd-w{max-width:45%;white-space:normal;text-align:right}
+.pl-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-m)}
+.pl-tiles a{display:grid;gap:var(--space-s);height:100%;color:var(--c-onSurface);text-decoration:none}
+.pl-tiles .ico{color:var(--accent)}
+.pl-acts{display:grid;gap:var(--space-s)}
+.pl-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border-top:1px solid var(--c-outlineVariant);border-bottom:1px solid var(--c-outlineVariant);margin:0}
+.pl-facts div{padding:var(--space-m) var(--space-m) var(--space-m) 0}
+.pl-facts dt{color:var(--c-muted)}
+.pl-facts dd{margin:0;font-weight:600}
+.pl-steps{display:grid;gap:var(--space-l)}
+.pl-step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:var(--space-m);padding:var(--space-l);border:1px solid var(--c-outlineVariant);border-radius:var(--shape-lg);background:var(--c-surface)}
+.pl-step>.n{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700}
+.pl-step h2{margin-bottom:var(--space-m)}
+
+/* ---- "We're taking you to <insurer>'s website" (/go/<plan>/<doc>) ---- */
+.pg-go{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:var(--space-l) var(--space-m);background:var(--c-surfaceContainerLow)}
+.go-card{display:grid;gap:var(--space-m);max-width:560px;padding:calc(var(--space-l) + var(--space-s));border:1px solid var(--c-outlineVariant);border-radius:calc(var(--shape-lg) + 4px);background:var(--c-surface)}
+.go-card h1{font-size:var(--text-m);line-height:var(--line-m)}
+
+.go-who,.go-count{color:var(--c-muted)}
+.go-url{padding:var(--space-s) var(--space-m);border-radius:var(--shape-md);background:var(--c-surfaceContainer);color:var(--c-onSurfaceVariant);overflow-wrap:anywhere}
+.go-url span{display:block;color:var(--c-muted)}
+.go-note{color:var(--c-onSurfaceVariant)}
+.go-bar{height:6px;border-radius:999px;background:var(--c-outlineVariant);overflow:hidden}
+.go-bar span{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;animation:go-fill 5s linear both}
+@keyframes go-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.go-bar span{animation:none}}
+.go-acts{display:flex;flex-wrap:wrap;gap:var(--space-s)}

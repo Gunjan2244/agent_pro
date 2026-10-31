@@ -13,6 +13,9 @@ import { slider, ticker, topBar, tr } from "../../sections/ui.js";
 import { needHref } from "../../sections/hero.js";
 import { pageHref } from "../../sections/links.js";
 import { INNER, seePlans } from "../../sections/pages.js";
+import { planCard as officialCard, box, grid } from "../../sections/plan-page.js";
+import { featuredPlans as featuredList } from "../../sections/plan-data.js";
+import { planHref } from "../../sections/links.js";
 
 const STEPS = ["site.step_1", "site.step_2", "site.step_3"];
 
@@ -101,4 +104,28 @@ export function afterInner(ctx) {
   const st = stats(c.about || {}, ctx).map((s) => s.replace("<strong>", '<strong class="cu">'));
   const items = [...st, ...arr((c.highlights || {}).items).filter((i) => i && has(i.title)).map((i) => `${icon(i.icon)}${esc(i.title)}`)];
   return items.length ? `<div class="g-trust">${ticker(items, { cls: "tk-trust", label: ctx.t("section.highlights") })}</div>` : "";
+}
+
+// Plans I recommend (DECISIONS #130), grouped by need: each plan type's picture and name, the agent's featured plans
+// of that type as cards, and a link on to all its plans.
+export function featuredPlans(d, ctx) {
+  const list = featuredList(ctx), h = tr(ctx, "site.featured_heading");
+  if (!list.length || !h) return "";
+  const groups = [];
+  for (const p of list) { let g = groups.find((x) => x.key === p.interest); if (!g) groups.push((g = { key: p.interest, items: [] })); g.items.push(p); }
+  const see = tr(ctx, "site.see_plans");
+  const body = groups.map((g) => { const all = planHref(ctx, g.key); return `<div class="fneed"><div class="need-h">${interestPic(ctx, g.key, { sizes: "96px" })}<div><h3>${esc(interestLabel(ctx, g.key))}</h3>${all && see ? `<a class="lnk" href="${esc(all)}">${esc(see)}</a>` : ""}</div></div><ul class="pcards">${g.items.map((p) => officialCard(ctx, p)).join("")}</ul></div>`; }).join("");
+  const lead = tr(ctx, "site.featured_lead");
+  return `<h2>${esc(h)}</h2>${lead ? `<p class="lead sub">${esc(lead)}</p>` : ""}<div class="fneeds">${body}</div>`;
+}
+
+// A plan's page as three steps (what the plan offers, the official documents, ask me) beside the picture, the offer
+// on it and plans to compare with.
+export function planPage(x, ctx) {
+  const step = (n, inner) => (inner ? `<li class="pl-step"><span class="n" aria-hidden="true">${n}</span><section id="step-${n}">${inner}</section></li>` : "");
+  const askH = `<h2>${esc(tr(ctx, "site.pp_step_ask"))}</h2><p class="pl-talk-l">${esc(tr(ctx, "site.pp_step_ask_lead"))}</p>${x.ask ? `<p class="pl-acts">${x.ask}</p>` : ""}`;
+  const items = [x.features && x.features.replace(/<h2>[^<]*<\/h2>/, `<h2>${esc(tr(ctx, "site.pp_step_features"))}</h2>`), x.docs && x.docs.replace(/<h2>[^<]*<\/h2>/, `<h2>${esc(tr(ctx, "site.pp_step_docs"))}</h2>`), askH].filter(Boolean);
+  const steps = `<ol class="pl-steps">${items.map((h, i) => step(i + 1, h)).join("")}</ol>`;
+  const side = (x.pic ? `<div class="pl-pic">${x.pic}</div>` : "") + box("offer", x.offer, "pl-card pl-offer") + box("compare", x.compare, "pl-card");
+  return grid(box("about", x.about, "pl-block") + steps + x.fine, side);
 }

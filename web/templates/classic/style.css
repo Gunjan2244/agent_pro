@@ -124,3 +124,28 @@
 .tpl-classic .cp-info h2::after{margin-left:0}
 .tpl-classic .cband,.tpl-classic .more-l{justify-items:center;text-align:center}
 .tpl-classic .cband .lead{margin-inline:auto}
+
+/* plans (DECISIONS #130): featured plans slide like the offers; a plan's page has a dark header (picture right),
+   left-aligned headings in tinted blocks and a dark "Talk to …" card */
+.tpl-classic .sl-plans{--sl-w:86%}
+@media(min-width:720px){.tpl-classic .sl-plans{--sl-w:46%}}
+@media(min-width:1024px){.tpl-classic .sl-plans{--sl-w:32%}}
+.tpl-classic .sl-plans .pcard{box-shadow:0 8px 24px rgb(17 24 39/.08)}
+.tpl-classic .lead.sub{margin:calc(var(--space-s)*-1) auto var(--space-l);text-align:center}
+.tpl-classic.pg-planDetail .sec-ph{background:var(--c-onSurface);color:#fff}
+.tpl-classic.pg-planDetail .sec-ph h1{color:#fff}
+.tpl-classic.pg-planDetail .sec-ph .crumb,.tpl-classic.pg-planDetail .sec-ph .crumb a,.tpl-classic.pg-planDetail .pl-co{color:#D1D5DB}
+.tpl-classic.pg-planDetail .sec-ph .pill{background:rgb(255 255 255/.12);color:#fff}
+.tpl-classic.pg-planDetail .sec-ph .ph-split .btn.ghost{border-color:#fff;color:#fff}
+.tpl-classic.pg-planDetail .sec-ph .btn:not(.ghost){background:#fff;border-color:#fff;color:var(--c-onSurface)}
+@media(min-width:720px){.tpl-classic .pl-hd:not(.no-pic){grid-template-columns:minmax(0,3fr) minmax(0,2fr)}.tpl-classic .pl-hd .ph-pic{order:2}}
+.tpl-classic .pl-block h2,.tpl-classic .pl-card h2{text-align:left}
+.tpl-classic .pl-block h2::after,.tpl-classic .pl-card h2::after{margin-left:0}
+.tpl-classic .pl-block{padding:var(--space-l);border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
+.tpl-classic .pl-block.pl-offer{background:var(--tint)}
+.tpl-classic .pl-talk{background:var(--c-onSurface);border-color:var(--c-onSurface);color:#fff}
+.tpl-classic .pl-talk h2{color:#fff}
+.tpl-classic .pl-talk h2::after{background:#fff}
+.tpl-classic .pl-talk .pl-talk-l{color:#D1D5DB}
+.tpl-classic .pl-talk .btn{background:#fff;border-color:#fff;color:var(--c-onSurface)}
+.tpl-classic .pl-talk .btn.ghost{background:transparent;color:#fff}

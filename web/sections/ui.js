@@ -39,7 +39,7 @@ export function ticker(items, { cls = "", label = "" } = {}) {
 // "true" on a plan page), then "Customer login" while the portal is on. One page (no ctx.pages): the login only.
 export function menuItems(ctx, { login = true } = {}) {
   const li = (ctx.pages || []).filter((p) => !p.plan && tr(ctx, p.def.labelKey)).map((p) => {
-    const cur = ctx.page && ctx.page.key === p.key ? ' aria-current="page"' : ctx.page && ctx.page.def.parent === p.key ? ' aria-current="true"' : "";
+    const cur = ctx.page && ctx.page.key === p.key ? ' aria-current="page"' : ctx.page && (ctx.page.def.parent === p.key || (ctx.page.key === "planDetail" && p.key === "insurance")) ? ' aria-current="true"' : "";
     return `<li><a href="${esc(pageUrl(ctx.links, p.path))}"${cur}>${esc(tr(ctx, p.def.labelKey))}</a></li>`;
   }).join("");
   const href = portalLogin(ctx), label = tr(ctx, "site.header_portal");

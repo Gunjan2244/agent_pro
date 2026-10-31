@@ -119,3 +119,29 @@
 .tpl-modern .help .btn.ghost{background:transparent;border-color:#fff;color:#fff}
 .tpl-modern .sec-contact .card{color:var(--c-onSurface)}
 .tpl-modern .sec-contact .way .btn.ghost{background:var(--c-surface);border-color:var(--accent);color:var(--accent)}
+
+/* plans (DECISIONS #130): featured plans as big editorial rows; a plan's page with a very big title, a facts row, a
+   wide picture under the title, numbered features, the documents as a table */
+.tpl-modern .frows{display:grid}
+.tpl-modern .frow{border-top:1px solid var(--c-outlineVariant)}
+.tpl-modern .frow>a,.tpl-modern .frow>div{display:grid;gap:var(--space-l);padding:var(--space-l) 0;color:inherit;text-decoration:none}
+@media(min-width:720px){.tpl-modern .frow>a,.tpl-modern .frow>div{grid-template-columns:minmax(0,2fr) minmax(0,3fr);align-items:center;gap:calc(var(--space-l)*2)}}
+.tpl-modern .frow .pic{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-sm)}
+.tpl-modern .fr-b{display:flex;flex-direction:column;gap:var(--space-s);align-items:flex-start}
+.tpl-modern .fr-b .kicker{margin:0}
+.tpl-modern .fr-h{font-size:var(--text-m);line-height:var(--line-m);font-weight:700;letter-spacing:-.01em}
+.tpl-modern .fr-b .meta{color:var(--c-muted);font-weight:400}
+.tpl-modern .fr-off{color:var(--accent);font-weight:600}
+.tpl-modern .lead.sub{margin:calc(var(--space-s)*-1) 0 var(--space-m)}
+.tpl-modern .pl-hd{grid-template-columns:minmax(0,1fr) !important}
+.tpl-modern .pl-hd .ph-pic{order:2}
+.tpl-modern .pl-hd .ph-pic .pic{aspect-ratio:21/9;border-radius:var(--shape-sm)}
+.tpl-modern .pl-hd .pl-tags{display:none}
+.tpl-modern .sec-facts{padding-top:0}
+.tpl-modern .sec-facts h2,.tpl-modern .pl-facts{margin:0}
+.tpl-modern .pl-kf.num{padding-left:0;list-style:none;counter-reset:kf}
+.tpl-modern .pl-kf.num li{counter-increment:kf;display:grid;grid-template-columns:calc(var(--space-l)*2) minmax(0,1fr);padding:var(--space-m) 0;border-top:1px solid var(--c-outlineVariant);color:var(--c-onSurface)}
+.tpl-modern .pl-kf.num li::before{content:counter(kf,decimal-leading-zero);color:var(--c-muted);font-weight:700}
+.tpl-modern .pl-side .pl-docs{border-top:1px solid var(--c-outlineVariant)}
+.tpl-modern .pl-side .pl-acts{margin-top:var(--space-l)}
+.tpl-modern .sec-similar.alt{max-width:none;background:var(--c-surfaceContainerLow);padding-inline:max(var(--gutter),calc((100% - var(--wrap))/2))}

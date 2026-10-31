@@ -12,6 +12,7 @@ import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
 import { slider, ticker, numbers, bigNumber, topBar } from "../../sections/ui.js";
 import { planOrEnquire } from "../../sections/pages.js";
+import { featuredSection, defaultPlanPage } from "../../sections/plan-page.js";
 
 const scene = (ctx) => `hero-scene-${(fnv1a32(ctx.seed || ctx.agentName || "") % 3) + 1}`;
 
@@ -105,3 +106,10 @@ export function testimonials(d, ctx) {
 }
 
 export const before = (ctx) => topBar(ctx);
+
+// Plans I recommend (DECISIONS #130): the featured official plans as picture cards in a slider, like the offers.
+export const featuredPlans = (d, ctx) => featuredSection(d, ctx, { layout: "slider" });
+
+// A plan's page: the shared arrangement (features, note and offer beside the documents and a dark "Talk to …" card
+// that stays in view), under a dark header with the picture on the right (style.css).
+export const planPage = (x) => defaultPlanPage(x);

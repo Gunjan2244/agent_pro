@@ -78,3 +78,19 @@
 .tpl-guide .ph-photo.mono{background:var(--c-surface)}
 .tpl-guide .g-trust{margin-top:var(--sec-y)}
 .tpl-guide .need-h .lnk{display:inline-block;margin-top:var(--space-s)}
+
+/* plans (DECISIONS #130): featured plans grouped by need; a plan's page as numbered steps beside the picture, the
+   offer and plans to compare */
+.tpl-guide .fneeds{display:grid;gap:calc(var(--space-l)*2)}
+.tpl-guide .fneed{display:grid;gap:var(--space-l)}
+@media(min-width:1024px){.tpl-guide .fneed{grid-template-columns:minmax(0,1fr) minmax(0,2fr);align-items:start}.tpl-guide .fneed .pcards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tpl-guide .fneed .need-h{display:flex;gap:var(--space-m);align-items:center}
+.tpl-guide .fneed .need-h .pic{width:96px;aspect-ratio:4/3;object-fit:cover;border-radius:var(--shape-md)}
+.tpl-guide .fneed .need-h h3{font-size:var(--text-m);line-height:var(--line-m)}
+.tpl-guide .lead.sub{margin:calc(var(--space-s)*-1) 0 var(--space-l)}
+.tpl-guide.pg-planDetail .pl-hd .ph-pic{display:none}
+.tpl-guide.pg-planDetail .ph-split:not(.no-pic){grid-template-columns:minmax(0,1fr)}
+.tpl-guide .pl-side .pl-pic .pic{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-lg)}
+.tpl-guide .pl-step .pl-docs{margin-top:var(--space-s)}
+.tpl-guide .pl-side .offers{grid-template-columns:minmax(0,1fr)}
+.tpl-guide .pl-side .pr-go{display:none}

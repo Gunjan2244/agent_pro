@@ -6,8 +6,19 @@
       "key": "home",
       "path": "",
       "labelKey": "site.page_home",
-      "sections": ["hero", "offers", "services", "about", "highlights", "contact"],
-      "teasers": ["services", "about", "contact"]
+      "sections": [
+        "hero",
+        "offers",
+        "services",
+        "about",
+        "highlights",
+        "contact"
+      ],
+      "teasers": [
+        "services",
+        "about",
+        "contact"
+      ]
     },
     {
       "key": "insurance",
@@ -15,14 +26,27 @@
       "labelKey": "site.page_insurance",
       "titleKey": "site.page_insurance_title",
       "leadKey": "site.page_insurance_lead",
-      "sections": ["services", "offers"],
+      "sections": [
+        "services",
+        "offers"
+      ],
       "helpBand": true
     },
     {
       "key": "plan",
       "path": "insurance/{interest}",
       "parent": "insurance",
-      "sections": ["offers", "plans"],
+      "sections": [
+        "offers",
+        "plans"
+      ],
+      "helpBand": true
+    },
+    {
+      "key": "planDetail",
+      "path": "insurance/{interest}/{plan}",
+      "parent": "plan",
+      "sections": [],
       "helpBand": true
     },
     {
@@ -31,7 +55,13 @@
       "labelKey": "site.page_about",
       "titleKey": "site.page_about",
       "headerSection": "about",
-      "sections": ["about", "companies", "highlights", "achievements", "testimonials"],
+      "sections": [
+        "about",
+        "companies",
+        "highlights",
+        "achievements",
+        "testimonials"
+      ],
       "helpBand": true
     },
     {
@@ -40,9 +70,23 @@
       "labelKey": "site.page_contact",
       "titleKey": "site.page_contact_title",
       "leadKey": "site.page_contact_lead",
-      "sections": ["contact", "faq", "portal"],
+      "sections": [
+        "contact",
+        "faq",
+        "portal"
+      ],
       "order": "page",
-      "pair": ["faq", "portal"]
+      "pair": [
+        "faq",
+        "portal"
+      ]
+    },
+    {
+      "key": "go",
+      "path": "go/{plan}/{doc}",
+      "standalone": true,
+      "sections": []
     }
-  ]
+  ],
+  "featuredItems": 6
 }

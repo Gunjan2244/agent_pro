@@ -87,3 +87,17 @@
 .tpl-spotlight .sec-ph .btn.ghost,.tpl-spotlight .sec-ph .chip{background:transparent;border-color:rgb(255 255 255/.5);color:#fff}
 .tpl-spotlight .sec-ph .ph-photo.mono{background:rgb(255 255 255/.08);color:#fff}
 .tpl-spotlight .help{background:var(--tint)}
+
+/* plans (DECISIONS #130): a plan's page leads with the offer on it in a tinted band; features as a checklist,
+   documents as tiles, an "Ask me" band at the end */
+.tpl-spotlight .sec.band{max-width:none;background:var(--tint);padding-inline:max(var(--gutter),calc((100% - var(--wrap))/2))}
+.tpl-spotlight .sec-offer.band .offers{margin-top:0}
+.tpl-spotlight .sec-offer.band .offer{border:0;box-shadow:0 12px 32px rgb(17 24 39/.1)}
+.tpl-spotlight .sec-docs.alt{max-width:none;background:var(--c-surfaceContainerLow);padding-inline:max(var(--gutter),calc((100% - var(--wrap))/2))}
+.tpl-spotlight .pl-tiles a{border-radius:var(--shape-lg)}
+
+
+
+.tpl-spotlight .pl-hd .ph-pic .pic{border-radius:var(--shape-lg)}
+.tpl-spotlight .sec-ph .pl-co{color:#CBD5E1}
+.tpl-spotlight .sec-ph .pill{background:rgb(255 255 255/.12);color:#fff}

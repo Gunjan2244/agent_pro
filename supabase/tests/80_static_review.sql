@@ -44,7 +44,7 @@ select tests.ok(
           'can_write', 'customer_signup_link', 'customer_signup_renew', 'delete_my_account', 'effective_flags', 'is_admin', 'is_admin_for', 'is_slug_available', 'list_companies', 'list_public_sites',
           'mark_premium_paid', 'mark_whats_new_seen', 'my_company_offers', 'my_company_plans', 'my_entitlement', 'portal_invite', 'portal_revoke', 'portal_status', 'preview_site_offers',
           'publish_site', 'record_consent', 'request_company',
-          'set_membership_types', 'set_site_plans', 'undo_premium_payment', 'update_data_request', 'withdraw_company_request'],
+          'set_featured_plans', 'set_membership_types', 'set_plan_features', 'set_site_plans', 'undo_premium_payment', 'update_data_request', 'withdraw_company_request'],
   '#A authenticated can execute exactly the documented RPCs (+ can_write, is_admin, is_admin_for, can_manage_company_media for RLS; effective_flags for FeatureFlags)',
   (select string_agg(f.proname, ',' order by f.proname) from pg_proc f join pg_namespace n on n.oid = f.pronamespace
     where n.nspname in ('public', 'private') and has_function_privilege('authenticated', f.oid, 'EXECUTE')));

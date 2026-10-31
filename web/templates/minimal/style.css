@@ -102,3 +102,11 @@
   .tpl-minimal .pc-nav a{border:0;border-bottom:1px solid var(--c-outlineVariant)}
   .tpl-minimal .duo{grid-column:2;display:block;padding:0}
 }
+
+/* plans (DECISIONS #130): rows in the résumé column; a plan's page as labelled blocks under the title */
+.tpl-minimal .prow .pic{flex-basis:64px;width:64px}
+.tpl-minimal .sec-pic{border-top:0;padding-top:0}
+.tpl-minimal .pl-pic .pic{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--shape-md)}
+.tpl-minimal .lead.sub{margin:calc(var(--space-s)*-1) 0 var(--space-m);font-size:var(--text-s);line-height:var(--line-s)}
+.tpl-minimal .pl-docs-l{margin:0 0 var(--space-s)}
+.tpl-minimal .pl-tags{margin-top:var(--space-s)}

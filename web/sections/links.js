@@ -8,7 +8,7 @@ const find = (ctx, f) => (Array.isArray(ctx.pages) ? ctx.pages.find(f) : null);
 // A page by key ("insurance", "about", "contact", "home"); "" when the site doesn't have it.
 export const pageHref = (ctx, key, opts) => { const p = find(ctx, (x) => x.key === key && !x.plan); return p ? pageUrl(ctx.links, p.path, opts) : ""; };
 // A plan type's own page ("" when the site has none for it).
-export const planHref = (ctx, key) => { const p = find(ctx, (x) => x.plan === key); return p ? pageUrl(ctx.links, p.path) : ""; };
+export const planHref = (ctx, key) => { const p = find(ctx, (x) => x.key === "plan" && x.plan === key); return p ? pageUrl(ctx.links, p.path) : ""; };
 // The enquiry: the contact page (with the interest preselected and the form in view), or #contact on one page.
 export const contactHref = (ctx, interest = "") =>
   Array.isArray(ctx.pages) ? pageHref(ctx, "contact", interest ? { interest, anchor: "enq" } : {}) || "#contact" : "#contact";

@@ -50,21 +50,36 @@ export function portalLinks(target) {
 }
 
 // ---- site pages (DECISIONS #122; the definitions are shared/site-pages.json) ----
+// A page path's placeholders: {interest} a catalog interest key (a plan type), {plan} a plan's slug (DECISIONS #130:
+// company_plans.slug), {doc} one of the documents a plan page links to (DOCS, the "We're taking you to …" page).
 const PLAN_KEY = /^[a-z][a-z0-9_]*$/;
-// -> { key, def, path, plan? } for a page path ("" = home, "about", "insurance/term"), or null when it names no page.
-// Only the syntax is checked here; whether the page exists for a site (a plan type it offers, a page with content) is
-// decided by the renderer (sections/pages.js), which renders "" for a page that doesn't exist.
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+export const DOCS = ["plan", "brochure", "policy", "cis", "calculator", "features"];
+const HOLE = { interest: (v) => PLAN_KEY.test(v), plan: (v) => SLUG_RE.test(v) && v.length <= 80, doc: (v) => DOCS.includes(v) };
+// -> { key, def, path, plan?, slug?, doc? } for a page path ("" = home, "about", "insurance/term",
+// "insurance/term/lics-digi-term", "go/lics-digi-term/brochure"), or null when it names no page. `plan` is the plan
+// type (interest key), `slug` the plan, `doc` the document. Only the syntax is checked here; whether the page exists
+// for a site (a plan type it offers, a plan it shows) is decided by the renderer (sections/index.js), which renders
+// "" for a page that doesn't exist.
 export function matchPage(defs, path) {
   const p = String(path ?? "");
   for (const def of (defs && defs.pages) || []) {
-    const at = def.path.indexOf("{interest}");
-    if (at < 0) { if (def.path === p) return { key: def.key, def, path: p }; continue; }
-    const pre = def.path.slice(0, at);
-    if (p.startsWith(pre) && PLAN_KEY.test(p.slice(pre.length))) return { key: def.key, def, path: p, plan: p.slice(pre.length) };
+    if (!def.path.includes("{")) { if (def.path === p) return { key: def.key, def, path: p }; continue; }
+    const want = def.path.split("/"), got = p.split("/");
+    if (want.length !== got.length) continue;
+    const out = { key: def.key, def, path: p };
+    let ok = true;
+    want.forEach((w, i) => {
+      const m = /^\{(interest|plan|doc)\}$/.exec(w);
+      if (!m) { ok = ok && w === got[i]; return; }
+      if (!HOLE[m[1]](got[i])) { ok = false; return; }
+      out[m[1] === "interest" ? "plan" : m[1] === "plan" ? "slug" : "doc"] = got[i];
+    });
+    if (ok) return out;
   }
   return null;
 }
-export const planPath = (def, key) => def.path.replace("{interest}", key);
+export const planPath = (def, key, slug = "", doc = "") => def.path.replace("{interest}", key).replace("{plan}", slug).replace("{doc}", doc);
 
 // How a site's pages link to each other, derived from its privacy link (like portalBase): "/a/<slug>/privacy" or
 // "/privacy" -> path links; "?…&page=privacy" (the local ?s= fallback, ?mock) -> query links; "#" (the in-app preview,
