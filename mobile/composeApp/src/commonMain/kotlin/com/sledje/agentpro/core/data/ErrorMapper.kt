@@ -49,6 +49,9 @@ object ErrorMapper {
             "duplicate_membership" -> return AppError.Validation("company", "duplicate")
             "invalid_types" -> return AppError.Validation("insurance_types")
         }
+        // The public text check (DECISIONS #77) on an agent's own words, e.g. a plan's key features (DECISIONS #130):
+        // blocked_term:<point>:<term>. [field] is the point (1-based), so the screen can mark it.
+        if (message.startsWith("blocked_term:")) return AppError.Validation(message.split(":").getOrNull(1).orEmpty(), "blocked_term")
         if (message in validationReasons) return AppError.Validation(message)
 
         // Supabase Auth error codes.

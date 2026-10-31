@@ -29,7 +29,7 @@
     <string name="offer_picker_copy_full">You already have the most own offers allowed. Remove one first.</string>
     <!-- Website → Plans on your site (DECISIONS #129): the agent's choice of their companies' official plans. -->
     <string name="plans_title">Plans on your site</string>
-    <string name="plans_intro">These are the official plans of your approved companies, for the insurance types you deal in with each. Your website shows only each plan\'s official name, plan number and UIN, with a link to the company\'s own website.</string>
+    <string name="plans_intro">These are the official plans of your approved companies, for the insurance types you deal in with each. Each plan gets its own page on your website: its official name and numbers, its key features, the company\'s documents and your offers on it.</string>
     <string name="plans_auto">Show all my companies\' plans</string>
     <string name="plans_auto_help">New plans your companies add appear by themselves. Turn this off to choose plans one by one.</string>
     <string name="plans_select_all">Select all</string>
@@ -40,4 +40,25 @@
     <string name="plans_saved">Saved. Your website shows these plans now.</string>
     <string name="plans_none_selected">No plan selected: your website will show none.</string>
     <string name="plans_empty">No plans yet. Plans appear here once a company has approved your link and has plans for the insurance types you chose.</string>
+    <string name="plans_featured_help">Star up to 6 plans for \"Plans I recommend\" on your Home page.</string>
+    <string name="plans_featured_full">Up to 6 plans can be featured on Home. Remove a star first.</string>
+    <string name="plans_star">Feature %1$s on Home</string>
+    <string name="plans_unstar">Remove %1$s from Home</string>
+    <string name="plans_features_theirs">Key features: company\'s words</string>
+    <string name="plans_features_yours">Key features: your words</string>
+    <string name="plans_features_title">Key features</string>
+    <string name="plans_features_default_note">Your website shows %1$s\'s own words, copied from its website. You can write your own instead, and go back to theirs at any time.</string>
+    <string name="plans_features_own_note">You\'re using your own words. Your website shows them as yours, with %1$s\'s documents for the official benefits and terms.</string>
+    <string name="plans_features_none">%1$s\'s key features haven\'t been added yet. You can write your own.</string>
+    <string name="plans_features_rules">Up to 5 points. Describe the plan in your own words; don\'t name a plan or an insurance company.</string>
+    <string name="plans_features_save">Save my words</string>
+    <string name="plans_features_saved">Saved. Your website shows your words now.</string>
+    <string name="plans_features_reset">Go back to %1$s\'s wording</string>
+    <string name="plans_features_reset_done">Your website shows %1$s\'s wording again.</string>
+    <string name="plans_features_blocked">Point %1$s names a plan or an insurance company. Use your own general words.</string>
+    <string name="plans_feature_1">Point 1</string>
+    <string name="plans_feature_2">Point 2</string>
+    <string name="plans_feature_3">Point 3</string>
+    <string name="plans_feature_4">Point 4</string>
+    <string name="plans_feature_5">Point 5</string>
 </resources>

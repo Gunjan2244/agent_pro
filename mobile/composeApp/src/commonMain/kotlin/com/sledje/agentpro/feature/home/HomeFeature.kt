@@ -161,7 +161,7 @@ internal fun FeatureHost.openWhatsNewItem(item: WhatsNewItem) {
         WhatsNewItem.MultiPageWebsite -> if (openTab("website")) nav.navigate(WebsitePreviewRoute)
         WhatsNewItem.PhotoEditor -> if (openTab("website")) nav.navigate(WebsiteSectionRoute("hero"))
         WhatsNewItem.ProfilePhoto -> nav.navigate(ProfileRoute)
-        WhatsNewItem.OfficialPlans -> if (openTab("website")) nav.navigate(SitePlansRoute)
+        WhatsNewItem.OfficialPlans, WhatsNewItem.PlanPages -> if (openTab("website")) nav.navigate(SitePlansRoute)
     }
 }
 

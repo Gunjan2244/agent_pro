@@ -14,6 +14,9 @@ import com.sledje.agentpro.core.catalog.FeatureId
 import com.sledje.agentpro.core.features.AppFeature
 import com.sledje.agentpro.core.features.FeatureHost
 import com.sledje.agentpro.core.features.HubEntry
+import com.sledje.agentpro.feature.offers.ui.PlanFeaturesActions
+import com.sledje.agentpro.feature.offers.ui.PlanFeaturesScreen
+import com.sledje.agentpro.feature.offers.ui.PlanFeaturesViewModel
 import com.sledje.agentpro.feature.offers.ui.PlansActions
 import com.sledje.agentpro.feature.offers.ui.PlansScreen
 import com.sledje.agentpro.feature.offers.ui.PlansViewModel
@@ -49,6 +52,7 @@ object OffersFeature : AppFeature {
     override fun NavGraphBuilder.routes(host: FeatureHost) {
         composable<OfferPickerRoute> { entry -> PickerRoute(host, entry) }
         composable<SitePlansRoute> { PlansRoute(host) }
+        composable<PlanFeaturesRoute> { entry -> FeaturesRoute(host, entry.toRoute<PlanFeaturesRoute>().planId) }
     }
 }
 
@@ -56,6 +60,8 @@ object OffersFeature : AppFeature {
 private fun PlansRoute(host: FeatureHost) {
     val vm = viewModel { PlansViewModel(host.deps.plans) }
     val state by vm.state.collectAsState()
+    // back from a plan's key features: show whose words each plan uses now
+    LaunchedEffect(Unit) { vm.refresh() }
     val actions = remember(vm) {
         PlansActions(
             onBack = { host.nav.popBackStack() },
@@ -65,9 +71,28 @@ private fun PlansRoute(host: FeatureHost) {
             onToggleCompany = vm::toggleCompany,
             onSave = vm::save,
             onSavedShown = vm::consumeSaved,
+            onStar = vm::toggleFeatured,
+            onFeaturedFullShown = vm::consumeFeaturedFull,
+            onFeatures = { id -> host.nav.navigate(PlanFeaturesRoute(id)) },
         )
     }
     PlansScreen(state, actions)
+}
+
+@Composable
+private fun FeaturesRoute(host: FeatureHost, planId: String) {
+    val vm = viewModel(key = "plan-features-$planId") { PlanFeaturesViewModel(host.deps.plans, planId) }
+    val state by vm.state.collectAsState()
+    val actions = remember(vm) {
+        PlanFeaturesActions(
+            onBack = { host.nav.popBackStack() },
+            onRetry = vm::load,
+            onSave = vm::save,
+            onReset = vm::resetToInsurer,
+            onSavedShown = vm::consumeSaved,
+        )
+    }
+    PlanFeaturesScreen(state, vm.form, vm.canSave(), actions)
 }
 
 @Composable

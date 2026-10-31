@@ -43,6 +43,7 @@ import com.sledje.agentpro.resources.ic_arrow_forward
 import com.sledje.agentpro.resources.ic_description
 import com.sledje.agentpro.resources.ic_person
 import com.sledje.agentpro.resources.ic_savings
+import com.sledje.agentpro.resources.ic_star
 import com.sledje.agentpro.resources.ic_web
 import com.sledje.agentpro.resources.whats_new_companies
 import com.sledje.agentpro.resources.whats_new_customers
@@ -55,6 +56,8 @@ import com.sledje.agentpro.resources.whats_new_pages_body
 import com.sledje.agentpro.resources.whats_new_photo_editor
 import com.sledje.agentpro.resources.whats_new_plans
 import com.sledje.agentpro.resources.whats_new_plans_body
+import com.sledje.agentpro.resources.whats_new_plan_pages
+import com.sledje.agentpro.resources.whats_new_plan_pages_body
 import com.sledje.agentpro.resources.whats_new_profile_photo
 import com.sledje.agentpro.resources.whats_new_show_me
 import com.sledje.agentpro.resources.whats_new_templates
@@ -132,6 +135,13 @@ enum class WhatsNewItem(
      * Show me opens Website → Plans on your site, where the agent chooses which plans to show.
      */
     OfficialPlans(6, FeatureId.Offers, Res.string.whats_new_plans, Res.drawable.ic_description, walkthrough = true, body = Res.string.whats_new_plans_body),
+
+    /**
+     * Important (#130): every official plan got its own page on the agent's website (the insurer's key features, its
+     * documents through a "We're taking you to …" page, the offers on it), Home gained "Plans I recommend", and all five
+     * templates were redesigned around them. Show me opens Website → Plans on your site (stars, key features).
+     */
+    PlanPages(7, FeatureId.Offers, Res.string.whats_new_plan_pages, Res.drawable.ic_star, walkthrough = true, body = Res.string.whats_new_plan_pages_body),
 }
 
 /** The sheet's body (the frame, with its "What's new" title, is the shared bottom sheet). */
