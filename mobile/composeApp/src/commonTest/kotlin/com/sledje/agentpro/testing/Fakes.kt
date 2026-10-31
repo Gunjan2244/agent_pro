@@ -75,9 +75,10 @@ fun testProfile(
     phone: String? = "+919876543210",
     designation: String? = "LIC Agent",
     city: String? = "Pune",
+    whatsNewSeen: Int = 0,
 ) = Profile(
     id = TEST_USER, fullName = fullName, phone = phone, email = "ramesh@example.com", designation = designation,
-    agencyCode = null, branch = null, city = city, photoUrl = null, preferredLanguage = null,
+    agencyCode = null, branch = null, city = city, photoUrl = null, preferredLanguage = null, whatsNewSeen = whatsNewSeen,
 )
 
 fun testSite(slug: String = "ramesh-kumar", published: Boolean = false) = Site(
@@ -220,6 +221,16 @@ class FakeProfileRepository(initial: Profile? = null) : ProfileRepository {
         )
         profile.value = updated
         return Result.Ok(updated)
+    }
+
+    var markError: AppError? = null
+    val marks = mutableListOf<Int>()
+
+    override suspend fun markWhatsNewSeen(version: Int): AppResult<Unit> {
+        marks += version
+        markError?.let { return Result.Err(it) }
+        profile.value = profile.value?.let { it.copy(whatsNewSeen = maxOf(it.whatsNewSeen, version)) }
+        return Result.Ok(Unit)
     }
 }
 

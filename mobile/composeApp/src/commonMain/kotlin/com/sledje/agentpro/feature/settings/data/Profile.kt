@@ -21,6 +21,8 @@ data class Profile(
     val city: String?,
     val photoUrl: String?,
     val preferredLanguage: String?,
+    /** The highest "What's new" version seen, kept on the account (DECISIONS #127); 0 = none. */
+    val whatsNewSeen: Int = 0,
 ) {
     /** Onboarding step 1 is done once the required fields (name and mobile) are filled. */
     val isComplete: Boolean get() = !fullName.isNullOrBlank() && !phone.isNullOrBlank()
@@ -56,6 +58,7 @@ data class ProfileDto(
     val city: String? = null,
     @SerialName("photo_url") val photoUrl: String? = null,
     @SerialName("preferred_language") val preferredLanguage: String? = null,
+    @SerialName("whats_new_seen") val whatsNewSeen: Int = 0,
     @SerialName("updated_at") val updatedAt: String,
 )
 
@@ -71,6 +74,7 @@ data class ProfileEntity(
     val city: String?,
     val photoUrl: String?,
     val preferredLanguage: String?,
+    val whatsNewSeen: Int,
     val updatedAt: String,
 )
 
@@ -93,11 +97,11 @@ interface ProfileDao {
 fun ProfileDto.toEntity() = ProfileEntity(
     id = id, fullName = fullName, phone = phone, email = email, designation = designation,
     agencyCode = agencyCode, branch = branch, city = city, photoUrl = photoUrl,
-    preferredLanguage = preferredLanguage, updatedAt = updatedAt,
+    preferredLanguage = preferredLanguage, whatsNewSeen = whatsNewSeen, updatedAt = updatedAt,
 )
 
 fun ProfileEntity.toModel() = Profile(
     id = id, fullName = fullName, phone = phone, email = email, designation = designation,
     agencyCode = agencyCode, branch = branch, city = city, photoUrl = photoUrl,
-    preferredLanguage = preferredLanguage,
+    preferredLanguage = preferredLanguage, whatsNewSeen = whatsNewSeen,
 )

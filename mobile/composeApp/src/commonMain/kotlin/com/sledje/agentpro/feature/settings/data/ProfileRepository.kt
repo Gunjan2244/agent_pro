@@ -9,6 +9,7 @@ import com.sledje.agentpro.core.data.SyncTable
 import com.sledje.agentpro.core.data.remoteCall
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonObject
@@ -19,6 +20,9 @@ import kotlinx.serialization.json.put
 interface ProfileRepository {
     fun observeMine(): Flow<Profile?>
     suspend fun update(input: ProfileInput): AppResult<Profile>
+
+    /** Raises the account's "What's new" seen version to [version] (`mark_whats_new_seen`, never lowers it; DECISIONS #127). */
+    suspend fun markWhatsNewSeen(version: Int): AppResult<Unit>
 }
 
 const val PROFILES_TABLE = "profiles"
@@ -49,6 +53,12 @@ class SupabaseProfileRepository(
         sync.applyLocal(PROFILES_TABLE, listOf(row))
         sync.refresh(PROFILES_TABLE) // "after each write"; a failure here doesn't fail the write
         RowJson.decodeFromJsonElement(ProfileDto.serializer(), row).toEntity().toModel()
+    }
+
+    override suspend fun markWhatsNewSeen(version: Int): AppResult<Unit> = remoteCall {
+        val result = supabase.require().postgrest.rpc("mark_whats_new_seen", buildJsonObject { put("seen", version) }).decodeAs<JsonObject>()
+        (result["profile"] as? JsonObject)?.let { sync.applyLocal(PROFILES_TABLE, listOf(it)) }
+        Unit
     }
 }
 

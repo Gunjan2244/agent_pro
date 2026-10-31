@@ -148,7 +148,7 @@ class HomeViewModelTest {
         val d = deps(site = true)
         d.store.put(StoreKeys.WHATS_NEW_SEEN, "1")
         val s = vm(d).state.value
-        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor), s.walkthrough, "only what's newer than version 1")
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), s.walkthrough, "only what's newer than version 1")
         assertTrue(s.whatsNew.isEmpty(), "no sheet while there's a walkthrough, and the old rows don't repeat")
     }
 
@@ -156,20 +156,20 @@ class HomeViewModelTest {
     fun aFreshAgentWithASiteGetsEveryPendingItemAsPagesImportantFirst() = runTest {
         val s = vm(deps(site = true)).state.value
         assertEquals(
-            listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.CustomerLogin, WhatsNewItem.ForMyCustomers, WhatsNewItem.PhotoEditor),
+            listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.CustomerLogin, WhatsNewItem.ForMyCustomers, WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto),
             s.walkthrough,
         )
         assertTrue(s.whatsNew.isEmpty())
         val portalOff = vm(deps(FeatureFlags(mapOf("customerPortal" to false)), site = true)).state.value
-        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.PhotoEditor), portalOff.walkthrough, "a feature that's off drops its item")
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.Companies, WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), portalOff.walkthrough, "a feature that's off drops its item")
     }
 
     @Test
-    fun anAgentWhoSawVersion3GetsThePhotoEditorInTheHomeSheet() = runTest {
+    fun anAgentWhoSawVersion3GetsThePhotoItemsInTheHomeSheet() = runTest {
         val d = deps(site = true)
         d.store.put(StoreKeys.WHATS_NEW_SEEN, "3")
         val s = vm(d).state.value
-        assertEquals(listOf(WhatsNewItem.PhotoEditor), s.whatsNew, "a small item: the sheet")
+        assertEquals(listOf(WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), s.whatsNew, "a small item: the sheet")
         assertTrue(s.walkthrough.isEmpty())
     }
 
@@ -214,14 +214,57 @@ class HomeViewModelTest {
 
     @Test
     fun whatsNewVersionRules() {
-        assertEquals(4, WhatsNew.VERSION, "the newest item's version")
+        assertEquals(5, WhatsNew.VERSION, "the newest item's version")
         val all: (com.sledje.agentpro.core.catalog.FeatureId) -> Boolean = { true }
-        assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending(null, hasSite = true, enabled = all))
-        assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending("junk", hasSite = true, enabled = all), "unreadable counts as 0")
-        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor), WhatsNew.pending("1", hasSite = true, enabled = all))
-        assertEquals(listOf(WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor), WhatsNew.pending("2", hasSite = true, enabled = all))
-        assertEquals(listOf(WhatsNewItem.PhotoEditor), WhatsNew.pending("3", hasSite = true, enabled = all))
-        assertTrue(WhatsNew.pending("4", hasSite = true, enabled = all).isEmpty())
-        assertTrue(WhatsNew.pending(null, hasSite = false, enabled = all).isEmpty())
+        assertEquals(0, WhatsNew.seenVersion(null))
+        assertEquals(0, WhatsNew.seenVersion("junk"), "unreadable counts as 0")
+        assertEquals(3, WhatsNew.seenVersion("3", account = 1), "the higher of the device's and the account's")
+        assertEquals(5, WhatsNew.seenVersion(null, account = 5), "a reinstall: the account still knows")
+        assertEquals(WhatsNewItem.entries.toList(), WhatsNew.pending(0, hasSite = true, enabled = all))
+        assertEquals(listOf(WhatsNewItem.NewTemplates, WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), WhatsNew.pending(1, hasSite = true, enabled = all))
+        assertEquals(listOf(WhatsNewItem.MultiPageWebsite, WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), WhatsNew.pending(2, hasSite = true, enabled = all))
+        assertEquals(listOf(WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), WhatsNew.pending(3, hasSite = true, enabled = all))
+        assertEquals(listOf(WhatsNewItem.ProfilePhoto), WhatsNew.pending(4, hasSite = true, enabled = all))
+        assertTrue(WhatsNew.pending(5, hasSite = true, enabled = all).isEmpty())
+        assertTrue(WhatsNew.pending(0, hasSite = false, enabled = all).isEmpty())
+    }
+
+    @Test
+    fun afterAReinstallTheAccountsMarkHidesWhatWasAlreadySeen() = runTest {
+        // Nothing on the device (reinstall, cleared storage, new phone); the account saw version 3.
+        val d = deps(site = true).also { (it.profiles as FakeProfileRepository).profile.value = testProfile(whatsNewSeen = 3) }
+        val s = vm(d).state.value
+        assertEquals(listOf(WhatsNewItem.PhotoEditor, WhatsNewItem.ProfilePhoto), s.whatsNew, "only what's newer than the account's mark")
+        assertTrue(s.walkthrough.isEmpty(), "the old walkthrough doesn't come back")
+        assertTrue((d.profiles as FakeProfileRepository).marks.isEmpty(), "nothing to raise: the device has less")
+    }
+
+    @Test
+    fun theDevicesMarkIsRaisedOnTheAccount() = runTest {
+        // An agent who dismissed everything before the account kept it: Home copies it up once.
+        val d = deps(site = true)
+        val profiles = d.profiles as FakeProfileRepository
+        d.store.put(StoreKeys.WHATS_NEW_SEEN, "5")
+        val vm = vm(d)
+        assertEquals(listOf(5), profiles.marks)
+        assertEquals(5, profiles.profile.value?.whatsNewSeen)
+        assertTrue(vm.state.value.whatsNew.isEmpty() && vm.state.value.walkthrough.isEmpty())
+    }
+
+    @Test
+    fun dismissingMarksTheAccountTooAndAFailureIsRetriedNextRun() = runTest {
+        val d = deps(site = true)
+        val profiles = d.profiles as FakeProfileRepository
+        profiles.markError = AppError.Offline
+        val first = vm(d)
+        first.markWhatsNewSeen()
+        runCurrent()
+        assertEquals(listOf(WhatsNew.VERSION), profiles.marks, "tried once")
+        assertEquals(0, profiles.profile.value?.whatsNewSeen, "offline: the account isn't marked yet")
+        assertTrue(first.state.value.walkthrough.isEmpty(), "but the device's mark already hides it")
+        profiles.markError = null
+        vm(d)
+        assertEquals(listOf(WhatsNew.VERSION, WhatsNew.VERSION), profiles.marks, "the next app run tries again")
+        assertEquals(WhatsNew.VERSION, profiles.profile.value?.whatsNewSeen)
     }
 }

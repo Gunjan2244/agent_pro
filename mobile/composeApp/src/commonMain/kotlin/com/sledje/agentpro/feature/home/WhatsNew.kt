@@ -53,6 +53,7 @@ import com.sledje.agentpro.resources.whats_new_page
 import com.sledje.agentpro.resources.whats_new_pages
 import com.sledje.agentpro.resources.whats_new_pages_body
 import com.sledje.agentpro.resources.whats_new_photo_editor
+import com.sledje.agentpro.resources.whats_new_profile_photo
 import com.sledje.agentpro.resources.whats_new_show_me
 import com.sledje.agentpro.resources.whats_new_templates
 import com.sledje.agentpro.resources.whats_new_templates_body
@@ -69,21 +70,22 @@ import org.jetbrains.compose.resources.stringResource
  * is shown only the items above n. If any of them is important ([WhatsNewItem.walkthrough]), they all show as the
  * full-screen walkthrough on the next app open ([WhatsNewScreen]); otherwise as the Home sheet ([WhatsNewContent]).
  * Shipping one is adding an item with `since` = [VERSION] + 1. New sign-ups never see any: finishing onboarding marks
- * the current version seen.
+ * the current version seen. "Seen" is kept on the device and on the account (DECISIONS #127), so a reinstall or a new
+ * phone doesn't show old items again.
  */
 object WhatsNew {
     /** The newest item's version; what "seen" is set to. */
     val VERSION: Int = WhatsNewItem.entries.maxOf { it.since }
 
-    /** The stored `whats_new_seen` value as a version (missing or unreadable counts as 0). */
-    fun seenVersion(seen: String?): Int = seen?.toIntOrNull() ?: 0
+    /** What the agent has seen: the higher of this device's `whats_new_seen` and the account's (missing or unreadable counts as 0). */
+    fun seenVersion(device: String?, account: Int? = null): Int = maxOf(device?.toIntOrNull() ?: 0, account ?: 0)
 
     /** Existing agents only (they have a site): the items newer than [seen] whose feature is on. */
-    fun pending(seen: String?, hasSite: Boolean, enabled: (FeatureId) -> Boolean): List<WhatsNewItem> =
+    fun pending(seen: Int, hasSite: Boolean, enabled: (FeatureId) -> Boolean): List<WhatsNewItem> =
         if (!hasSite) {
             emptyList()
         } else {
-            WhatsNewItem.entries.filter { it.since > seenVersion(seen) && enabled(it.feature) }
+            WhatsNewItem.entries.filter { it.since > seen && enabled(it.feature) }
         }
 
     /** The walkthrough's pages: every pending item, important ones first, as soon as one is important; else none. */
@@ -119,6 +121,9 @@ enum class WhatsNewItem(
 
     /** Photos open the photo editor (zoom, move, how customers see it); small: the live site only changes if they re-pick. */
     PhotoEditor(4, FeatureId.SiteBuilder, Res.string.whats_new_photo_editor, Res.drawable.ic_add_photo_alternate),
+
+    /** The agent can change their photo from Settings → Profile; small: nothing changes unless they use it. */
+    ProfilePhoto(5, FeatureId.SiteBuilder, Res.string.whats_new_profile_photo, Res.drawable.ic_person),
 }
 
 /** The sheet's body (the frame, with its "What's new" title, is the shared bottom sheet). */

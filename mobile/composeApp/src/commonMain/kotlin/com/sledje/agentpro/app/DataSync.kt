@@ -66,7 +66,10 @@ class AppDataSync(
     override suspend fun onSignedIn(userId: String) = mutex.withLock {
         prepare()
         val last = store.get(StoreKeys.LAST_USER_ID)
-        if (last != null && last != userId) engine.clearAll()
+        if (last != null && last != userId) {
+            engine.clearAll()
+            store.put(StoreKeys.WHATS_NEW_SEEN, null) // the other agent's; this one's is on their profile
+        }
         if (last != userId) store.put(StoreKeys.LAST_USER_ID, userId)
     }
 
@@ -75,6 +78,7 @@ class AppDataSync(
         store.put(StoreKeys.LAST_USER_ID, null)
         store.put(StoreKeys.SITE_SHARED, null)
         store.put(StoreKeys.PORTAL_INVITED, null)
+        store.put(StoreKeys.WHATS_NEW_SEEN, null)
         store.put(StoreKeys.PENDING_SIGNUP_CONSENT, null)
         _status.value = SyncStatus.Idle
     }

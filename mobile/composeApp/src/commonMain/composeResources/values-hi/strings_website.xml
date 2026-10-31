@@ -88,4 +88,5 @@
     <string name="website_match_hint">आपकी वेबसाइट की सेवाएँ आपके बीमा के प्रकारों से मेल नहीं खातीं।</string>
     <string name="website_match_hint_action">सेवाएँ अपडेट करें</string>
     <string name="website_match_done">सेवाएँ अपडेट हो गईं। इन्हें लाइव करने के लिए प्रकाशित करें।</string>
+    <string name="profile_photo_saved">फ़ोटो अपडेट हो गई। इसे अपनी वेबसाइट पर दिखाने के लिए प्रकाशित करें।</string>
 </resources>

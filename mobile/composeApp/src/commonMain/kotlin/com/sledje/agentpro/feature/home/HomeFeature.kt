@@ -74,6 +74,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -157,6 +159,7 @@ internal fun FeatureHost.openWhatsNewItem(item: WhatsNewItem) {
         WhatsNewItem.NewTemplates -> if (openTab("website")) nav.navigate(WebsiteTemplatesRoute)
         WhatsNewItem.MultiPageWebsite -> if (openTab("website")) nav.navigate(WebsitePreviewRoute)
         WhatsNewItem.PhotoEditor -> if (openTab("website")) nav.navigate(WebsiteSectionRoute("hero"))
+        WhatsNewItem.ProfilePhoto -> nav.navigate(ProfileRoute)
     }
 }
 
@@ -213,6 +216,13 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
                 // Offline or failing: the item just stays undone.
             }
         }
+        // The account keeps what was seen (DECISIONS #127): raise it to this device's mark, whether it's a dismissal
+        // here or one from before the account kept it. Offline or failing: tried again on the next app run.
+        viewModelScope.launch {
+            combine(deps.store.observe(StoreKeys.WHATS_NEW_SEEN), deps.profiles.observeMine()) { device, profile ->
+                WhatsNew.seenVersion(device).takeIf { profile != null && it > profile.whatsNewSeen }
+            }.filterNotNull().distinctUntilChanged().collect { deps.profiles.markWhatsNewSeen(it) }
+        }
     }
 
     private val marks = combine(
@@ -228,7 +238,7 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
         marks,
         combine(deps.customers.observeAll(), companiesLinked) { customers, linked -> customers.isNotEmpty() to linked },
     ) { profile, site, flags, (shared, invited, seen), (hasCustomers, linked) ->
-        val news = WhatsNew.pending(seen, hasSite = site != null, enabled = flags::isEnabled)
+        val news = WhatsNew.pending(WhatsNew.seenVersion(seen, profile?.whatsNewSeen), hasSite = site != null, enabled = flags::isEnabled)
         HomeUiState(
             firstName = profile?.firstName,
             photoUrl = site?.heroPhoto() ?: profile?.photoUrl?.takeIf { it.isNotBlank() },
@@ -253,7 +263,10 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
     /** True the first time only, so Home opens the walkthrough once (not again on Back or recomposition). */
     fun claimWalkthrough(): Boolean = !walkthroughOpened.also { walkthroughOpened = true }
 
-    /** Closing the sheet or the walkthrough, a row, "Got it", "Show me", "Not now": this version won't show again. */
+    /**
+     * Closing the sheet or the walkthrough, a row, "Got it", "Show me", "Not now": this version won't show again. Marked
+     * on the device at once; the account follows (see init).
+     */
     fun markWhatsNewSeen() {
         viewModelScope.launch { deps.store.put(StoreKeys.WHATS_NEW_SEEN, WhatsNew.VERSION.toString()) }
     }

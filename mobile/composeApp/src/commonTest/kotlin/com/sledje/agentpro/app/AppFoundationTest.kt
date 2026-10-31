@@ -126,15 +126,19 @@ class AppFoundationTest {
         sync.onSignedIn("user-a")
         assertEquals(1, table.cleared, "same user: cache kept")
 
+        store.put(StoreKeys.WHATS_NEW_SEEN, "4")
         sync.onSignedIn("user-b")
         assertEquals(2, table.cleared, "another user: cache cleared")
+        assertNull(store.get(StoreKeys.WHATS_NEW_SEEN), "and user-a's What's new mark")
 
         assertEquals(Result.Ok(Unit), sync.refreshAll())
         assertEquals(SyncStatus.Done, sync.status.value)
 
+        store.put(StoreKeys.WHATS_NEW_SEEN, "4")
         sync.clearAll()
         assertEquals(3, table.cleared)
         assertNull(store.get(StoreKeys.LAST_USER_ID))
+        assertNull(store.get(StoreKeys.WHATS_NEW_SEEN), "sign-out: the account keeps it (DECISIONS #127)")
         assertNull(SyncCursorStore(store).get("profiles"))
     }
 }

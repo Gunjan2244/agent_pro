@@ -88,4 +88,5 @@
     <string name="website_match_hint">Your website's services don't match the insurance you deal in.</string>
     <string name="website_match_hint_action">Update services</string>
     <string name="website_match_done">Services updated. Publish to make them live.</string>
+    <string name="profile_photo_saved">Photo updated. Publish to show it on your website.</string>
 </resources>

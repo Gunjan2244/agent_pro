@@ -40,7 +40,10 @@ object StoreKeys {
     /** Set once a customer-login invite succeeded on this device (Home checklist: "Give a customer their login"); cleared on sign-out. */
     const val PORTAL_INVITED = "setup_portal_invited"
 
-    /** The highest "What's new" version the agent has seen (`WhatsNew.VERSION`); kept across sign-outs. */
+    /**
+     * The highest "What's new" version the signed-in agent has seen on this device (`WhatsNew.VERSION`). The account
+     * keeps its own copy (`profiles.whats_new_seen`, DECISIONS #127); Home raises that one to this. Cleared on sign-out.
+     */
     const val WHATS_NEW_SEEN = "whats_new_seen"
 
     /**

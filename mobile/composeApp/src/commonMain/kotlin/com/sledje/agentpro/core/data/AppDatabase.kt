@@ -57,8 +57,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun siteDailyViewDao(): SiteDailyViewDao
 
     companion object {
-        /** 2: site_daily_views (Phase 8); enquiries, customers, policies, premium_payments (Phases 6–7). 3: customer_drafts. */
-        const val VERSION = 3
+        /** 2: site_daily_views (Phase 8); enquiries, customers, policies, premium_payments (Phases 6–7). 3: customer_drafts. 4: profiles.whatsNewSeen. */
+        const val VERSION = 4
         const val FILE_NAME = "agentpro.db"
     }
 }
