@@ -59,6 +59,12 @@
           "maxLength": 600
         },
         {
+          "key": "feeNote",
+          "type": "multiline",
+          "labelKey": "field.fee_note",
+          "maxLength": 160
+        },
+        {
           "key": "designation",
           "type": "text",
           "labelKey": "field.designation",

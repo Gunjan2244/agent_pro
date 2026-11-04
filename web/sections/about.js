@@ -1,8 +1,10 @@
 import { esc, has, arr, optionLabel } from "./util.js";
-// Years and clients, only when the agent set them (never invented, DECISIONS #78). `strong` wraps the number.
-export function stats(d, ctx) {
+// Years and clients, only when the agent set them (never invented, DECISIONS #78). `strong` wraps the number;
+// opts.count: it counts up when it comes into view (`strong.cu`, motion.js).
+export function stats(d, ctx, opts = {}) {
   const out = [];
-  const one = (key, n) => esc(ctx.t(key, { n: "\u0000" })).replace("\u0000", `<strong>${esc(n)}</strong>`);
+  const strong = opts.count ? '<strong class="cu">' : "<strong>";
+  const one = (key, n) => esc(ctx.t(key, { n: "\u0000" })).replace("\u0000", `${strong}${esc(n)}</strong>`);
   if (has(d.yearsExperience)) out.push(one("site.years_experience", d.yearsExperience));
   if (has(d.clientsServed)) out.push(one("site.clients_served", d.clientsServed));
   return out;
@@ -11,7 +13,7 @@ export function stats(d, ctx) {
 export function aboutData(d, ctx) {
   const { t, profile: p } = ctx;
   // On the offers family the trust strip (highlights) carries the numbers, so they aren't repeated here.
-  const st = ctx.family === "offers" && ctx.visible.has("highlights") ? [] : stats(d, ctx);
+  const st = ctx.family === "offers" && ctx.visible.has("highlights") ? [] : stats(d, ctx, { count: true });
   const langs = arr(d.languagesSpoken).map((k) => optionLabel(ctx, "about", "languagesSpoken", null, k));
   const code = d.showAgencyCode && has(p.agency_code) ? t("site.agency_code", { code: p.agency_code }) : "";
   return { st, langs, code, any: [d.bio, d.designation, st.length, langs.length, code].some(Boolean) };
@@ -25,5 +27,5 @@ export function about(d, ctx) {
     code ? `<li>${esc(code)}</li>` : "",
   ].join("");
   return `<h2>${esc(ctx.t("section.about"))}</h2>
-<div class="about-b">${has(d.designation) ? `<p class="kicker">${esc(d.designation)}</p>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}${st.length ? `<ul class="stats">${st.map((s) => `<li>${s.replace("<strong>", '<strong class="cu">')}</li>`).join("")}</ul>` : ""}${facts ? `<ul class="facts">${facts}</ul>` : ""}</div>`;
+<div class="about-b">${has(d.designation) ? `<p class="kicker">${esc(d.designation)}</p>` : ""}${has(d.bio) ? `<p class="prose">${esc(d.bio)}</p>` : ""}${st.length ? `<ul class="stats">${st.map((s) => `<li>${s}</li>`).join("")}</ul>` : ""}${facts ? `<ul class="facts">${facts}</ul>` : ""}</div>`;
 }

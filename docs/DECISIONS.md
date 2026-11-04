@@ -740,7 +740,7 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
 - **Why:** the user asked where the site needs images and for a prompt per image; pre-filled sites (#78) and the persuasive family (#76) look unfinished without pictures. Fabricated faces would be misleading social proof; text in images can't be translated or indexed.
 - **Trade-off:** about 300 KB of WebP in the repo (only the images in view load, lazily); every site shares the same illustrations (the hero scene varies by slug).
 - **Alternatives considered:** stock photos (licensing per image, inconsistent look, real faces); agent-uploaded images for every slot (contradicts "finished at once").
-- **Status:** Accepted. Generation is pending (the user, or a generator connected later).
+- **Status:** Accepted. Generation is pending (the user, or a generator connected later). Style, palette and the no-text rule superseded by #133 (2026-11-04); the slots, formats, budgets and pipeline stand.
 
 ### #82 — 2026-10-18 — The desktop hero scene may be the LCP element
 - **Decision:** on wide screens (≥ 1024 px), Spotlight and Guide show the hero scene in the right column under the featured offer, 400 px wide, and it becomes the desktop LCP element. On phones the LCP element stays the `<h1>` (or the agent's photo), and the scene stays lazy and below the fold. This refines #81's "the agent's photo stays the only eager image (LCP)".
@@ -1148,3 +1148,91 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
 - **Alternatives considered:** linking plan cards straight to the insurer (rejected by the user); a JS countdown on the go page (rejected: a meta refresh needs no script and no CSP change); per-plan bundled pictures (rejected: 278 files; the default is drawn); letting agents edit freely without labels (rejected: compliance).
 - **Rollout:** important What's new item `PlanPages` (version 7, walkthrough; Show me → Website → Plans on your site) (#121).
 - **Status:** Accepted. Extends #129 (plan cards now link to the plan page; plan data gains features, documents, slug, featured).
+
+## 131. Templates review: layout bugs fixed, one look per section on every page, trust on Home, less repetition (2026-11-03)
+- **Context:** the user asked whether the five templates are structured, whether every element is in sync with the others, and whether a visitor gets a visual flow. Every page of every template was rendered at 1280 and 390 px and compared (plan: `~/.claude/plans/groovy-cooking-brook.md`, approved). The engine and page model are sound, but there were layout bugs, a section looked different on Home and on inner pages, template designs that never showed, mixed CTA wording, no social proof or insurer trust on Home, and repetition.
+- **Decision:**
+  - **Layout bugs (done 2026-11-03):** Simple's profile card is `aside.mn-pcard` (it shared `.pcard` with the plan cards, whose sticky grid rule stacked every plan card in one cell); Spotlight's offer wall starts where its hero slider ends (offers 2–4 showed twice); a plan-type page with official plans and no offer leads with the plans (no "No offer right now" note above them; the note stays when there are neither); Guide's plan page on phones reads About, picture, offer, steps, Compare with.
+  - **Template look on every page (user's choice):** a section uses the template's own partial on every page; only page-structure parts (page header, plan-type cards, plan rows, the contact page) stay shared. Supersedes the "inner pages are one shared layout" part of #122.
+  - **Home gets trust (user's choice):** "Companies I represent" right under the hero and a testimonials teaser (up to 3, "More about me →") before the contact band. Important What's new item (#121).
+  - **Less repetition and one closing CTA:** Guide's Home drops "How I can help" while its hero tiles show the plan types; Home's offers are capped at `teaserItems`; plan pages lose the help band; default plan pictures appear on cards only, not as large header or banner pictures; one wording for plan and plan-type links.
+  - **Structure:** a slot contract per template, shared data helpers instead of copies, no `.replace()` patching of shared markup, template-only class names that never reuse a shared one (prefix `tr-`/`fr-`/`mn-`/`sp-`/`gd-` for new ones), one render mode (multi-page).
+  - **Work in phases**, each committable on its own: 1 bugs, 1b structure, 2 sync and flow, 3 docs and guard tests.
+- **Why:** a visitor should meet the same component the same way on every page, see who the agent represents and what customers say before being asked to call, and not scroll past the same plan types and offers twice. The class collision and the patched markup break silently, so they are prevented by structure and tests instead of by care.
+- **Trade-offs:** inner pages now carry each template's moving parts (sliders, tickers) as Home does, so they are a little heavier; every live site's Home changes, so agents are told first (What's new). Capping Home's offers moves some offers one click away (Insurance).
+- **Alternatives considered:** keeping the shared inner-page layouts and deleting the unused template designs (rejected by the user); only the companies strip on Home (rejected by the user); fixing the bugs only and planning the flow separately (rejected by the user).
+- **Status:** Accepted. Phases 1, 1b (except the one-render-mode cleanup), 2 and 3 done 2026-11-03. Amends #122 (inner pages) and #130 (plan pages have no help band; default pictures only on cards).
+
+## 132. Every template is a selling strategy: its own Home order and copy, new names, "How working with me goes", an agent-editable fee line (2026-11-03)
+- **Context:** the user said Home "is not informative, neither does it pitch the visitor through the visual flow", and that the templates should "imply different strategies to pitch the plans to the client", not differ only in look; then "change the templates name and identity as required". Five Sonnet readers walked each Home as a visitor (filled and brand-new agent, phone and desktop). On every template, Home was a stack of label-headed lists. Home never said how working with the agent goes, what advice costs, or the agent's credentials. Who the agent is came late, the same items showed two or three times, and a new agent's Home was four generic sections. The plan was written by Opus (`~/.claude/plans/home-pitch-strategies.md`), as the user asked ("use the sonnet to read but to generate good implementation plan use opus").
+- **Decision:**
+  - **Five strategies, five names (keys unchanged):**
+    - Trusted Advisor (`classic`): trust first.
+    - Expert Explainer (`modern`): the need, then the cover, then the plan I'd pick.
+    - Direct Contact (`minimal`): credentials and contact first, objections answered.
+    - Offer Showcase (`spotlight`): offers and their deadlines first.
+    - Needs Finder (`guide`): pick a need, see matching plans.
+
+    Names and descriptions are i18n (`template.<key>.name|description`), so `sites.template_key`, the CHECK, existing sites and the app's list stay as they are.
+  - **Home follows the strategy's order** (`render.js homeOrder`), not the agent's `sectionOrder` (user's choice). The agent's order still applies on inner pages, and hidden sections stay hidden. Each strategy sets how many offers Home shows (`homeOffers`).
+  - **New Home blocks:**
+    - "How working with me goes" (`pages.js processPart`), a page part with 4 fixed steps (`site.process_1..4` and `_text`).
+    - Credentials: the first 3 achievements.
+    - The FAQ: the first 3 answers and "More answers". The FAQPage JSON-LD stays on Contact.
+    - The bio teaser ends at a sentence (≤ 320 characters).
+  - **Every Home section says why it matters:** a strategy lead line `site.lead_<template>_<section>` under its `<h2>`, added by the engine. The hero button defaults to the strategy's label (`site.cta_<template>`); the agent's own label wins.
+  - **The fee line is the agent's (user's choice):** new field `about.feeNote` (≤ 160 characters), seeded "You pay only the premium set by the insurance company. There's no fee for my advice.", shown under the process steps. Existing sites have none until the agent adds it.
+  - **Seed headlines are benefit-led** ("Insurance advice you can trust, from {firstName}"), for new sites only.
+  - **Offer cards can count down** ("Ends in N days" within 14 days: `offerCard countdown`). A template can replace Home's contact band (`PARTS.contactBand`).
+  - **Budgets (user's choice):** first-paint CSS 44 KB raw / 11 KB gzip (was 40 / 10). The raw-source fallback budgets rise by 6 KB each.
+- **Why:** visitors should be led through who → why trust → what for me → how it works → proof → one next step, in the way that suits each agent's selling style. The template names now tell agents which style they are choosing.
+- **Trade-offs:**
+  - Agents can no longer reorder Home; the strategy owns it.
+  - More copy is fixed i18n (steps, leads), the same for every agent using a template, with provisional Hindi.
+  - The fee line is a claim on the agent's site. It is the agent's own text, but counsel should confirm the seeded wording.
+  - Home pages are a little longer for agents with full content.
+- **Alternatives considered:** keeping the agent's order on Home (rejected by the user); a fixed, non-editable fee line, or none (rejected by the user); staying under 40 KB (rejected: the new blocks would be unstyled); renaming the template keys (rejected: a migration and every live site for no visitor benefit).
+- **Rollout:** the not-yet-released What's new item `HomeTrust` (v8, important) now says this, the new names, and to check the fee line.
+- **Status:** Accepted. Built 2026-11-04 (all five templates); not committed or deployed.
+
+## 133. Bold site images in one hand-made print style; offer images carry their facts as text in English and Hindi (2026-11-04)
+- **Context:** the user found the bundled pictures "too light" and asked for bolder ones that "should have text but should not look ai generated". They chose:
+  - "a bolder illustration style: strong outlines, solid full colour backgrounds, visible print grain", made to look as real as possible;
+  - text on **offer images**, which they will generate in English and Hindi for every offer;
+  - for the other images, "you can add texts through html";
+  - the offer's **public name + facts** rather than the real plan name (#77 stands);
+  - prompts and docs only for now: the per-language upload comes later.
+- **Decision (supersedes #81's style, palette and no-text rules; #81's slots, formats, budgets and pipeline stay):**
+  - **House style:** hand-made print illustration with bold deep-ink outlines, flat fills, one solid full-bleed background, print grain, halftone, slight misregistration (IMAGES.md, style prefix).
+  - **House palette:** deep ink `#1C2433`, paper `#F3EBDD`, marigold `#E3A72F`, terracotta `#C8553D`, peacock `#2E6F8E`, leaf `#5E8C61`, blush `#E8B4A0`. Backgrounds rotate across images. No more white fade.
+  - **Two new rules:**
+    - thumbnail-proof: plan-type images read at 96 px and are recognisable at 48 px;
+    - banner-proof: hero faces stay in the middle half for Trusted Advisor's full-width banner.
+  - **Website images** (hero scenes, plan types, `contact-talk`, share images) stay **text-free**. Any words go in HTML. The share images stay text-free because a preview can't carry HTML.
+  - **Offer images carry text:** badge, public title, three facts of at most 6 words, and "Subject to policy terms".
+    - Every word comes from that offer's own public content in that language.
+    - No insurer or product names, logos, premiums or ranking words.
+    - The artwork is generated with an empty deep-ink panel, and the text is set in a design tool (Inter / Noto Sans Devanagari), never by the generator.
+  - **"Look hand-made" workflow:** one style reference for every image, pick the least perfect candidate, specific Indian details, a grain and misregistration pass in an editor.
+  - **One offer image for now:** the admin uploads the English version as `image_url`, and the Hindi masters wait for per-language offer images.
+  - **Count:** 19 website images (3 hero, 13 plan types including the 5 never made, 1 contact, 2 share) and 12 offer images (the 6 live offers × EN/HI).
+- **Why:** the pale set disappeared against the white page and looked generic. Bold flat colour with print texture has more presence and hides the smooth "AI render" look better. A generator can't be trusted to spell, least of all in Devanagari, so setting the type by hand keeps both languages correct and in the site's fonts. Facts from the offer's own approved text add no new claims.
+- **Trade-offs:**
+  - Full-colour pictures now sit beside the agent's accent swatch. The pictures stay in cards, columns and the banner so the accent still marks actions.
+  - Grain costs bytes; the script may lower WebP quality to stay within budget.
+  - The offer title shows twice (picture and HTML).
+  - Hindi visitors see the English offer picture until per-language upload is built.
+  - Text inside a picture can't be edited, so an offer's picture must be redone whenever its wording changes.
+  - Offer pictures that state benefits are still promotional material; the IRDAI approval question in STATUS.md (Official plans) applies to them too.
+- **Alternatives considered:**
+  - keeping the pale set (rejected by the user);
+  - licensed photographs or a commissioned illustrator (offered; the user chose bold generated illustration);
+  - text baked into every image in both languages (38 pictures, redone on every wording change; rejected by the user in favour of HTML text);
+  - the real plan name on offer pictures (rejected: #77 and insurer approval);
+  - letting the generator write the text (rejected: misspellings and broken Devanagari).
+- **Rollout:** important What's new item `BoldPictures` (version 9, walkthrough; Show me → the website preview), because every public site changes (CLAUDE.md, #121).
+- **Update 2026-11-05 (built):**
+  - The user generated the pictures; all 19 website pictures and the 6 offers (English and Hindi) are in. One exception is accepted by the user: the cancer pictures' badges differ from the offer's ("Exclusive support" / "आपके लिए" instead of "New" / "नया").
+  - **Budgets raised (user's choice):** 800 px ≤ 90 KB (was 45) and 400 px ≤ 30 KB (was 18). The grain doubles the file size, and lower quality smears it. `web/images` grows from 640 KB to 2.1 MB; phones load the 400 px files (9–30 KB).
+  - **Offer pictures are never cropped:** Trusted Advisor's offer slider and Offer Showcase's wide first card used to stretch the picture to the card's height. With text on the picture, they now keep it 16:9.
+- **Status:** Accepted. Built locally 2026-11-05; not committed, not deployed.

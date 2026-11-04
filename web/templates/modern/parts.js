@@ -5,13 +5,15 @@
 import { esc, has, arr, interestLabel, wa, tel } from "../../sections/util.js";
 import { heroParts } from "../../sections/hero.js";
 import { aboutData } from "../../sections/about.js";
-import { serviceList } from "../../sections/services.js";
+import { serviceRows } from "../../sections/services.js";
+import { quoteItems } from "../../sections/testimonials.js";
+import { disclaimer } from "../../sections/offers.js";
 import { interestPic } from "../../sections/media.js";
 import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
 import { slider, ticker, numbers, bigNumber, topBar, tr } from "../../sections/ui.js";
-import { planOrEnquire } from "../../sections/pages.js";
+import { planOrEnquire, processSteps, feeNote } from "../../sections/pages.js";
 import { contactHref } from "../../sections/links.js";
 import { sec, box, band, grid } from "../../sections/plan-page.js";
 import { featuredPlans as featuredList, planFacts, planPageHref, planPicture, planOffers } from "../../sections/plan-data.js";
@@ -41,7 +43,7 @@ ${x.chips}
 export function about(d, ctx) {
   const { langs, code, any } = aboutData(d, ctx);
   if (!any) return "";
-  const nums = numbers(d, ctx);
+  const nums = ctx.visible.has("hero") ? [] : numbers(d, ctx); // the hero badge already shows them
   const facts = [
     ...nums.map((n) => bigNumber(n, "fact-n")),
     langs.length ? `<li class="fact-t"><strong>${langs.map(esc).join(", ")}</strong><span>${esc(ctx.t("field.languages_spoken"))}</span></li>` : "",
@@ -52,8 +54,7 @@ export function about(d, ctx) {
 
 // Services as a bento grid: numbered tiles; the first is large with its picture, the rest compact with a thumbnail.
 export function services(d, ctx) {
-  const { items, extra } = serviceList(d, ctx);
-  const rows = [...items, ...extra.map((k) => ({ interest: k }))];
+  const rows = serviceRows(d, ctx);
   if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
 <ol class="bento stg">${rows.map((i, n) => `<li class="bt lift zoom${n === 0 ? " bt-big" : ""}">${interestPic(ctx, i.interest, { sizes: n === 0 ? "(min-width: 1024px) 360px, 100vw" : "128px" })}<div class="bt-b"><span class="bt-n" aria-hidden="true">${num(n + 1)}</span><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}${planOrEnquire(ctx, i.interest)}</div></li>`).join("")}</ol>`;
@@ -65,8 +66,7 @@ export function offers(d, ctx) {
   if (!list.length) return "";
   const title = has(d.title) ? d.title : ctx.t("site.offers_title_default");
   const [lead, ...rest] = list;
-  const disc = has(ctx.site.company && ctx.site.company.disclaimer) ? `<p class="fine disc">${esc(ctx.site.company.disclaimer)}</p>` : "";
-  return `<h2>${esc(title)}</h2>${offerCard(lead, ctx, { tag: "div", image: true }).replace('class="offer"', 'class="offer of-lead lift zoom"')}${rest.length ? `<ul class="of-rows stg">${rest.map((o) => offerCard(o, ctx)).join("")}</ul>` : ""}${disc}`;
+  return `<h2>${esc(title)}</h2>${offerCard(lead, ctx, { tag: "div", image: true, cls: "of-lead lift zoom" })}${rest.length ? `<ul class="of-rows stg">${rest.map((o) => offerCard(o, ctx)).join("")}</ul>` : ""}${disclaimer(ctx)}`;
 }
 
 // Why choose me: numbered columns under a heavy rule; the icon beside the number.
@@ -77,9 +77,17 @@ export function highlights(d, ctx) {
 <ol class="hl-cols stg">${items.map((i, n) => `<li><p class="hl-n"><span aria-hidden="true">${num(n + 1)}</span>${icon(i.icon)}</p><h3>${esc(i.title)}</h3>${has(i.text) ? `<p>${esc(i.text)}</p>` : ""}</li>`).join("")}</ol>`;
 }
 
+// How working with me goes: the highlight columns' look (number, heavy rule, title, line), then the fee line.
+export function process(d, ctx) {
+  const h = tr(ctx, "site.process_heading"), steps = processSteps(ctx);
+  if (!h || !steps.length) return "";
+  return `<h2>${esc(h)}</h2>
+<ol class="hl-cols stg">${steps.map((s) => `<li><p class="hl-n"><span aria-hidden="true">${num(s.n)}</span></p><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}</li>`).join("")}</ol>${feeNote(ctx)}`;
+}
+
 // Testimonials: one large pull quote at a time, rotating.
 export function testimonials(d, ctx) {
-  const items = arr(d.items).filter((i) => i && has(i.quote) && has(i.name));
+  const items = quoteItems(d);
   if (!items.length) return "";
   const h = ctx.t("section.testimonials");
   return `<h2>${esc(h)}</h2>${slider(items.map((i) => `<figure class="pull"><blockquote>${esc(i.quote)}</blockquote><figcaption>${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: h, cls: "sl-pull", auto: 6500 })}`;
@@ -125,3 +133,8 @@ export function planPage(x) {
   const side = box("docs", x.docs, "pl-docs-box") + (x.ask ? `<p class="pl-acts">${x.ask}</p>` : "");
   return band("facts", x.facts) + grid(main, side) + sec("similar", x.similarRows, "alt");
 }
+
+// The slot contract (sections/index.js SLOTS, DECISIONS #131): the sections this template draws itself, and those it
+// leaves to the shared partials on purpose.
+export const PARTS = { hero, about, services, offers, highlights, testimonials, faq, companies, featuredPlans, process };
+export const INHERITS = ["achievements"];

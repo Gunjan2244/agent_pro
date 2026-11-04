@@ -59,7 +59,9 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(/<p class="ttl">[^<]+<\/p>[\s\S]*<a class="btn" href="#contact" data-interest="health">/.test(hero));
       assert.ok(!/<h[23][ >]/.test(hero), "the hero has only its <h1>");
       const grid = section(hs, "offers");
-      assert.ok(grid.includes('src="/images/offer-pension-locked-rate-800.webp"'), "bundled demo image by key");
+      // the wall holds the offers after the hero slider's four (DECISIONS #131): no offer is shown twice
+      assert.ok(!grid.includes('src="/images/offer-pension-locked-rate-800.webp"'), "the hero's offers aren't repeated in the wall");
+      assert.ok(grid.includes('src="/images/offer-couples-savings-800.webp"'), "bundled demo image by key");
       assert.ok(grid.includes('src="/images/offer-simple-protection-800.webp"'), "offer-simple-protection by key");
       // An offer whose bundled image isn't in the manifest falls back to its interest's image.
       const { ["offer-simple-protection"]: _gone, ...noSimple } = MANIFEST;
@@ -80,7 +82,8 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(tiles.length >= 4 && tiles.at(-1) === "other", tiles.join());
       for (const k of tiles) assert.ok(new RegExp(`<div class="need" id="need-${k}"><div class="need-h"><img class="pic"[^>]*><div><h3>`).test(sec), k);
       assert.deepEqual([...sec.matchAll(/<li><a href="#need-([a-z_]+)">/g)].map((m) => m[1]), tiles, "index = tiles");
-      assert.ok(g.includes(`<p class="st-h">${dicts.en["site.steps_heading"]}</p><ol><li><span class="st-n" aria-hidden="true">1</span>${dicts.en["site.step_1"]}</li>`));
+      // each step has its title and its line (DECISIONS #132)
+      assert.ok(g.includes(`<p class="st-h">${dicts.en["site.steps_heading"]}</p><ol><li><span class="st-n" aria-hidden="true">1</span><span class="st-t"><strong>${dicts.en["site.step_1"]}</strong><span>${esc(dicts.en["site.step_1_text"])}</span></span></li>`));
       // the agent's own service description is a plain paragraph under the group heading
       const term = (so.content.services.items || []).find((i) => i.interest === "term");
       if (term && term.description) assert.ok(sec.includes(`<p class="need-d">${esc(term.description)}</p>`));
@@ -108,13 +111,13 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
   // ---- CTA kinds and https ----
   {
     const base = fx("sample-offers");
-    const one = (cta, extra = {}) => { const o = { ...base.offers.items[0], id: "x", cta, ...extra }; return section(html({ ...base, offers: { featured: null, items: [base.offers.items[1], o] } }, "spotlight", "en", { images: MANIFEST }), "offers"); };
+    const one = (cta, extra = {}) => { const o = { ...base.offers.items[0], id: "x", cta, ...extra }; return section(html({ ...base, offers: { featured: null, items: [o] } }, "classic", "en", { images: MANIFEST }), "offers"); }; // classic: the one offer in its section (spotlight would show it in the hero)
     ok("CTA: enquire -> #contact + data-interest; call -> tel: (none without a phone); link -> https only, new tab, noopener", () => {
       assert.ok(one({ kind: "enquire", interest: "child" }).includes('<a class="lnk" href="#contact" data-interest="child">'));
       assert.ok(!one({ kind: "enquire", interest: "bogus" }).includes('data-interest="bogus"'));
       assert.ok(one({ kind: "call" }).includes('<a class="lnk" href="tel:+919876543210">' + dicts.en["site.offer_cta_call"]));
       const noPhone = { ...base, profile: { ...base.profile, phone: "" }, content: { ...base.content, contact: { ...base.content.contact, phone: "" } }, offers: { featured: null, items: [base.offers.items[1], { ...base.offers.items[0], cta: { kind: "call" } }] } };
-      assert.ok(!section(html(noPhone, "spotlight"), "offers").includes("tel:"));
+      assert.ok(!section(html(noPhone, "classic"), "offers").includes("tel:"));
       assert.ok(one({ kind: "link", url: "https://example.com/b" }).includes('href="https://example.com/b" target="_blank" rel="noopener nofollow"'));
       for (const u of ["http://example.com/b", "javascript:alert(1)", "https://x.test/\"onclick=1"]) assert.ok(!one({ kind: "link", url: u }).includes(dicts.en["site.offer_cta_link"]), u);
       assert.ok(one({ kind: "link", url: "https://e.com" }, { image_url: "http://x.test/a.webp" }).includes("offer-pension-locked-rate"), "http image_url ignored");
@@ -125,7 +128,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     const base = fx("sample-offers");
     const call = { ...base.offers.items[0], id: "c1", title: "Call me about child plans", image: null, image_url: null, interest: "child", cta: { kind: "call" } };
     const s2 = { ...base, offers: { featured: base.offers.items[1], items: [call] } };
-    const sp = section(html(s2, "spotlight", "en", { images: MANIFEST }), "offers");
+    const sp = section(html(s2, "classic", "en", { images: MANIFEST }), "offers");
     assert.ok(sp.includes('src="/images/interest-child-800.webp"') && sp.includes('href="tel:+919876543210"'));
     const g = html(s2, "guide", "en", { images: MANIFEST });
     const grp = section(g, "offers").split('<div class="need" id="need-child">')[1] || "";
@@ -240,7 +243,13 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       else assert.ok(!h.includes("hero-scene"), k);
       assert.equal((h.match(/fetchpriority="high"/g) || []).length, 1, k + ": the photo stays the only high-priority image");
     }
-    assert.ok(new RegExp(`<img class="scene" src="/images/hero-scene-${n}-800\\.webp"[^>]*alt="" decoding="async">`).test(heroOf(html(none, "spotlight", "en", { images: MANIFEST, seed: "demo" }))), "spotlight without offers");
+    // spotlight without offers (DECISIONS #132): still offer-led: the plan types as slides with an Enquire button, not
+    // a scene; the hero keeps its one <h1> (slide titles are <p class="ttl">)
+    // with featured plans those lead the slider; a brand-new agent (no offers, no plans) gets the plan types
+    assert.ok(heroOf(html(none, "spotlight", "en", { images: MANIFEST, seed: "demo" })).includes('<div class="pcard'), "spotlight without offers: the plans I recommend");
+    const nh = heroOf(html({ ...none, plans: [] }, "spotlight", "en", { images: MANIFEST, seed: "demo" }));
+    assert.ok(nh.includes('class="slider sl-hero"') && nh.includes('<div class="offer plan"') && /<p class="ttl">[^<]+<\/p>/.test(nh) && nh.includes('<a class="btn" href="#contact" data-interest="'), "spotlight without offers: plan-type slides");
+    assert.ok(!nh.includes("hero-scene") && !/<h[23][ >]/.test(nh), "spotlight without offers: no scene, no heading in the hero");
     const picks = new Set(["a", "b", "c", "d", "e", "f"].map((s) => heroOf(html(fx("sample-offers"), "classic", "en", { images: MANIFEST, seed: s })).match(/hero-scene-(\d)/)[1]));
     assert.ok(picks.size >= 2, "different slugs get different scenes");
   });
@@ -287,7 +296,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     for (const id of ["about", "services", "highlights", "faq", "contact"]) assert.ok(h.includes(`id="${id}"`), id);
     assert.ok(/<header [^>]*id="hero"/.test(h) && !h.includes('id="testimonials"') && !h.includes('id="achievements"'));
     assert.ok(!/\{[a-zA-Z]+\}/.test(textOf(h)), "no unfilled placeholder");
-    assert.ok(h.includes("Hello, I&#39;m Priya Nair") && h.includes('<span class="hero-photo mono" aria-hidden="true">PN</span>'));
+    assert.ok(h.includes("Insurance advice you can trust, from Priya") && h.includes('<span class="hero-photo mono" aria-hidden="true">PN</span>'));
     assert.ok(!/class="(say|bubble)/.test(h), "no bubbles");
   });
 }

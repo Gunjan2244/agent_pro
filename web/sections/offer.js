@@ -11,6 +11,13 @@ const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 export const todayIST = (now = Date.now()) => new Date(now + 330 * 60000).toISOString().slice(0, 10);
 
 // "31 Mar 2027" / "31 मार्च 2027"; "" for a malformed date.
+// Whole days from today (YYYY-MM-DD, India's date) to an offer's end date; -1 when unknown or past.
+export function daysLeft(iso, today) {
+  const a = Date.parse(String(iso || "") + "T00:00:00Z"), b = Date.parse(String(today || "") + "T00:00:00Z");
+  if (Number.isNaN(a) || Number.isNaN(b) || a < b) return -1;
+  return Math.round((a - b) / 86400000);
+}
+
 export function formatDate(iso, locale) {
   const m = DATE.exec(String(iso || ""));
   if (!m) return "";
@@ -74,13 +81,18 @@ function offerPic(o, ctx) {
 // opts: { tag: "li" | "div", image: bool, featured: bool (hero banner: no image, title not a heading),
 //         button: bool (the CTA is the section's one button: the offers family's hero),
 //         ttl: bool (the title is a <p class="ttl">, not a heading: a card inside the hero, which has only its <h1>),
-//         noPlan: bool (no "View plan" link: the card is on that plan's own page) }
+//         noPlan: bool (no "View plan" link: the card is on that plan's own page),
+//         cls: extra classes on the card (a template's motion: "lift zoom"),
+//         countdown: bool (within 14 days of its end the card says "Ends in N days" / "Ends today": the offer-led
+//         strategy, DECISIONS #132) }
 // An offer on an official plan the site shows (offers.plan_id, DECISIONS #130) links to the plan's page.
 export function offerCard(o, ctx, opts = {}) {
   const { t } = ctx;
   const tag = opts.tag || "li";
   const src = o.from_agent ? t("site.offer_agent_note") : t("site.offer_pick");
   const ends = formatDate(o.ends_on, ctx.locale);
+  const left = opts.countdown ? daysLeft(o.ends_on, ctx.today) : -1;
+  const endsL = left === 0 ? tr(ctx, "site.ends_today") : left > 0 && left <= 14 ? tr(ctx, "site.ends_in_days", { n: left }) : "";
   const img = opts.image && !opts.featured ? offerPic(o, ctx) : "";
   const title = opts.featured || opts.ttl ? `<p class="ttl">${esc(o.title)}</p>` : `<h3>${esc(o.title)}</h3>`;
   const plan = opts.noPlan ? null : planById(ctx, o.plan_id);
@@ -89,21 +101,25 @@ export function offerCard(o, ctx, opts = {}) {
   const onPlan = onL ? `<p class="on-plan">${esc(onL)}</p>` : "";
   const viewL = tr(ctx, "site.pp_view");
   const view = planH && viewL ? `<a class="lnk" href="${esc(planH)}">${esc(viewL)}</a>` : "";
-  return `<${tag} class="offer${opts.featured ? " feat" : ""}">${img}<div class="offer-b">
+  return `<${tag} class="offer${opts.featured ? " feat" : ""}${opts.cls ? " " + opts.cls : ""}">${img}<div class="offer-b">
 <p class="offer-top">${has(o.badge) ? `<span class="pill">${esc(o.badge)}</span>` : ""}<span class="src">${esc(src)}</span></p>
 ${title}${onPlan}${has(o.summary) ? `<p class="sum">${esc(o.summary)}</p>` : ""}
 ${has(o.details) ? `<details class="more"><summary>${esc(t("offer_field.details"))}</summary><p class="prose">${esc(o.details)}</p></details>` : ""}
-<div class="offer-f">${ends ? `<p class="ends">${esc(t("site.offer_ends", { date: ends }))}</p>` : ""}
+<div class="offer-f">${endsL ? `<p class="ends soon">${esc(endsL)}</p>` : ends ? `<p class="ends">${esc(t("site.offer_ends", { date: ends }))}</p>` : ""}
 ${view}${offerCta(o, ctx, opts.button ? "btn" : "lnk")}
 ${has(o.disclaimer) ? `<p class="fine">${esc(o.disclaimer)}</p>` : ""}</div>
 </div></${tag}>`;
 }
 
 // A plan-type card (no offers yet): the interest's image, label, the agent's description and an enquire link.
+// opts: { noTitle, noDesc, cls (extra classes on the card), tag ("li" | "div"), ttl (the name is a <p class="ttl">,
+//         not a heading: a card inside a hero, which has only its <h1>), button (the enquire link is a button) }
 export function planCard(key, desc, ctx, opts = {}) {
   const label = interestLabel(ctx, key);
   if (!label) return "";
+  const tag = opts.tag || "li";
   const img = interestPic(ctx, key, { sizes: "(min-width: 1024px) 280px, (min-width: 720px) 420px, 100vw" });
-  return `<li class="offer plan">${img}<div class="offer-b">${opts.noTitle ? "" : `<h3>${esc(label)}</h3>`}${!opts.noDesc && has(desc) ? `<p class="sum">${esc(desc)}</p>` : ""}
-<a class="lnk" href="${esc(contactHref(ctx, key))}" data-interest="${esc(key)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></li>`;
+  const title = opts.noTitle ? "" : opts.ttl ? `<p class="ttl">${esc(label)}</p>` : `<h3>${esc(label)}</h3>`;
+  return `<${tag} class="offer plan${opts.cls ? " " + opts.cls : ""}">${img}<div class="offer-b">${title}${!opts.noDesc && has(desc) ? `<p class="sum">${esc(desc)}</p>` : ""}
+<a class="${opts.button ? "btn" : "lnk"}" href="${esc(contactHref(ctx, key))}" data-interest="${esc(key)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div></${tag}>`;
 }

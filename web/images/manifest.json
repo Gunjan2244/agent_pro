@@ -31,6 +31,22 @@
   ],
   "w": 800
  },
+ "interest-accident": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-business": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
  "interest-child": {
   "h": 450,
   "sizes": [
@@ -55,7 +71,23 @@
   ],
   "w": 800
  },
+ "interest-home": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
  "interest-money-back": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-motor": {
   "h": 450,
   "sizes": [
    400,
@@ -80,6 +112,14 @@
   "w": 800
  },
  "interest-term": {
+  "h": 450,
+  "sizes": [
+   400,
+   800
+  ],
+  "w": 800
+ },
+ "interest-travel": {
   "h": 450,
   "sizes": [
    400,

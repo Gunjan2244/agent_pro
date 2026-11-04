@@ -185,7 +185,7 @@ class PlansViewModelTest {
         vm.toggle("b")
         vm.save()
         runCurrent()
-        assertEquals(listOf(listOf("a", "c")), repo.saves)
+        assertEquals(listOf<List<String>?>(listOf("a", "c")), repo.saves)
         assertTrue(vm.state.value.saved)
         assertFalse(vm.state.value.dirty)
     }

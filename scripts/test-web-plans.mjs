@@ -161,9 +161,13 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       const offers = s.offers.items.filter((o) => o.plan_id === saver.id && o.ends_on >= "2026-10-18");
       assert.ok(offers.length && offers.every((o) => h.includes(esc(o.title))), "the offers on this plan");
       assert.ok(!h.includes(esc(s.offers.items.find((o) => o.plan_id && o.plan_id !== saver.id).title)), "not the offers on other plans");
-      assert.ok(h.includes(esc(dicts[l]["site.pp_similar"])) || h.includes(esc(dicts[l]["site.pp_compare"])), "similar plans");
-      assert.ok(h.includes('class="pic dpic"'), "the default picture (no admin picture)");
-      assert.ok(h.includes('<section class="sec sec-help" id="help">'), "the help band");
+      assert.ok(h.includes(esc(dicts[l]["site.pp_similar"])), "similar plans");
+      // DECISIONS #131: without an admin picture the drawn default is on the similar plans' cards only, never the
+      // header's (or a banner's) big picture; the page closes with its own Ask / Talk card, not the help band
+      const head = h.slice(h.indexOf('<header class="sec sec-ph"'), h.indexOf("</header>"));
+      assert.ok(!head.includes("dpic") && !h.includes('<div class="pl-pic">') && head.includes("no-pic"), "no default picture in the header or a banner");
+      assert.ok(h.includes('class="pic dpic'), k + ": the default picture on the similar plans' cards and rows");
+      assert.ok(!h.includes('id="help"'), "no help band on a plan's page");
     });
     ok(`${k}/${l}: the agent's own wording is marked as theirs and points to the official terms`, () => {
       const shield = s.plans.find((p) => p.features_own);
@@ -217,14 +221,14 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     }
   });
 
-  ok("default picture: the plan type's catalog icon on a tinted panel; an admin picture (https) replaces it", () => {
+  ok("default picture: the plan type's catalog icon on a tinted panel, on cards and rows only (DECISIONS #131); an admin picture (https) replaces it and is the header's picture", () => {
     const s = fx("sample-en");
     const pic = { ...s, plans: s.plans.map((p) => (p.slug === "sample-life-secure-term" ? { ...p, image_url: "https://cdn.example/t.webp" } : p)) };
     for (const k of TEMPLATE_KEYS) {
       const h = page(pic, k, "insurance/term/sample-life-secure-term");
       assert.ok(h.includes('src="https://cdn.example/t.webp"') && !section(h, "top").includes("dpic"), k);
       const h2 = page(s, k, "insurance/term/sample-life-secure-term");
-      assert.ok(/<span class="pic dpic" aria-hidden="true"><svg/.test(h2), k);
+      assert.ok(/<span class="pic dpic[^"]*" aria-hidden="true"><svg/.test(h2) && !section(h2, "top").includes("dpic"), k);
     }
   });
 }

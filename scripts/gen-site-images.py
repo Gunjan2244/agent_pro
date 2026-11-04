@@ -8,7 +8,7 @@ Usage (from the repo root; Pillow 12):
 - ``og-*`` masters become one 1200x630 WebP (centre crop to 1.905:1): ``og-<name>-1200.webp``.
 - Every other master becomes ``<name>-400.webp`` and ``<name>-800.webp`` at the master's own aspect
   (16:9 or 4:3, rounded to whole pixels).
-- Size budgets: 800 px <= 45 KB, 400 px <= 18 KB, OG <= 80 KB. A file over budget is re-encoded at a lower
+- Size budgets: 800 px <= 90 KB, 400 px <= 30 KB, OG <= 80 KB (raised for the bold, grainy set, DECISIONS #133). A file over budget is re-encoded at a lower
   quality (a warning is printed) until it fits, down to quality 40; then the build fails.
 - Writes ``<out>/manifest.json`` = {"<name>": {"w": 800, "h": 450, "sizes": [400, 800]}, ...}, where w/h are the
   largest file's pixel size. The renderer draws a bundled image only when its name is listed there.
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 NAME = re.compile(r"^[a-z0-9-]+$")
 WIDTHS = (400, 800)
 OG_SIZE = (1200, 630)
-BUDGET = {400: 18 * 1024, 800: 45 * 1024, "og": 80 * 1024}
+BUDGET = {400: 30 * 1024, 800: 90 * 1024, "og": 80 * 1024}
 START_Q, MIN_Q = 82, 40
 
 

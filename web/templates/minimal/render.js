@@ -1,5 +1,5 @@
 import { compose } from "../../sections/index.js";
-import { hero, about, services, offers, highlights, achievements, testimonials, companies, pagehead, featuredPlans, planPage } from "./parts.js";
+import { PARTS, planPage } from "./parts.js";
 // "Meet me" · Simple (DECISIONS #85, #117): a profile sidebar. The agent's card is pinned on the left on wide
 // screens (a compact header on phones), the content reads like a résumé on the right. No bundled illustrations (the
 // manifest is emptied), so the agent's photo is the only image.
@@ -7,6 +7,8 @@ import { hero, about, services, offers, highlights, achievements, testimonials, 
 export function render(site, t, tokens) {
   return compose(site, t, { ...tokens, images: {} }, "minimal", {
     planPage,
-    partials: { hero, about, services, offers, highlights, achievements, testimonials, companies, pagehead, featuredPlans },
+    partials: PARTS,
+    homeOrder: ["hero", "about", "achievements", "companies", "services", "process", "faq", "testimonials", "offers", "featuredPlans", "contact"],
+    homeOffers: 3,
   });
 }

@@ -46,7 +46,7 @@
 @media(min-width:720px){
   .tpl-classic .sl-offers{--sl-w:80%}
   .tpl-classic .sl-offers .offer{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
-  .tpl-classic .sl-offers .offer .pic{height:100%;aspect-ratio:auto}
+  .tpl-classic .sl-offers .offer .pic{align-self:start} /* stays 16:9: offer pictures carry text (DECISIONS #133) */
 }
 @media(min-width:1024px){.tpl-classic .sl-offers{--sl-w:72%}}
 
@@ -116,7 +116,7 @@
 .tpl-classic .help .lead{color:#E5E7EB;margin-inline:auto}
 .tpl-classic .help .btn.ghost,.tpl-classic .sec-ph .ph-split .btn.ghost{background:transparent;border-color:#fff;color:#fff}
 .tpl-classic .sec-ph .ph-split .btn.ghost{border-color:var(--accent);color:var(--accent)}
-.tpl-classic .ptype a,.tpl-classic .icards .card{border:0;border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
+.tpl-classic .ptype a{border:0;border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
 .tpl-classic .help .btn:not(.ghost){border-color:#fff;background:#fff;color:var(--accent)}
 .tpl-classic .note{margin-inline:auto}
 .tpl-classic .pchips{justify-content:safe center}
@@ -149,3 +149,9 @@
 .tpl-classic .pl-talk .pl-talk-l{color:#D1D5DB}
 .tpl-classic .pl-talk .btn{background:#fff;border-color:#fff;color:var(--c-onSurface)}
 .tpl-classic .pl-talk .btn.ghost{background:transparent;color:#fff}
+
+/* how working with me goes (DECISIONS #132): soft centred cards, the number in a round tinted badge */
+.tpl-classic .tr-step{justify-items:center;text-align:center;padding:var(--space-l);border-radius:var(--shape-lg);background:var(--c-surfaceContainerLow)}
+.tpl-classic .tr-step .ps-n{width:48px;height:48px}
+.tpl-classic .tr-step h3,.tpl-classic .tr-step p{margin:0}
+.tpl-classic .fee{margin-inline:auto;text-align:center}

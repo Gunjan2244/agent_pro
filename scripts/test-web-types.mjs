@@ -90,15 +90,17 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
     for (const m of h.matchAll(/data-interest="([a-z_]+)"/g)) assert.ok(options(h).includes(m[1]), m[1]);
   });
 
-  for (const l of LOCALE_KEYS) ok(`services (${l}): the new interests render with their labels and the generic image (alt="") until theirs exists`, () => {
+  for (const l of LOCALE_KEYS) ok(`services (${l}): the new interests render with their labels and the generic image (alt="") when theirs isn't shipped`, () => {
     const s = { ...withServices(fx("sample-" + l), { offered: NEW, items: NEW.map((interest) => ({ interest })) }), locale: l };
-    const sec = section(html(s, "classic", l), "services");
+    // A manifest without the new interests' own images (all ship since DECISIONS #133).
+    const without = Object.fromEntries(Object.entries(MANIFEST).filter(([n]) => !NEW.some((k) => n === `interest-${k}`)));
+    const sec = section(html(s, "classic", l, without), "services");
     for (const k of NEW) assert.ok(sec.includes(`<h3>${dicts[l][i(k).labelKey]}</h3>`), k);
     const generic = catalog.interests.find((x) => x.insuranceType === null).image;
     assert.ok(sec.includes(`src="/images/${generic}-800.webp"`) && /alt=""/.test(sec), "fallback image, decorative");
     for (const k of NEW) assert.ok(!sec.includes(`/images/interest-${k}-`), `${k}: not shipped yet`);
     // Once an illustration is in the manifest, it is used, with its alt text.
-    const shipped = section(html(s, "classic", l, { ...MANIFEST, "interest-motor": { w: 800, h: 450, sizes: [400, 800] } }), "services");
+    const shipped = section(html(s, "classic", l, { ...without, "interest-motor": { w: 800, h: 450, sizes: [400, 800] } }), "services");
     assert.ok(shipped.includes('src="/images/interest-motor-800.webp"') && shipped.includes(`alt="${dicts[l]["site.image_alt_interest"].replace("{interest}", dicts[l][i("motor").labelKey])}"`));
   });
 }

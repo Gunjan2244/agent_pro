@@ -7,6 +7,7 @@ import { offerCard } from "./offer.js";
 import { needGroups } from "./offers.js";
 import { heroLogin } from "./portal-promo.js";
 import { contactHref, planHref, pageHref } from "./links.js";
+import { tr } from "./ui.js";
 
 const MAX_CHIPS = 4;
 // A guide need group: its anchor on the page, or (multi-page) its plan type's page; "other" stays the anchor.
@@ -40,7 +41,8 @@ const side = (banner, sceneHtml, more) => `${more}<div class="hero-side">${banne
 
 // The hero's pieces, shared by every template; templates that arrange the hero differently (modern, minimal) take
 // these instead of re-deriving them, so the data handling and escaping live here once.
-// opts.photo = [w, h]: the photo's width/height attributes (a template whose CSS gives it another aspect ratio).
+// opts.photo = [w, h]: the photo's width/height attributes (a template whose CSS gives it another aspect ratio);
+// opts.loginCls: the class of the customer-login line (default "hero-login").
 export function heroParts(d, ctx, opts = {}) {
   const { t, profile: p } = ctx;
   const photo = ctx.photo;
@@ -51,7 +53,8 @@ export function heroParts(d, ctx, opts = {}) {
   // The guide leads with its needs chips instead (they jump to the offer groups), and its banner uses a link.
   const needs = ctx.layout === "needs" && ctx.visible.has("offers") && needGroups(ctx).length > 0;
   const leadOffer = Boolean(feat) && ctx.family === "offers" && !needs;
-  const cta = leadOffer || needs ? "" : textOr(ctx, "hero", "ctaLabel", d.ctaLabel);
+  // The agent's own label, else the template's strategy label (DECISIONS #132: site.cta_<template>), else the default.
+  const cta = leadOffer || needs ? "" : has(d.ctaLabel) ? d.ctaLabel : tr(ctx, `site.cta_${ctx.variant}`) || textOr(ctx, "hero", "ctaLabel", d.ctaLabel);
   const ini = initials(p.full_name);
   const [pw, ph] = opts.photo || [160, 160];
   const face = photo
@@ -68,7 +71,7 @@ export function heroParts(d, ctx, opts = {}) {
     meta: sub ? `<p class="meta">${has(p.full_name) ? esc(p.full_name) + " · " : ""}${sub}</p>` : "",
     button: cta ? `<a class="btn" href="${esc(contactHref(ctx))}">${esc(cta)}</a>` : "",
     chips: leadOffer ? "" : chips(ctx, d),
-    login: heroLogin(ctx),
+    login: heroLogin(ctx, opts.loginCls),
     offer: banner ? `<div class="hero-offer">${banner}</div>` : "",
   };
 }

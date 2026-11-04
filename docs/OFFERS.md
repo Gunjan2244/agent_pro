@@ -77,7 +77,7 @@ All new tables follow BACKEND.md conventions (`id`, `created_at`, `updated_at` w
 | `company_id` | fk `companies`, `on delete restrict`; indexed |
 | `status` | `catalog.offerStatuses` (CHECK from `catalog_sync`): `draft` → `live` → `archived`; `archived` → `draft` is allowed (Restore) |
 | `content` jsonb | per-locale localized fields, validated against `offer_schema()` |
-| `image_url` | optional, `company-media/offers/<offer_id>/<n>.webp`, 16:9 |
+| `image_url` | optional, `company-media/offers/<offer_id>/<n>.webp`, 16:9. One per offer: the **English** version of the offer picture with its text (DECISIONS #133); per-language pictures are not built yet |
 | `cta_kind`, `cta_url` | `cta_url` required and `https://` when `cta_kind = 'link'`, otherwise null |
 | `interest` | optional `catalog.interests` key (prefills the enquiry form's interest) |
 | `starts_at`, `ends_at` | `timestamptz not null`, `ends_at > starts_at`, `ends_at - starts_at <= maxValidityDays`. The admin panel enters dates; the start is 00:00 and the end 23:59:59 Asia/Kolkata |
@@ -358,6 +358,13 @@ WEB_RENDERER.md ("Offers", "Templates") is the full spec; this is the offers sum
 - **Hero banner:** the featured offer (the title is not a heading, never an image). Personal templates: a white card with a text-link CTA, below the hero's own button. Offers family: the card on the pale `--tint`, and its CTA **is** the hero's one button; spotlight leads with the first offer when there's no featured one, the guide never does.
 - **CTAs:** `enquire` → `#contact` with `data-interest` (a catalog key only; `hydrate.js` preselects the form); `call` → `tel:` from the contact/profile phone (none without one); `link` → `https` only, `target="_blank" rel="noopener nofollow"`.
 - **Images (offers family only, DECISIONS #76):** the admin's `image_url` if `https`; else, for demo fixtures only, a bundled image named by the payload offer's optional `image` (`^offer-[a-z0-9-]+$`, and listed in `web/images/manifest.json`); else the plan-type image of the offer's `interest`; else none. Real payloads have no `image` field.
+- **Offer pictures carry text (DECISIONS #133; IMAGES.md, Offer images):**
+  - **What the picture shows:** the badge, the public title, three facts of at most 6 words each and "Subject to policy terms", on a deep-ink panel beside the scene.
+  - **Wording:** every word comes from that offer's own public title, badge, summary or details in that language, so the picture claims nothing the offer's text doesn't.
+  - **Never on it:** insurer, company or product names (the blocked-term rule of #77 applies by hand: the picture's pixels aren't checked), logos, premiums or ranking words.
+  - **Alt text and title:** the admin uses the title and the three facts as the alt text. The card still shows the title in HTML.
+  - **When the wording changes:** the picture must be redone.
+  - **Language:** the picture is made in English and Hindi, but an offer holds one `image_url`, so the English one is uploaded and Hindi visitors see it until per-language pictures are built (STATUS.md, Open questions).
 - **No offers:** the offers family shows plan-type cards from the agent's services under "Plans I can help you with" (`site.plans_heading`); the personal family shows nothing.
 - **Layouts:** classic one column; modern two columns from 720 px; minimal a hairline list; spotlight an image grid (1/2/3 columns); guide one anchored group per interest (`#need-<interest>`), reached from the hero's "What would you like to protect?" chips.
 - **Expiry:** SQL already filters; the renderer also hides any offer whose `ends_on` is before today in Asia/Kolkata.

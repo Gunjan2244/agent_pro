@@ -9,11 +9,15 @@ export function serviceList(d, ctx) {
   const shown = new Set(items.map((i) => i.interest));
   return { items, extra: [...new Set(offered.filter((k) => !shown.has(k)))] };
 }
+// serviceList as one list of rows ({interest, description?}): the items, then the offered interests without an item.
+export function serviceRows(d, ctx) {
+  const { items, extra } = serviceList(d, ctx);
+  return [...items, ...extra.map((k) => ({ interest: k }))];
+}
 // Shared (classic, spotlight, guide): one card per service, each with its plan-type thumbnail; an offered interest
 // without a description is a card too, so the grid has no orphan chips.
 export function services(d, ctx) {
-  const { items, extra } = serviceList(d, ctx);
-  const rows = [...items, ...extra.map((k) => ({ interest: k }))];
+  const rows = serviceRows(d, ctx);
   if (!rows.length) return "";
   const head = `<h2>${esc(ctx.t("site.services_heading"))}</h2>`;
   // The offers section already showed plan cards with these descriptions: list the interests compactly (on a

@@ -3,6 +3,108 @@
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
 
+## 2026-11-05 — The bold pictures are in; offer pictures never cropped; What's new `BoldPictures` (DECISIONS #133; user request)
+- **Why:** the user generated the pictures from `design/site-images/PROMPTS.md` into `pictures/` ("the pictures are in pictures folder") and chose to raise the size limits to keep the print grain ("ok do it").
+- **Pictures:** 27 of the user's 33 files were copied as masters into `design/site-images/source/` (trimmed to exact 16:9 where they were 1 px off) and converted with `scripts/gen-site-images.py` into `web/images/` (25 names, 2.1 MB).
+  - **Mapping (file in `pictures/` → name):**
+    - Joyful Indian Family Tea Time → hero-scene-1
+    - Vintage Couple Sharing Tablet at Home → hero-scene-2
+    - Generations Laughing Under the Canopy → hero-scene-3
+    - Morning Farewell Under a Leaf Canopy → interest-term
+    - Watering a Balcony Garden → interest-endowment
+    - A Joyful Garden Stroll → interest-money-back
+    - Elderly Couple Sharing Tea on the Verandah → interest-pension
+    - Retro Doctor Consultation Scene → interest-health
+    - Thoughtful Growth at Her Desk → interest-ulip
+    - Keys to a New Ride → interest-motor
+    - Vintage Indian Home Entrance Scene → interest-home
+    - Leaving Home Together → interest-travel
+    - Neighborhood Shop Conversation → interest-business
+    - Joyful Family Walk in the Park → interest-accident
+    - Warm Conversation at the Table → interest-other
+    - Cozy Chats in a Blush-Toned Living Room → contact-talk
+    - Vintage Comic-Style Couple Conversation → og-personal
+    - Retro Hand Holding Icon Cards → og-offers
+    - Lifelong Pension at Sunrise → offer-pension-locked-rate
+    - Retro Family Health Cash Plan Banner → offer-family-health-cash
+    - Garden Growth Savings Plan → offer-savings-booster
+    - Rainy Day Family Protection Plan → offer-simple-protection
+    - Couples' Savings Garden Advertisement → offer-couples-savings
+    - **Hindi, into `source/offers-hi/`:** आजीवन पेंशन…, पारिवारिक हेल्थ कैश प्लान…, Monsoon Mother-Child…, दंपति के लिए बचत प्लान.
+  - **Added later the same day:**
+    - Curious Dreams and Proud Moments → interest-child.
+    - Cancer Care Cover Poster → offer-cancer-care, and सहारा और कैंसर केयर कवर → `offers-hi/`. Their badges differ from the offer's ("Exclusive support" / "आपके लिए" instead of "New" / "नया"); the user chose to use them as generated.
+    - Hand-Printed Savings Garden Poster (Hindi booster, with the exact text) → `offers-hi/offer-savings-booster`.
+  - **Not used:** the first Hindi booster picture (सूर्योदय संग सेविंग्स बूस्टर plan: wrong text, and it claimed guaranteed returns) and दंपति के लिए बचत प्लान (1) (a duplicate).
+- **Budgets:** `scripts/gen-site-images.py` now allows 800 px ≤ 90 KB and 400 px ≤ 30 KB (was 45 / 18; at 45 KB `hero-scene-1` failed even at quality 42).
+- **Web:**
+  - `web/templates/classic/style.css` (offer slider) and `web/templates/spotlight/style.css` (the offer wall's wide first card) no longer stretch the offer picture to the card's height, which cut off the text on it; it stays 16:9 at the top.
+  - `scripts/test-web-types.mjs`: the generic-fallback check now uses a manifest without the 5 new plan-type pictures, since they all ship.
+- **App:**
+  - `WhatsNew.kt`: new important item `BoldPictures` (version 9), with Show me → the website preview (`HomeFeature.kt`).
+  - Strings `whats_new_pictures` and `whats_new_pictures_body` in EN and HI.
+  - `HomeTest.kt` updated for version 9.
+  - The template-grid strips were regenerated (`gen-template-pages.py`).
+- **Verified:**
+  - web suite 891 checks and CSS lint;
+  - `verifyShared`;
+  - `HomeViewModelTest` (20) and `WhatsNewWalkthroughUiTest` (2), 0 failures;
+  - screenshots of classic, modern, spotlight and guide, Home and Insurance at 1280 and 390 px: no broken images, no console errors, banner crops keep the faces, offer text readable.
+- **Not run:** the full app suite with screenshot verify (the template-grid and What's new baselines need re-recording), `assembleDebug`, lint. `web/templates/<key>/preview.webp` was not regenerated.
+- **Docs:** IMAGES, WEB_RENDERER, UX (What's new v9), PRODUCT, DECISIONS #133, STATUS.
+
+## 2026-11-04 — Bold site pictures and offer pictures with text: prompts and rules (DECISIONS #133; user request)
+- **Why:** the user found the bundled pictures "too light" and wanted bolder ones that don't look AI-generated. They also wanted offer pictures that state the plan details, in English and Hindi, which they will generate.
+- **Docs only:**
+  - **`docs/IMAGES.md`** rewritten in place:
+    - the bold hand-made print style, with its palette, style prefix and negative prompt;
+    - new rules 4b (thumbnail-proof) and 6a (banner-proof); rule 2 now allows text on offer pictures only;
+    - a "Making it look hand-made, not AI" workflow;
+    - new prompts for the 19 website pictures (including the 5 plan types never made);
+    - an "Offer images" section: the layout, the text rules, and the EN + HI wording of the 6 live offers, checked against the live `offers` rows and the blocked-term list;
+    - the slot table updated to the current templates.
+  - **`docs/OFFERS.md`:** offer picture text rules; one `image_url` (English) until per-language pictures are built.
+  - **`docs/WEB_RENDERER.md`:** a note that a bold set is pending.
+  - **Also:** `docs/DECISIONS.md` #133, `docs/PRODUCT.md` (requirement), `docs/STATUS.md`.
+- **Not changed:** no code, catalog, migration or image file. The live site keeps the 2026-10-18 pictures until the user generates the new ones and `scripts/gen-site-images.py` runs.
+
+
+## 2026-11-04 — Migration applied; template pictures regenerated (DECISIONS #132; user request)
+- **Database (`AGENT_PRO`, user's OK):** `site_schema()` from `supabase/migrations/20261103181637_catalog_sync.sql` applied as migration `catalog_sync` (the only part that differed from the live database: every other catalog function and the `app_config` defaults matched by hash, and the 18 CHECK constraints pass on the live rows). The live schema now has `about.feeNote` and the hero photo's `shownAs`. Advisors: no ERROR, nothing new.
+- **Pictures:** the app's template-grid strips (`mobile/composeApp/src/commonMain/composeResources/drawable/template_page_*.webp`, now 19 strips, 916 KB: every Home is longer) and `web/templates/<key>/preview.webp` (390×844, 20–24 KB) regenerated for the selling strategies. The grid needs an app build to show them.
+
+## 2026-11-04 — Each template is a selling strategy; new names; "How working with me goes"; an agent-editable fee line (DECISIONS #132; user request)
+- **Why:** the user: Home "is not informative, neither does it pitch the visitor through the visual flow"; templates should "imply different strategies to pitch the plans", and "change the templates name and identity as required". Five Sonnet readers walked each Home (filled and brand-new agent, phone and desktop); Opus wrote the plan (`~/.claude/plans/home-pitch-strategies.md`); five Sonnet implementers built one template each (only that template's files); the shared engine and integration were done by the orchestrator.
+- **Names (keys unchanged):** Trusted Advisor, Expert Explainer, Direct Contact, Offer Showcase, Needs Finder, with descriptions that say how each sells (`shared/i18n`).
+- **Engine (`web/sections`):** `homeOrder` / `homeOffers` per template (`index.js makeCtx`); Home leads `site.lead_<template>_<section>` (`drawSections withLead`); page part "How working with me goes" (`pages.js processPart`, `processSteps`, `feeNote`; `SLOTS` gains `process`); teasers for achievements (3) and the FAQ (3 + "More answers"); the bio teaser ends at a sentence (≤ 320); `PARTS.contactBand`; `offerCard countdown`; `planCard` `tag`/`ttl`/`button`; the hero button defaults to `site.cta_<template>`; FAQPage JSON-LD stays on Contact.
+- **Templates:** each `render.js` passes its strategy; see WEB_RENDERER.md "Selling strategies" for what each now draws (Trust: proof before products, office hours in the ticker; Fresh: text first on phones, numbers once, contact contrast fixed; Simple: steps as résumé rows, one-button contact band; Spotlight: "Agent of …" in the hero, soonest-ending offers with a countdown, a no-offer hero of plans; Guide: tiles for every agent, steps with lines and the fee line).
+- **Shared definitions:** `site-schema.json` `about.feeNote` (≤ 160), `site-seed.json` its default and benefit-led headlines, `site-pages.json` Home gains achievements and the FAQ; 62 i18n keys EN + HI. `generateShared` wrote `supabase/migrations/20261103181637_catalog_sync.sql` (the schema copy): **not applied** (needs the user's OK; publishing works in either order: the validator ignores fields it doesn't know).
+- **App:** the What's new item `HomeTrust` (v8, not released yet) reworded for the strategies, the names and the fee line; `StarterContentTest` for the new headlines.
+- **Budgets (user-approved):** first-paint CSS 44 KB raw / 11 KB gzip (largest Home now 40.6 KB raw, 9.8 KB gzip); the raw-source fallback budgets +6 KB each.
+- **Verified:** web suite 891 checks (new: the five strategy orders for the demo and a brand-new agent, the agent's order not changing Home, leads, the steps and fee line, the strategy button, offer counts, Spotlight without offers); CSS lint; `generateShared verifyShared`; app StarterContentTest, HomeViewModelTest, WhatsNewWalkthroughUiTest, SiteSeed tests: 0 failures; screenshot sweep of every Home (filled and new agent, 1280 and 390 px). Not run: the full app suite, screenshot baselines, `assembleDebug`.
+- **Files:** `web/sections/{index,pages,hero,offer}.js`, `web/styles/base.css`, `web/templates/*/{render,parts}.js` and `style.css`, `shared/{site-schema,site-seed,site-pages}.json`, `shared/i18n/{en,hi}.json`, `web/dev-fixtures/sample-seeded.json`, `scripts/test-web{,-pages,-offers,-templates}.mjs`, app strings and `StarterContentTest.kt`; docs PRODUCT, DECISIONS #132, WEB_RENDERER, SHARED_DEFINITIONS, UX, TESTING, STATUS.
+
+## 2026-11-03 — Templates review, phases 1b–3: structure, one look per section, trust on Home, less repetition (DECISIONS #131; user request)
+- **Structure (no visible change):** a slot contract: `sections/index.js SLOTS`; each `templates/<key>/parts.js` exports `PARTS` and `INHERITS` (each slot once; `render.js` passes `partials: PARTS`). Shared helpers replace the copies in every template (`offers.js disclaimer`, `services.js serviceRows`, `testimonials.js quoteItems`, `about.js stats(..., { count })`). No more `.replace()` patching of shared markup: `offerCard`/`planCard` `cls`, `heroParts` `loginCls`, `planParts` `featuresBody`/`docsBody`. Tests: the slot contract, no markup patching, and a class guard (a template's own class never reuses a shared one; it catches the old `.pcard` collision).
+- **One look per section (user's choice):** inner pages draw companies, highlights, achievements, testimonials and the FAQ with the template's own partial; an inherited slot uses the site-wide shared look on every page (`pages.js SITE_SHARED`: companies ticker, achievements timeline). The unused shared About partials (`hlCards`, `quotes`) and their CSS are gone; the companies ticker CSS moved to `base.css` (it is on Home now). Guide's trust ticker isn't repeated under About's highlights.
+- **Home (user's choice):** `shared/site-pages.json` Home gains `companies` (always right under the hero) and `testimonials` (teaser: 3, "More from my customers"); offers are a teaser too (≤ `teaserItems`, "All offers"). Guide's Home drops "How I can help" (its tiles are the plan types) and its "Plans I recommend" is a card grid.
+- **Insurance and plan pages:** Insurance shows plan types before offers (`"order": "page"`); a plan's page has no help band; Spotlight's and Simple's plan pages end with "Talk to …"; plan headers and banners show only an uploaded picture (`planPicture large`); on phones, offer lists on Insurance and plan-type pages show pictures on the first card only.
+- **Words:** "See plans" for every plan-type link (`site.see_plan` removed), "Similar plans" in Guide too (`site.pp_compare` removed), "Other types of insurance" (`site.plan_others`), "See the offer" for Guide's featured strip (`site.see_offer`), new `site.offers_all`, `site.more_reviews` (EN + HI); the top bar is Call with a phone number on every template (Fresh had "Get in touch").
+- **Checked, no change:** heading style is already one per template on every page (Trust's left-aligned headings are only inside its panels, by design).
+- **Not done:** removing the one-page render mode (S5): ~20 test assertions and the main test helpers render one page; live pages never use it. Template preview strips (`gen-template-pages.py`) not regenerated yet.
+- **App:** What's new `HomeTrust` (version 8, important, Show me → website preview; `WhatsNew.kt`, `HomeFeature.kt`, strings EN + HI); `HomeTest.kt` for version 8. Two app tests were already broken before this change (never compiled after #130) and are fixed: `PlansViewModelTest` line 188 (type inference) and `HomeViewModelTest.theDevicesMarkIsRaisedOnTheAccount` (assumed version 5 was the newest).
+- **Verified:** web suite 890 checks, CSS lint OK; size budgets: first-paint CSS unchanged limits (classic 39.3 KB, modern 39.8 KB of 40), the unminified fallback budgets raised by 4 KB each (`test-web.mjs`, noted there); `generateShared verifyShared` OK (no new migration); app `:composeApp:testAndroidHostTest` for HomeViewModelTest (20), WhatsNewWalkthroughUiTest (2), PlansViewModelTest (9): 0 failures. The full app suite, screenshot verification and `assembleDebug` were not run. Screenshot sweep of 5 templates × 6 pages × 2 widths.
+- **Files:** `web/sections/{index,pages,offer,offers,about,highlights,services,testimonials,hero,portal-promo,plan-page,plan-data,ui}.js`, `web/templates/*/{parts,render}.js`, `web/templates/{classic,minimal,guide}/style.css`, `web/styles/{base,pages}.css`, `shared/site-pages.json`, `shared/i18n/{en,hi}.json`, `scripts/test-web{,-templates,-pages,-plans,-offers}.mjs`, app files above; docs PRODUCT, UX, WEB_RENDERER, SHARED_DEFINITIONS, DECISIONS #131, STATUS.
+
+## 2026-11-03 — Templates review, phase 1: four layout bugs fixed (DECISIONS #131; user request)
+- **Why:** the user asked for a check of the templates' structure, sync and visitor flow. Rendering every page of every template at 1280 and 390 px found four bugs; the sync, flow and structure fixes follow in phases 1b–3 (DECISIONS #131).
+- **Simple:** official plan cards were stacked in one cell (Insurance, plan-type pages): the profile card and the shared plan card were both `.pcard`, and the card's sticky `grid-row:1/span 30` rule applied to the plan cards. The profile card is now `aside.mn-pcard` (`web/templates/minimal/parts.js`, `style.css`).
+- **Spotlight:** the offer wall repeated the hero slider's offers 2–4; it now starts after them, and falls back to plan cards when none are left (`web/templates/spotlight/parts.js`). Home on a phone is about 1,800 px shorter with the demo offers.
+- **Plan-type pages:** no "No offer on this right now" note above the type's official plans; the note stays when the type has neither (`web/sections/pages.js` `planOffers`).
+- **Guide plan page on phones:** one column in reading order (About, picture, offer, steps, Compare with) instead of the picture and offer after the steps (`web/templates/guide/style.css`).
+- **Tests:** `scripts/test-web-templates.mjs` (renamed card; no offer in both Spotlight's hero and wall), `test-web-offers.mjs` (the wall's image check uses an offer after the slider; the CTA and interest-image checks render on Trust, which shows every offer in its section), `test-web-pages.mjs` (note only without offers and plans). Web suite 886 checks, CSS lint OK; screenshot sweep of all 5 templates × 6 pages × 2 widths.
+- **Docs:** DECISIONS #131, WEB_RENDERER (Simple card, Spotlight wall, plan-type page, Guide plan page on phones), STATUS.
+
 ## 2026-11-01 — Fix: stray backslash before apostrophes and quotes in app text (user report)
 - Compose Multiplatform resources show `\'` and `\"` literally, so 19 strings in `values/` and `values-hi/` (`strings.xml`, `strings_offers.xml`; the plans and What's new copy) displayed a backslash. Removed the backslashes; plain `'` and `"` are valid in these XML files. Rule going forward: never escape quotes in `composeResources` strings.
 

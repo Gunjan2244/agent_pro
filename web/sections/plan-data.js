@@ -53,8 +53,11 @@ export const goAttrs = (ctx) => (Array.isArray(ctx.pages) && ctx.sitePages ? ' r
 // Every plan has a picture (DECISIONS #130): the admin's upload (https, company-media), else the default picture of
 // its plan type, drawn from the catalog's icon for that type (catalog.interests[].icon) on an accent-tinted panel.
 // The default is decorative (the plan's name and type are in the text next to it).
-export function planPicture(ctx, p, { sizes = "(min-width: 720px) 360px, 100vw", eager = false, cls = "" } = {}) {
+// large: a header or banner picture: only an uploaded one (DECISIONS #131: the drawn default is for cards and rows,
+// where it marks the plan type; at banner size it is a near-empty block).
+export function planPicture(ctx, p, { sizes = "(min-width: 720px) 360px, 100vw", eager = false, cls = "", large = false } = {}) {
   const up = httpsUrl(p.image_url);
+  if (!up && large) return "";
   if (up) return `<img class="pic${cls ? " " + cls : ""}" src="${up}" width="800" height="450" alt="" sizes="${esc(sizes)}"${eager ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">`;
   const i = arr(ctx.catalog.interests).find((x) => x.key === p.interest) || {};
   return `<span class="pic dpic${cls ? " " + cls : ""}" aria-hidden="true">${icon(i.icon || "shield")}<span class="dpic-t">${esc(interestLabel(ctx, p.interest))}</span></span>`;

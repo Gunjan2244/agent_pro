@@ -1,8 +1,33 @@
 # Status — read this first
 
-_Last updated: 2026-11-01 (stray backslash before quotes in app text removed; plan pages, "We're taking you to …", agent-editable key features, featured plans, offers on plans, five templates redesigned, DECISIONS #130; backend APPLIED to `AGENT_PRO`, web/admin/app on branch `feature/official-plans`, not deployed)._
+_Last updated: 2026-11-05 (bold site pictures converted and in place, offer pictures never cropped, What's new v9, DECISIONS #133; uncommitted, not deployed; every template is a selling strategy with a new name, "How working with me goes", an agent-editable fee line; DECISIONS #132; on top of the templates review #131; uncommitted, not deployed; one migration not applied)._
 
 ## Current state
+- **Bold pictures (2026-11-05, user request; DECISIONS #133): converted and in place locally, NOT committed, NOT deployed.**
+  - **In place:** all 19 website pictures and the 6 English offer pictures (mapping in the CHANGELOG), 25 names, 2.3 MB. The 6 Hindi offer pictures are in `design/site-images/source/offers-hi/`. The budgets were raised to 90 / 30 KB (user's choice).
+  - **Accepted deviation:** the cancer pictures' badges ("Exclusive support" / "आपके लिए") aren't the offer's ("New" / "नया"); the user chose to use them as generated.
+  - **Offer pictures are never cropped** (classic slider, spotlight wall).
+  - **What's new `BoldPictures`** (v9, important) added with EN + HI strings.
+  - **Verified:**
+    - web suite 891 checks and CSS lint;
+    - `verifyShared`;
+    - `HomeViewModelTest` and `WhatsNewWalkthroughUiTest`;
+    - screenshots of 4 templates × Home and Insurance × 1280 / 390 px.
+  - **Not run:** the full app suite with screenshot verify, `assembleDebug`, lint. `preview.webp` was not regenerated.
+  - **Live offers have no picture yet:** an admin uploads the English offer pictures in Admin → Offers. The bundled `offer-*` files are only for the dev fixtures.
+- **Selling strategies (2026-11-04, user request; DECISIONS #132): built and tested locally, NOT committed, NOT deployed.**
+  - Names: Trusted Advisor (`classic`), Expert Explainer (`modern`), Direct Contact (`minimal`), Offer Showcase (`spotlight`), Needs Finder (`guide`); each has its own Home order, copy and button (WEB_RENDERER.md "Selling strategies").
+  - New: "How working with me goes", credentials and FAQ on Home, a lead line under every Home heading, the agent's fee line (`about.feeNote`).
+  - **Migration APPLIED to `AGENT_PRO` (2026-11-04, user's OK):** of `20261103181637_catalog_sync.sql`, only `site_schema()` differed from the live database (every other function body and the `app_config` values matched by hash; all 18 CHECK constraints pass on the live rows), so it was applied alone as migration `catalog_sync`; the live body's md5 matches the file (`778fd217…`); it also brings the 2026-10-28 `shownAs` photo shapes. Advisors: no ERROR; only the accepted WARNs (0028 public RPCs, 0029, leaked-password protection) and unused-index INFOs.
+  - **Pictures regenerated (2026-11-04):** the app's template-grid strips (19 strips, 916 KB, `gen-template-pages.py`) and the five `web/templates/<key>/preview.webp`. The grid shows them only after an app build (DECISIONS #120: the tiles are bundled; the preview after a tap is live, #119); the template-grid screenshot baselines need re-recording.
+  - Verified: web suite 891 checks, CSS lint, `generateShared verifyShared`, the app tests touching the seed and What's new; a screenshot sweep. Not run: the full app suite, screenshot baselines (template grid names, What's new), `assembleDebug`, lint.
+- **Templates review (2026-11-03, user request; DECISIONS #131): built and tested locally, NOT committed, NOT deployed.** Plan: `~/.claude/plans/groovy-cooking-brook.md` (approved).
+  - **Fixed:** Simple's stacked plan cards (`.pcard` collision → `mn-pcard`), Spotlight's repeated offers, "No offer right now" above official plans, Guide's plan page order on phones.
+  - **Structure:** slot contract (`SLOTS`, `PARTS`/`INHERITS`), shared helpers instead of copies, no `.replace()` patching, class guard test.
+  - **Sync and flow:** each content section looks the same on every page; Home gains "Companies I represent" (under the hero) and up to 3 testimonials; offers capped at 6 on Home; Insurance shows plan types first; plan pages end with one CTA, no help band, no big placeholder picture; one wording for plan links; top bar is Call everywhere when there's a phone.
+  - **App:** What's new `HomeTrust` (version 8, important) with EN + HI strings; two app tests that were already broken since #130 fixed.
+  - **Verified:** web suite 890 checks, CSS lint, `generateShared verifyShared`, app tests HomeViewModelTest / WhatsNewWalkthroughUiTest / PlansViewModelTest (31, 0 failures), screenshot sweep (5 templates × 6 pages × 1280/390 px). **Not run:** the full app suite, screenshot verification, `assembleDebug`, lint.
+  - **Not done:** one-render-mode cleanup (S5, ~20 test assertions depend on one-page renders); template preview strips not regenerated.
 - **Plan pages (2026-11-01, user request; DECISIONS #130): backend LIVE on `AGENT_PRO`; web, admin and app on local branch `feature/official-plans` (on top of #129), NOT deployed.**
   - **Planned first:** the design canvas "Agent PRO — Plans, offers and site redesign plan" (flow, data and sync rules, shared pages, Home and plan page for each of the five templates, phone views, app and admin screens) was approved ("ok go ahead") before building.
   - **Live now:** migration `plan_pages` applied (same SQL as `supabase/migrations/20261031120000_plan_pages.sql`; the 12 function bodies verified identical to the repo); all 278 plans got slugs (one `-2`); every published site's payload now has slugs, features, docs and featured (first 6). Advisors: no ERROR; the accepted 0029 WARNs gain `set_plan_features` and `set_featured_plans`; the four new indexes show as unused (new).
@@ -163,6 +188,12 @@ _Last updated: 2026-11-01 (stray backslash before quotes in app text removed; pl
 - **Test APK (2026-10-17 10:04):** a debug build pointed at `AGENT_PRO` and the preview site (`SITE_BASE_URL` set in the git-ignored `local.properties`). A copy is at `~/AgentPRO-test/AgentPRO-test-2026-10-17.apk`. It's waiting for the user to install it on a phone (USB with adb, or sideload). It's for testing only, not a release.
 
 ## Next steps
+- **Bold pictures (#133):**
+  1. **Admin:** upload each live offer's English picture (Admin → Offers → the offer → image) and use its title and facts as the alt text.
+  2. **App:** re-record the template-grid and What's new screenshot baselines, then run the full suite, `assembleDebug` and lint. Regenerate `web/templates/<key>/preview.webp`.
+  3. **Ship:** commit; a push to `main` deploys the renderer (#118) with the user's OK. Ship the app build with What's new v9 together with it.
+- **Selling strategies (#132):** (1) done: migration applied, strips and previews regenerated; (2) run the full app suite with screenshot verify, `assembleDebug` and lint, re-record the template grid and What's new baselines, build an APK so the grid shows the new pictures; (3) a Hindi review of the 62 new strings (drafts); counsel to confirm the seeded fee line; (4) with the user's OK, commit and push to `main` (deploys every site, #118).
+- **Templates review (#131):** (1) run the full app suite with screenshot verify and `assembleDebug` + lint (`cd mobile && ./gradlew :androidApp:assembleDebug :androidApp:lint :composeApp:testAndroidHostTest -Proborazzi.test.verify=true`), re-record what the What's new item changes; (2) regenerate the template strips (`python3 scripts/gen-template-pages.py`) and `preview.webp`, re-record the template-picker baselines; (3) with the user's OK, commit and push to `main` (CI deploys the renderer, #118) together with the plan-pages branch it builds on; (4) later: remove the one-page render mode (S5) by moving the template tests onto Home pages.
 - **Plan pages (#130):** (1) apply the patch / pull the branch; build and test the app (`generateShared`, `verifyShared`, `allTests`, screenshots), fix anything Gradle finds; (2) push to `main` to deploy the renderer (it reads the live payload already); deploy the admin panel; (3) admins copy key features and document links for the plans agents use most (LIC first); (4) counsel to review the agent-written key features (labelled as the agent's words) and the go-page wording.
 - **Official plans (#129):** (1) pull branch `feature/official-plans` (or apply the patch), build and run the app tests, re-record the Website hub baselines; (2) push to `main` to deploy the renderer (footer + plans) and deploy the admin panel; (3) ship an APK with the plans screen and the version 6 walkthrough; (4) have counsel review the footer wording and check with LIC/each insurer; (5) re-check `supabase/live-data/company-plans.json` quarterly (fill missing UINs from each plan page; Kotak links point to its list page).
 - **What's new on the account (#127):** with the user's OK, apply `20261029090000_whats_new_seen.sql` to `AGENT_PRO` and run the advisors (expect exactly one new 0029 WARN, `mark_whats_new_seen`). Then build an APK and run TESTING.md End to end #16 (dismiss, uninstall, reinstall: nothing old comes back). Commit with the user's OK.
@@ -343,6 +374,11 @@ Tick items as they're done and add the date.
 - [ ] **Later:** auto-renewal for the plan and domains, FCM push on Android (server-side rendering is built: website v2, DECISIONS #75)
 
 ## Open questions / blockers
+- **Bold pictures (#133):**
+  - **Hindi offer pictures:** an offer holds one `image_url`, so Hindi visitors see the English offer picture. Per-language pictures need `image_url_hi` (migration), an admin upload and the renderer picking by locale; not planned yet.
+  - **Plan pictures:** should official plan cards with no admin picture show their plan type's bold picture instead of the drawn icon? It's one picture set for all 278 plans; the user hasn't decided.
+  - **HTML text over hero scenes:** the user allowed it ("you can add texts through html for non offer images"); no template change was asked for yet.
+  - **IRDAI:** offer pictures that state benefits are promotional material, the same open question as the offers' text (Official plans, below).
 - **Official plans (#129):** the offers' disguised names and agent-written custom offers remain promotional text that, under the IRDAI (PPHI) Regulations 2024, needs the insurer's written approval; decide whether to keep them, get approvals, or limit offers to insurer-supplied creatives. 185 of 278 plans have no UIN (the insurers' list pages don't show it).
 - **What's new on the account (#127):** the migration needs the user's approval to apply. A mark made offline that never reaches the account before an uninstall is still lost (accepted, DECISIONS #127).
 - **Outage fix (#125):** not deployed yet (needs the user's OK). The CI deploy step's exit 1 is unexplained (the log needs a GitHub sign-in). The Worker secret values can't be read back; whether they're correct is only known after the deploy.

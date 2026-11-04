@@ -31,7 +31,8 @@ export function needGroups(ctx) {
   return [...groups.values()].filter((g) => interestLabel(ctx, g.key)).sort((a, b) => (a.key === "other") - (b.key === "other"));
 }
 
-const disclaimer = (ctx) => {
+// The company's disclaimer under a list of offers: only while the page shows an offer.
+export const disclaimer = (ctx) => {
   const d = ctx.site.company && ctx.site.company.disclaimer;
   return ctx.offers.all.length && has(d) ? `<p class="fine disc">${esc(d)}</p>` : "";
 };

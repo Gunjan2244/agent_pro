@@ -1,11 +1,10 @@
 // Multi-page sites (DECISIONS #122; the page model is shared/site-pages.json). The inner pages (Insurance, one page
-// per plan type, About me, Contact) are SHARED layouts: the same markup on all five templates, which restyle it in
-// their own style.css. Only Home is template-specific (each template's hero and home sections are its identity); a
-// template overrides a shared part only where its structure needs it (minimal's profile card, spotlight's trust bar,
-// guide's need groups). This file holds the shared inner-page parts: the page header (breadcrumb, the page's one
-// <h1>, lead; the plan page's split header; the About story), the plan-type cards, the plan page's offers and "Other
-// plans", the About bands (companies ticker, icon cards, timeline), the Contact layout, the help band, and Home's
-// teasers and contact band. Render-only.
+// per plan type, About me, Contact) share their page structure on all five templates, which restyle it in their own
+// style.css: the page header (breadcrumb, the page's one <h1>, lead; the plan page's split header; the About story),
+// the plan-type cards, the plan page's offers and "Other plans", the Contact layout and the help band. Content
+// sections (companies, highlights, achievements, testimonials, FAQ) look the same on every page: the template's own
+// partial, else the site-wide shared look below (DECISIONS #131). This file also holds Home's teasers and contact
+// band. Render-only.
 import { esc, has, arr, tel, wa, mail, url, interestLabel } from "./util.js";
 import { interestPic, initials } from "./media.js";
 import { interestOf, offerCard } from "./offer.js";
@@ -13,10 +12,11 @@ import { aboutData } from "./about.js";
 import { companyList, companiesHeading } from "./companies.js";
 import { form } from "./contact.js";
 import { icon } from "./icons.js";
-import { tr, ticker, slider, numbers, bigNumber } from "./ui.js";
+import { tr, ticker, numbers, bigNumber } from "./ui.js";
 import { pageHref, planHref, contactHref } from "./links.js";
 import { pageUrl } from "../route.js";
-import { planBySlug } from "./plan-data.js";
+import { planBySlug, sitePlans } from "./plan-data.js";
+import { quoteItems } from "./testimonials.js";
 
 // The interests that get their own page: those the agent names (services items, then `offered`), then those of the
 // live offers, then those of the agent's official plans (DECISIONS #129); on a "Best offers" site that names none, every active catalog interest (as planList does, so its
@@ -110,7 +110,7 @@ const offerCount = (ctx, key) => arr(ctx.offers && ctx.offers.all).filter((o) =>
 export function planCards(d, ctx) {
   const list = (ctx.pages || []).filter((p) => p.key === "plan");
   if (!list.length) return "";
-  const see = tr(ctx, "site.see_plan") || tr(ctx, "site.see_plans");
+  const see = tr(ctx, "site.see_plans");
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2><ul class="ptypes stg">${list.map((p, n) => {
     const k = p.plan, c = offerCount(ctx, k), desc = planDesc(ctx, k);
     const count = c ? `<span class="pill">${esc(tr(ctx, c === 1 ? "site.plan_offer_one" : "site.plan_offers", { n: c }))}</span>` : "";
@@ -118,11 +118,13 @@ export function planCards(d, ctx) {
   }).join("")}</ul>`;
 }
 
-// A plan page's offers, two per row; with none, a dashed note card that asks the visitor to enquire.
+// A plan page's offers, two per row; with none, a dashed note card that asks the visitor to enquire, but only when the
+// type has no official plans either (the page then leads with the plans; its header already has "Ask about this plan").
 export function planOffers(d, ctx) {
   const k = ctx.page.plan, list = ctx.offers.all;
   const title = has(d.title) ? d.title : ctx.t("site.offers_title_default");
   if (!list.length) {
+    if (sitePlans(ctx, k).length) return "";
     const note = tr(ctx, "site.plan_no_offer");
     return note ? `<h2>${esc(title)}</h2><div class="note"><p>${esc(note)}</p><a class="lnk" href="${esc(contactHref(ctx, k))}" data-interest="${esc(k)}">${esc(ctx.t("site.offer_cta_enquire"))}</a></div>` : "";
   }
@@ -138,29 +140,20 @@ export function plans(d, ctx) {
   return `<h2>${esc(h)}</h2><ul class="pchips">${others.map((p) => `<li><a class="pchip" href="${esc(pageUrl(ctx.links, p.path))}">${interestPic(ctx, p.plan, { sizes: "48px", cls: "pic" })}<span>${esc(interestLabel(ctx, p.plan))}</span></a></li>`).join("")}</ul>`;
 }
 
-// About: the companies as a ticker band, "why choose me" as icon cards (4 across, 2 on phones), the achievements as a
-// timeline (a row on desktop, year rows on phones). The testimonials slider is the shared testimonials partial.
+// The site-wide shared look of a slot a template inherits on a multi-page site (DECISIONS #131; sections/index.js
+// drawSections), the same on Home and the inner pages: the companies as a ticker band, the achievements as a timeline
+// (a row on desktop, year rows on phones). Highlights and testimonials are drawn by every template itself.
 export function companiesBand(d, ctx) {
   const list = companyList(ctx), h = companiesHeading(ctx);
   if (!list.length || !h) return "";
   return `<h2>${esc(h)}</h2>${ticker(list.map((c) => `<strong>${esc(c.name)}</strong>${c.types.length ? ` <span>${c.types.map(esc).join(", ")}</span>` : ""}`), { cls: "tk-cos", label: h })}`;
-}
-export function hlCards(d, ctx) {
-  const items = arr(d.items).filter((i) => i && has(i.title));
-  if (!items.length) return "";
-  return `<h2>${esc(ctx.t("section.highlights"))}</h2><ul class="icards stg">${items.map((i) => `<li class="card">${icon(i.icon)}<h3>${esc(i.title)}</h3>${has(i.text) ? `<p>${esc(i.text)}</p>` : ""}</li>`).join("")}</ul>`;
 }
 export function timeline(d, ctx) {
   const items = arr(d.items).filter((i) => i && has(i.title));
   if (!items.length) return "";
   return `<h2>${esc(ctx.t("section.achievements"))}</h2><ol class="tline stg">${items.map((i) => `<li><span class="yr">${has(i.year) ? esc(i.year) : ""}</span><span>${esc(i.title)}</span></li>`).join("")}</ol>`;
 }
-export function quotes(d, ctx) {
-  const items = arr(d.items).filter((i) => i && has(i.quote) && has(i.name));
-  if (!items.length) return "";
-  const h = ctx.t("section.testimonials");
-  return `<h2>${esc(h)}</h2>${slider(items.map((i) => `<figure class="card quote"><blockquote>${esc(i.quote)}</blockquote><figcaption class="meta">${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: h, cls: "sl-sq", auto: 6000 })}`;
-}
+export const SITE_SHARED = { companies: companiesBand, achievements: timeline };
 
 // Contact: two columns (5 : 7). Left, "Ways to reach me": a card per way (icon, label, value, button), then the
 // address / map / hours card and the Add to home screen block; right, the enquiry form (ids, consent and privacy
@@ -198,7 +191,8 @@ export function helpBand(ctx) {
 
 // The shared partials of the inner pages, by section key (sections/index.js drawSections). Sections not named here
 // use their ordinary shared partial (offers, faq, portal).
-export const INNER = { services: planCards, plans, companies: companiesBand, highlights: hlCards, achievements: timeline, testimonials: quotes, contact: contactPage };
+// The shared page-structure partials of the inner pages (the same layout on every template, skinned by its CSS).
+export const INNER = { services: planCards, plans, contact: contactPage };
 
 // Home's contact band (the full contact section, form included, is on the Contact page): one line, Call, WhatsApp and
 // a button to the form.
@@ -213,7 +207,34 @@ export function contactBand(d, ctx) {
 
 const more = (href, label) => (href && label ? `<p class="more-l"><a class="lnk" href="${esc(href)}">${esc(label)}</a></p>` : "");
 const cut = (s, max) => { const v = String(s ?? "").replace(/\s+/g, " ").trim(); if (v.length <= max) return v; const c = v.slice(0, max - 1); const sp = c.lastIndexOf(" "); return (sp > max / 2 ? c.slice(0, sp) : c).replace(/[\s,;:.\-–—]+$/, "") + "…"; };
-const ABOUT_TEASER = 240; // characters of the bio on Home
+const ABOUT_TEASER = 320; // at most this many characters of the bio on Home, ending at a sentence when one fits
+const QUOTES_TEASER = 3; // testimonials on Home
+const FAQ_TEASER = 3; // questions on Home
+const CREDENTIALS_TEASER = 3; // achievements on Home
+// The bio on Home ends at the last full sentence that fits (DECISIONS #132: a cut mid-sentence lost the agent's
+// promise); with no sentence end past half the length, the word cut.
+const cutSentence = (s, max) => {
+  const v = String(s ?? "").replace(/\s+/g, " ").trim();
+  if (v.length <= max) return v;
+  const c = v.slice(0, max), end = Math.max(c.lastIndexOf(". "), c.lastIndexOf("। "), c.lastIndexOf("! "), c.lastIndexOf("? "));
+  return end > max / 2 ? c.slice(0, end + 1) : cut(v, max);
+};
+
+// "How working with me goes" (DECISIONS #132): a Home-only page part like "Plans I recommend", not a content section,
+// so it has no fields but one: the agent's own fee line (about.feeNote, seeded "You pay only the premium …").
+// Four fixed steps (i18n site.process_1..4 with their _text). A template may draw it in its own look (PARTS.process);
+// processSteps gives it the data.
+export const PROCESS = "process";
+export function processSteps(ctx) {
+  const steps = [1, 2, 3, 4].map((n) => ({ n, title: tr(ctx, `site.process_${n}`), text: tr(ctx, `site.process_${n}_text`) }));
+  return steps.every((s) => s.title) ? steps : [];
+}
+export const feeNote = (ctx) => { const f = ((ctx.site.content || {}).about || {}).feeNote; return has(f) ? `<p class="fee">${esc(f)}</p>` : ""; };
+export function processPart(d, ctx) {
+  const h = tr(ctx, "site.process_heading"), steps = processSteps(ctx);
+  if (!h || !steps.length) return "";
+  return `<h2>${esc(h)}</h2><ol class="process stg">${steps.map((s) => `<li><span class="ps-n" aria-hidden="true">${s.n}</span><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}</li>`).join("")}</ol>${feeNote(ctx)}`;
+}
 
 // Home teasers: the template's own partial on shorter data, then a link on to the section's page.
 export const TEASERS = {
@@ -225,14 +246,43 @@ export const TEASERS = {
     return html ? html + more(pageHref(ctx, "insurance"), tr(ctx, "site.plan_back")) : "";
   },
   about: (fn) => (d, ctx) => {
-    const html = fn(has(d.bio) ? { ...d, bio: cut(d.bio, ABOUT_TEASER) } : d, ctx);
+    const html = fn(has(d.bio) ? { ...d, bio: cutSentence(d.bio, ABOUT_TEASER) } : d, ctx);
     return html ? html + more(pageHref(ctx, "about"), tr(ctx, "site.more_about")) : "";
   },
-  contact: () => contactBand,
+  // Offers (DECISIONS #131): at most teaserItems on Home (the template's own arrangement of the first ones), then "All
+  // offers" on Insurance when there are more. ctx.offers is put back afterwards: the form's options and the other
+  // sections still see every offer.
+  offers: (fn) => (d, ctx) => {
+    // the template's strategy sets how many (render.js homeOffers), else the page model's teaserItems
+    const n = Number(ctx.homeOffers) || Number((ctx.sitePages || {}).teaserItems) || 6, o = ctx.offers;
+    if (o.all.length <= n) return fn(d, ctx);
+    const all = o.all.slice(0, n), keep = new Set(all);
+    ctx.offers = { ...o, all, grid: o.grid.filter((x) => keep.has(x)) };
+    try {
+      const html = fn(d, ctx);
+      return html ? html + more(pageHref(ctx, "insurance", { anchor: "offers" }), tr(ctx, "site.offers_all")) : "";
+    } finally { ctx.offers = o; }
+  },
+  // Testimonials (DECISIONS #131): the first 3 on Home, in the template's own look; the rest on About.
+  testimonials: (fn) => (d, ctx) => {
+    const items = quoteItems(d);
+    const html = fn({ ...d, items: items.slice(0, QUOTES_TEASER) }, ctx);
+    return html && items.length > QUOTES_TEASER ? html + more(pageHref(ctx, "about", { anchor: "testimonials" }), tr(ctx, "site.more_reviews")) : html;
+  },
+  // Credentials (DECISIONS #132): the first achievements, in the template's own look.
+  achievements: (fn) => (d, ctx) => fn({ ...d, items: arr(d.items).slice(0, CREDENTIALS_TEASER) }, ctx),
+  // The FAQ (DECISIONS #132): the first 3 answers, then "More answers" to the Contact page's FAQ.
+  faq: (fn) => (d, ctx) => {
+    const items = arr(d.items).filter((i) => i && has(i.question) && has(i.answer));
+    const html = fn({ ...d, items: items.slice(0, FAQ_TEASER) }, ctx);
+    return html && items.length > FAQ_TEASER ? html + more(pageHref(ctx, "contact", { anchor: "faq" }), tr(ctx, "site.more_answers")) : html;
+  },
+  // the template's own band when it has one (PARTS.contactBand: Simple's profile card already carries Call and WhatsApp)
+  contact: () => (d, ctx) => (ctx.contactBand || contactBand)(d, ctx),
 };
 
 // The plan-type link a template's services card carries on a multi-page site ("" on one page).
-export const seePlans = (ctx, key, cls = "lnk") => { const h = planHref(ctx, key), l = tr(ctx, "site.see_plan") || tr(ctx, "site.see_plans"); return h && l ? `<a class="${cls}" href="${esc(h)}">${esc(l)}</a>` : ""; };
+export const seePlans = (ctx, key, cls = "lnk") => { const h = planHref(ctx, key), l = tr(ctx, "site.see_plans"); return h && l ? `<a class="${cls}" href="${esc(h)}">${esc(l)}</a>` : ""; };
 // A template's service card link: to the plan type's page when the site has one, else "Enquire now" to the form.
 export const planOrEnquire = (ctx, key, cls = "lnk") =>
   seePlans(ctx, key, cls) || `<a class="${cls}" href="${esc(contactHref(ctx, key))}" data-interest="${esc(key)}">${esc(ctx.t("site.offer_cta_enquire"))}</a>`;

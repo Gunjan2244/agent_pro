@@ -23,12 +23,15 @@
 .tpl-guide .steps{max-width:calc(var(--wrap) + var(--gutter)*2);margin:0 auto;padding:var(--space-l) var(--gutter) calc(var(--space-l)*2)}
 .tpl-guide .st-h{margin-bottom:var(--space-m);color:var(--c-muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
 .tpl-guide .steps ol{display:grid;gap:var(--space-m)}
-.tpl-guide .steps li{display:flex;align-items:center;gap:var(--space-m);font-weight:600}
+.tpl-guide .steps li{display:flex;align-items:center;gap:var(--space-m)}
+.tpl-guide .st-t{display:grid;gap:calc(var(--space-s)/2)}
+.tpl-guide .st-t span{color:var(--c-muted)}
+.tpl-guide .steps .fee{margin-top:var(--space-l)}
 .tpl-guide .st-n{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700}
 @media(min-width:720px){
   .tpl-guide .steps ol{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-l)}
   .tpl-guide .steps li{position:relative}
-  .tpl-guide .steps li:not(:last-child)::after{content:"";flex:1;min-width:var(--space-l);height:2px;background:linear-gradient(90deg,var(--accent) 50%,var(--c-outline) 50%) left/200% 100%}
+  .tpl-guide .steps li:not(:last-child)::after{content:"";flex:1;min-width:var(--space-m);height:2px;background:linear-gradient(90deg,var(--accent) 50%,var(--c-outline) 50%) left/200% 100%}
 }
 @media(min-width:720px) and (prefers-reduced-motion:no-preference){.tpl-guide .steps li:not(:last-child)::after{animation:draw 1400ms 500ms ease-out both}.tpl-guide .steps li:nth-child(2)::after{animation-delay:1400ms}}
 @keyframes draw{from{background-position:right}}
@@ -94,3 +97,14 @@
 .tpl-guide .pl-step .pl-docs{margin-top:var(--space-s)}
 .tpl-guide .pl-side .offers{grid-template-columns:minmax(0,1fr)}
 .tpl-guide .pl-side .pr-go{display:none}
+/* phones and tablets: one column in reading order, the picture and the offer on the plan right after "About <type>",
+   before the three steps (the side column would otherwise stack under them) */
+@media(max-width:1023px){
+  .tpl-guide.pg-planDetail .pl-main,.tpl-guide.pg-planDetail .pl-side{display:contents}
+  .tpl-guide.pg-planDetail .pl-main>*{order:5}
+  .tpl-guide.pg-planDetail .pl-main>#about{order:1}
+  .tpl-guide.pg-planDetail .pl-side>.pl-pic{order:2}
+  .tpl-guide.pg-planDetail .pl-side>#offer{order:3}
+  .tpl-guide.pg-planDetail .pl-main>.pl-steps{order:4}
+  .tpl-guide.pg-planDetail .pl-side>#compare{order:6}
+}

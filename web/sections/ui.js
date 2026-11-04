@@ -51,6 +51,7 @@ export const phoneMenu = (ctx, items, cls = "tb-menu") =>
 
 // The top bar: the agent's face and name (a link to Home), the page menu (a row from 1024 px, a menu button on
 // phones) and one button: Call, or (cta "contact", or no phone) the way to the contact form.
+// cta: "call" (Call when there's a phone number, else Get in touch) or "contact" (always Get in touch: Fresh's own top bar)
 export function topBar(ctx, { cta = "call" } = {}) {
   const { t, profile: p } = ctx;
   const ini = initials(p.full_name);

@@ -15,15 +15,22 @@ import { FEATURED, PLAN_PAGE, GO, featured, planParts, defaultPlanPage, goPage, 
 import { featuredPlans, planBySlug, docUrl } from "./plan-data.js";
 import { esc, url, tel, wa, firstName } from "./util.js";
 import { pickOffers, todayIST, interestOf } from "./offer.js";
-import { pageHead, pageTitle, plans, planKeys, planOffers, helpBand, INNER, TEASERS } from "./pages.js";
+import { pageHead, pageTitle, plans, planKeys, planOffers, helpBand, INNER, SITE_SHARED, TEASERS, PROCESS, processPart } from "./pages.js";
 import { interestLabel } from "./util.js";
 import { linksFrom, planPath } from "../route.js";
+import { tr } from "./ui.js";
 
 export const PARTIALS = { hero, about, companies, services, offers, highlights, achievements, testimonials, faq, portal: portalPromo, contact };
+// The slot contract (DECISIONS #131): every template's parts.js exports PARTS (the sections it draws itself) and
+// INHERITS (those it leaves to the shared partials on purpose); together they name each slot exactly once
+// (scripts/test-web-templates.mjs). `pagehead` (the inner pages' header) and `contactBand` (Home's contact band) are
+// optional. Contact and the portal card are page structure and always shared.
+export const SLOTS = ["hero", "about", "companies", "services", "offers", "highlights", "achievements", "testimonials", "faq", "featuredPlans", "process"];
 // Parts that exist only on a page of a multi-page site (DECISIONS #122), never in content.sectionOrder.
 // insurerPlans (DECISIONS #129): the official plans the agent chose, on Insurance and on each plan page.
 // featuredPlans (DECISIONS #130): Home's "Plans I recommend", right after the plan types.
-const PAGE_PARTIALS = { plans, [INSURER_PLANS]: insurerPlans, [FEATURED]: featured };
+// process (DECISIONS #132): Home's "How working with me goes", where the template's strategy puts it.
+const PAGE_PARTIALS = { plans, [INSURER_PLANS]: insurerPlans, [FEATURED]: featured, [PROCESS]: processPart };
 const DEFAULT_ORDER = Object.keys(PARTIALS).filter((k) => k !== "companies" && k !== "portal");
 
 // "Companies I represent" (DECISIONS #90) comes from the payload, not from the agent's content, so an order that
@@ -124,9 +131,21 @@ export function makeCtx(site, t, tokens, variant, opts = {}, P = null) {
       // Insurance: the official plans (DECISIONS #129) after the plan types and the offers.
       else if (ctx.page.key === "insurance" && sitePlans(ctx).length) keys.push(INSURER_PLANS);
     }
+    // Home follows the template's selling strategy (DECISIONS #132; render.js homeOrder): its order, not the content's
+    // (the agent's order still applies on the inner pages, and hidden sections stay hidden). "Plans I recommend" and
+    // "How working with me goes" are page parts placed by the strategy.
+    if (!inner && Array.isArray(opts.homeOrder)) {
+      const has = new Set(keys), feat = featuredPlans(ctx).length > 0;
+      keys = opts.homeOrder.filter((k) => has.has(k) || (k === FEATURED && feat) || k === PROCESS);
+    }
+    // Without a strategy order (older renders): "Companies I represent" right under the hero (DECISIONS #131).
+    else if (!inner && keys.includes("companies") && keys.includes("hero")) {
+      keys.splice(keys.indexOf("companies"), 1);
+      keys.splice(keys.indexOf("hero") + 1, 0, "companies");
+    }
     // Home: "Plans I recommend" (the featured official plans, DECISIONS #130) right after the plan types (else after
-    // the offers, else after the hero).
-    if (!inner && featuredPlans(ctx).length) {
+    // the offers, else after the hero), unless the strategy placed it.
+    if (!inner && !Array.isArray(opts.homeOrder) && featuredPlans(ctx).length) {
       let at = keys.indexOf("services");
       if (at < 0) at = keys.indexOf("offers");
       if (at < 0) at = keys.indexOf("hero");
@@ -134,6 +153,8 @@ export function makeCtx(site, t, tokens, variant, opts = {}, P = null) {
     }
     ctx.visible = new Set(keys);
     ctx.teasers = new Set(def.teasers || []);
+    ctx.homeOffers = opts.homeOffers || 0;
+    ctx.contactBand = (opts.partials || {}).contactBand || null;
   }
   return ctx;
 }
@@ -176,18 +197,34 @@ function sitePages(site, t, tokens, variant, opts, defs) {
   return { list, current };
 }
 
-// [key, html] for every section of the page: Home uses the template's partials (opts.partials) with the teasers of
-// the page model; inner pages use the shared inner-page partials (pages.js INNER, then the ordinary shared ones; their
-// look comes from the template's CSS), except where a template overrides one for a page (opts.inner[pageKey][key]).
+// The sections whose look is the template's on every page (DECISIONS #131): a template that draws one (PARTS) draws it
+// the same way on Home and on the inner pages.
+const CONTENT_SLOTS = new Set(["companies", "highlights", "achievements", "testimonials", "faq"]);
+
+// [key, html] for every section of the page. Home uses the template's partials (opts.partials) with the teasers of
+// the page model. Inner pages use, in order: the template's override for that page (opts.inner[pageKey][key]), the
+// shared page-structure partials (pages.js INNER: plan-type cards, "Other plans", the contact page; a plan-type page's
+// offers), the template's own partial for a content slot (CONTENT_SLOTS), then the shared ones. On a multi-page site a
+// slot the template inherits gets the site-wide shared look (pages.js SITE_SHARED), the same on every page.
 function drawSections(site, t, tokens, variant, opts, P, ctx = makeCtx(site, t, tokens, variant, opts, P)) {
   const content = site.content || {};
   const inner = ctx.page && ctx.page.key !== "home";
-  const own = inner ? { ...INNER, ...(ctx.page.key === "plan" ? { offers: planOffers } : {}), ...((opts.inner || {})[ctx.page.key] || {}) } : opts.partials || {};
+  const mine = opts.partials || {};
+  const shared = ctx.pages ? SITE_SHARED : {};
+  const struct = inner ? { ...INNER, ...(ctx.page.key === "plan" ? { offers: planOffers } : {}), ...((opts.inner || {})[ctx.page.key] || {}) } : {};
   return [...ctx.visible].map((k) => {
-    let fn = own[k] || PARTIALS[k] || PAGE_PARTIALS[k];
+    let fn = inner ? struct[k] || (CONTENT_SLOTS.has(k) && mine[k]) || shared[k] || PARTIALS[k] || PAGE_PARTIALS[k] : mine[k] || shared[k] || PARTIALS[k] || PAGE_PARTIALS[k];
     if (!inner && ctx.teasers && ctx.teasers.has(k) && TEASERS[k]) fn = TEASERS[k](fn);
-    return [k, fn(content[k] || {}, ctx)];
+    return [k, withLead(fn(content[k] || {}, ctx), !inner && ctx.page ? tr(ctx, `site.lead_${variant}_${k}`) : "")];
   });
+}
+
+// Home's sections say why they matter (DECISIONS #132): the template's strategy line (i18n site.lead_<template>_<key>,
+// none for a section the strategy leaves bare) right under the section's <h2>, unless the section already has a lead.
+function withLead(html, lead) {
+  if (!html || !lead || /<\/h2>\s*<p class="lead/.test(html)) return html;
+  const at = html.indexOf("</h2>");
+  return at < 0 ? html : `${html.slice(0, at + 5)}<p class="lead sub">${esc(lead)}</p>${html.slice(at + 5)}`;
 }
 
 // What head.js needs to know about a page (DECISIONS #122): its title (the <h1>), a description and the sections on
@@ -196,7 +233,8 @@ function drawSections(site, t, tokens, variant, opts, P, ctx = makeCtx(site, t, 
 export function pageMeta(site, t, tokens, page) {
   if (!page || !tokens.sitePages) return null;
   const ctx = makeCtx(site, t, tokens, "", {}, { list: [], current: page });
-  if (page.key === "home") return { key: "home", path: "", plan: null, title: "", description: "", sections: [...ctx.visible], services: [] };
+  // Home's FAQ is a teaser of Contact's: the FAQPage JSON-LD stays on Contact only (one page per question set).
+  if (page.key === "home") return { key: "home", path: "", plan: null, title: "", description: "", sections: [...ctx.visible].filter((k) => k !== "faq"), services: [] };
   const { title, lead } = pageTitle(ctx);
   const c = site.content || {}, name = ctx.profile.full_name || "";
   const tx = (k, p) => { const s = t(k, p); return s && s !== k ? s : ""; };

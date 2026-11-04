@@ -25,6 +25,39 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
   const en = fx("sample-en"), seeded = fx("sample-seeded"), hi = fx("sample-hi"), offers = fx("sample-offers");
   const t = makeT(dicts.en);
 
+  const { SLOTS } = await import("../web/sections/index.js");
+  const { readFileSync, readdirSync } = await import("node:fs");
+  const PARTS_OF = Object.fromEntries(await Promise.all(ALL.map(async (k) => [k, await import(`../web/templates/${k}/parts.js`)])));
+  ok("slot contract (DECISIONS #131): every template draws or inherits each slot exactly once; no template patches shared markup with .replace()", () => {
+    for (const k of ALL) {
+      const m = PARTS_OF[k];
+      const own = Object.keys(m.PARTS), inh = m.INHERITS;
+      assert.ok(Array.isArray(inh), k + ": INHERITS");
+      for (const slot of SLOTS) assert.equal(own.includes(slot) + inh.includes(slot), 1, `${k}: ${slot} must be in PARTS or INHERITS, once`);
+      for (const x of [...own, ...inh]) assert.ok(SLOTS.includes(x) || x === "pagehead" || x === "contactBand", `${k}: unknown slot ${x}`);
+      for (const x of own) assert.equal(typeof m.PARTS[x], "function", `${k}: ${x}`);
+      assert.equal(typeof m.planPage, "function", k + ": planPage");
+      const src = readFileSync(new URL(`../web/templates/${k}/parts.js`, import.meta.url), "utf8");
+      assert.ok(!/\.replace\(\s*['"`/]<|\.replace\(\s*['"`]class=/.test(src), k + ": markup patched with .replace(); add an option to the shared builder instead");
+    }
+  });
+
+  // Shared component classes a template may put on its own markup (their shared CSS is meant to apply). Any other class a
+  // template creates must not also be created by the shared sections: Simple's profile card was `.pcard`, the shared
+  // plan card's class, and its sticky grid rule stacked every plan card (DECISIONS #131). New template-only classes
+  // take the template's prefix (tr- fr- mn- sp- gd-).
+  const SHARED_OK = new Set("btn card cards cu enter fact-k facts fade faq ghost hero-id hero-in hero-side hero-text hl kicker lead lift lnk meta more-l need need-d offers pcards pill pl-acts pl-talk-l prose qr-h quote stat stg sub who yr zoom process ps-n cband cb-acts pcard ttl".split(" "));
+  const classesIn = (src) => new Set([...src.matchAll(/class="([^"]*)"/g)].flatMap((m) => m[1].replace(/\$\{[^}]*\}/g, " ").split(/\s+/)).filter((x) => /^[a-z][\w-]*$/.test(x)));
+  ok("class guard (DECISIONS #131): a template's own classes never reuse a shared section's class (except the shared components)", () => {
+    const shared = new Set();
+    for (const f of readdirSync(new URL("../web/sections/", import.meta.url))) for (const c of classesIn(readFileSync(new URL(`../web/sections/${f}`, import.meta.url), "utf8"))) shared.add(c);
+    for (const k of ALL) {
+      const own = classesIn(readFileSync(new URL(`../web/templates/${k}/parts.js`, import.meta.url), "utf8"));
+      const clash = [...own].filter((c) => shared.has(c) && !SHARED_OK.has(c));
+      assert.deepEqual(clash, [], `${k}: ${clash.join(", ")} also a shared class: rename it with the template prefix`);
+    }
+  });
+
   ok("meet me: the three templates differ in structure in the hero, about, services and highlights (EN and seeded), and in offers (EN)", () => {
     for (const [s, ids] of [[en, ["about", "services", "highlights", "offers"]], [seeded, ["about", "services", "highlights"]]]) {
       const out = Object.fromEntries(MEET.map((k) => [k, html(s, k)]));
@@ -78,9 +111,10 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
   });
 
   // ---- modern (Fresh) ----
-  ok("modern: top bar with 'Get in touch'; text (kicker before the <h1>, button + WhatsApp, chips) then the 4:5 cover (640×800, high priority) with a badge of counting numbers", () => {
+  ok("modern: top bar with its own 'Get in touch' (Fresh's design; the other top bars say Call when there's a phone number); text (kicker before the <h1>, button + WhatsApp, chips) then the 4:5 cover (640×800, high priority) with a badge of counting numbers", () => {
     const h = html(en, "modern"), top = topOf(h), hero = heroOf(h);
     assert.ok(top.includes(`<a class="btn tb-cta" href="#contact">${dicts.en["site.cta_default"]}</a>`));
+    for (const k of ["classic", "guide"]) assert.ok(topOf(html(en, k)).includes(`<a class="btn tb-cta" href="tel:+919876543210">${dicts.en["site.call"]}</a>`), k);
     assert.ok(hero.indexOf('<p class="meta">Asha Verma · Insurance Advisor · Pune</p>') < hero.indexOf("<h1>"));
     assert.ok(hero.indexOf('<div class="hero-text enter">') < hero.indexOf('<div class="cover fade">'));
     assert.ok(/<div class="cover fade"><img class="hero-photo" src="[^"]+" width="640" height="800" alt="Asha Verma" fetchpriority="high" decoding="async"><ul class="badge"><li class="num"><strong class="cu">12<\/strong>/.test(hero));
@@ -88,7 +122,8 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
   ok("modern: about (bio left, big numbers right), bento services (the first large), a wide lead offer then rows, numbered highlights, a pull-quote slider, FAQ beside its heading, a companies marquee", () => {
     const h = html(en, "modern");
     const ab = section(h, "about");
-    assert.ok(ab.includes('<div class="about-grid"><div><h2>') && ab.includes('<ul class="facts"><li class="fact-n"><strong class="cu">12</strong>'));
+    // the numbers are in the hero's badge, so about doesn't repeat them (DECISIONS #132); languages and code stay
+    assert.ok(ab.includes('<div class="about-grid"><div><h2>') && !ab.includes('class="fact-n"') && heroOf(h).includes('<ul class="badge"><li class="num"><strong class="cu">12</strong>'));
     assert.ok(ab.includes(`<li class="fact-t"><strong>English, Hindi, Marathi</strong><span>${dicts.en["field.languages_spoken"]}</span></li>`));
     const sv = section(h, "services");
     assert.deepEqual([...sv.matchAll(/<span class="bt-n" aria-hidden="true">(\d+)<\/span>/g)].map((m) => m[1]), ["01", "02", "03", "04"]);
@@ -112,7 +147,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
   ok("minimal: no top bar; the header holds the profile card (96 px portrait, name, Call / WhatsApp / Email buttons, facts with counting numbers) and the intro (<h1>, lead, chips); the portrait is the only image", () => {
     const h = html(en, "minimal"), hero = heroOf(h);
     assert.ok(!h.includes('class="topbar"'));
-    assert.ok(/^id="hero"><div class="hero-in">\n<aside class="pcard"><img class="hero-photo" src="http:\/\/localhost:8080\/dev-fixtures\/avatar\.svg" width="96" height="96"/.test(hero));
+    assert.ok(/^id="hero"><div class="hero-in">\n<aside class="mn-pcard"><img class="hero-photo" src="http:\/\/localhost:8080\/dev-fixtures\/avatar\.svg" width="96" height="96"/.test(hero));
     assert.ok(hero.includes(`<p class="pc-acts"><a class="btn" href="tel:+919876543210">${dicts.en["site.call"]}</a><a class="btn ghost" href="https://wa.me/919876543210" rel="noopener">${dicts.en["site.whatsapp"]}</a><a class="btn ghost" href="mailto:asha@example.com">${dicts.en["site.email"]}</a></p>`));
     assert.ok(hero.includes('<ul class="pc-facts"><li><span>years of experience</span><strong class="cu">12</strong></li>'));
     assert.ok(hero.indexOf("</aside>") < hero.indexOf('<div class="intro enter">') && hero.indexOf('<div class="intro enter">') < hero.indexOf("<h1>"));
@@ -137,6 +172,10 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
     assert.ok(hero.indexOf('<div class="hero-side"><div class="slider sl-hero"') > hero.indexOf("<h1>") && hero.indexOf('<ul class="tbar">') > hero.indexOf("</div></div>"));
     const wall = section(h, "offers");
     assert.ok(wall.includes('<ul class="offers wall stg"><li class="offer lift zoom"><img class="pic"') && !wall.includes(`<h3>${offers.offers.featured.title}</h3>`));
+    // the wall starts where the hero slider ends: no offer is shown twice
+    const inHero = [...hero.matchAll(/<p class="ttl">([^<]*)<\/p>/g)].map((m) => m[1]);
+    assert.ok(inHero.length >= 2);
+    for (const t of inHero) assert.ok(!wall.includes(`<h3>${t}</h3>`), `"${t}" is in the hero and the wall`);
     assert.ok(section(h, "services").includes('<ul class="tiles stg"><li class="tile zoom"><img class="pic"'));
     for (const i of offers.content.highlights.items) assert.equal(section(h, "highlights").includes(`<h3>${i.title}</h3>`), Boolean(i.text), i.title);
   });
@@ -221,7 +260,7 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT }) {
 
   for (const k of ALL) ok(`${k}: the seeded site keeps its structure markers`, () => {
     const h = html(seeded, k);
-    const marker = { classic: '<li class="plan-c lift zoom">', modern: '<span class="bt-n" aria-hidden="true">04</span>', minimal: '<aside class="pcard"><span class="hero-photo mono" aria-hidden="true">PN</span>', spotlight: '<div class="hero-band">', guide: '<div class="steps">' }[k];
+    const marker = { classic: '<li class="plan-c lift zoom">', modern: '<span class="bt-n" aria-hidden="true">04</span>', minimal: '<aside class="mn-pcard"><span class="hero-photo mono" aria-hidden="true">PN</span>', spotlight: '<div class="hero-band">', guide: '<div class="steps">' }[k];
     assert.ok(h.includes(marker), marker);
   });
 }

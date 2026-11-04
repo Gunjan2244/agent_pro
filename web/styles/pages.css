@@ -47,11 +47,7 @@
 .pchip{display:flex;align-items:center;gap:var(--space-s);min-height:48px;padding:var(--space-s) var(--space-m) var(--space-s) var(--space-s);border:1px solid var(--c-outline);border-radius:var(--shape-lg);background:var(--c-surface);color:var(--c-onSurface);font-weight:500;text-decoration:none;white-space:nowrap;transition:border-color var(--motion-short),color var(--motion-short)}
 .pchip .pic{width:40px;height:40px;border-radius:50%;object-fit:cover}
 .pchip:hover{border-color:var(--accent);color:var(--accent)}
-/* About: icon cards, a timeline, the quotes slider; the companies ticker band */
-.icards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-m)}
-.icards .card{padding:var(--space-m)}
-.icards .ico{width:40px;height:40px;padding:var(--space-s);border-radius:50%;background:var(--tint)}
-@media(min-width:1024px){.icards{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-l)}.icards .card{padding:var(--space-l)}}
+/* The achievements timeline: the shared look of an inherited achievements slot (DECISIONS #131; About only) */
 .tline li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:var(--space-m);padding:var(--space-m) 0;border-bottom:1px solid var(--c-outlineVariant)}
 .tline .yr{color:var(--accent);font-weight:700}
 @media(min-width:1024px){
@@ -59,13 +55,6 @@
   .tline li{position:relative;grid-template-columns:1fr;gap:var(--space-s);padding:var(--space-l) 0 0;border:0}
   .tline li::before{content:"";position:absolute;top:-9px;left:0;width:16px;height:16px;border:3px solid var(--c-surface);border-radius:50%;background:var(--accent)}
 }
-.sl-sq{--sl-w:86%}
-.sl-sq .quote{display:grid;align-content:space-between;gap:var(--space-m);margin:0}
-.sl-sq blockquote{font-weight:500;white-space:pre-line}
-@media(min-width:720px){.sl-sq{--sl-w:calc((100% - var(--space-m))/2)}}
-@media(min-width:1024px){.sl-sq{--sl-w:calc((100% - var(--space-m)*2)/3)}}
-.tk-cos{border-radius:var(--shape-md);background:var(--c-surfaceContainerLow)}
-.tk-cos span{color:var(--c-onSurfaceVariant)}
 /* Contact: ways to reach me (a row of three buttons on phones) and the address card beside the form; FAQ + portal */
 .cp-grid{display:grid;gap:var(--space-l)}
 .ways{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-s)}
@@ -130,6 +119,7 @@ details.ip-co .pcards{padding:0 var(--space-m) var(--space-m)}
 .pl-tiles a{display:grid;gap:var(--space-s);height:100%;color:var(--c-onSurface);text-decoration:none}
 .pl-tiles .ico{color:var(--accent)}
 .pl-acts{display:grid;gap:var(--space-s)}
+.sec-talk .pl-acts{max-width:360px}
 .pl-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border-top:1px solid var(--c-outlineVariant);border-bottom:1px solid var(--c-outlineVariant);margin:0}
 .pl-facts div{padding:var(--space-m) var(--space-m) var(--space-m) 0}
 .pl-facts dt{color:var(--c-muted)}
@@ -153,3 +143,6 @@ details.ip-co .pcards{padding:0 var(--space-m) var(--space-m)}
 @keyframes go-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media(prefers-reduced-motion:reduce){.go-bar span{animation:none}}
 .go-acts{display:flex;flex-wrap:wrap;gap:var(--space-s)}
+/* phones: on Insurance and a plan-type page every offer after the first is a compact card without its picture, so the
+   list stays short (DECISIONS #131) */
+@media(max-width:719px){.pg-insurance .offers>li+li>.pic,.pg-plan .offers>li+li>.pic{display:none}}

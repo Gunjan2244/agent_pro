@@ -48,12 +48,16 @@ import com.sledje.agentpro.resources.ic_web
 import com.sledje.agentpro.resources.whats_new_companies
 import com.sledje.agentpro.resources.whats_new_customers
 import com.sledje.agentpro.resources.whats_new_got_it
+import com.sledje.agentpro.resources.whats_new_home_trust
+import com.sledje.agentpro.resources.whats_new_home_trust_body
 import com.sledje.agentpro.resources.whats_new_next
 import com.sledje.agentpro.resources.whats_new_not_now
 import com.sledje.agentpro.resources.whats_new_page
 import com.sledje.agentpro.resources.whats_new_pages
 import com.sledje.agentpro.resources.whats_new_pages_body
 import com.sledje.agentpro.resources.whats_new_photo_editor
+import com.sledje.agentpro.resources.whats_new_pictures
+import com.sledje.agentpro.resources.whats_new_pictures_body
 import com.sledje.agentpro.resources.whats_new_plans
 import com.sledje.agentpro.resources.whats_new_plans_body
 import com.sledje.agentpro.resources.whats_new_plan_pages
@@ -142,6 +146,19 @@ enum class WhatsNewItem(
      * templates were redesigned around them. Show me opens Website → Plans on your site (stars, key features).
      */
     PlanPages(7, FeatureId.Offers, Res.string.whats_new_plan_pages, Res.drawable.ic_star, walkthrough = true, body = Res.string.whats_new_plan_pages_body),
+
+    /**
+     * Important (#131): every public website's Home now shows "Companies I represent" right under the hero and up to 3
+     * testimonials, each section looks the same on every page, and plan pages end with one way to reach the agent.
+     * Show me opens the website preview (Home).
+     */
+    HomeTrust(8, FeatureId.SiteBuilder, Res.string.whats_new_home_trust, Res.drawable.ic_web, walkthrough = true, body = Res.string.whats_new_home_trust_body),
+
+    /**
+     * Important (#133): every public website's pictures were replaced by a bolder, hand-printed set (hero scenes, plan
+     * types, the contact picture), and offer pictures now state their key facts. Show me opens the website preview.
+     */
+    BoldPictures(9, FeatureId.SiteBuilder, Res.string.whats_new_pictures, Res.drawable.ic_add_photo_alternate, walkthrough = true, body = Res.string.whats_new_pictures_body),
 }
 
 /** The sheet's body (the frame, with its "What's new" title, is the shared bottom sheet). */

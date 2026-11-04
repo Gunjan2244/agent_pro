@@ -45,7 +45,7 @@
 .tpl-spotlight .wall .offer:first-child .pic{aspect-ratio:16/9}
 @media(min-width:1024px){
   .tpl-spotlight .wall .offer:first-child{grid-column:span 2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .tpl-spotlight .wall .offer:first-child .pic{height:100%;aspect-ratio:auto}
+  .tpl-spotlight .wall .offer:first-child .pic{align-self:start} /* stays 16:9: offer pictures carry text (DECISIONS #133) */
 }
 
 /* services as picture tiles */
@@ -101,3 +101,8 @@
 .tpl-spotlight .pl-hd .ph-pic .pic{border-radius:var(--shape-lg)}
 .tpl-spotlight .sec-ph .pl-co{color:#CBD5E1}
 .tpl-spotlight .sec-ph .pill{background:rgb(255 255 255/.12);color:#fff}
+
+/* offer-led hero (DECISIONS #132): who is offering, then the deal */
+.tpl-spotlight .sp-agent{display:flex;align-items:center;gap:var(--space-m);margin-bottom:var(--space-m)}
+.tpl-spotlight .sp-cos{color:#CBD5E1}
+.tpl-spotlight .sl-hero .pcard{color:var(--c-onSurface);box-shadow:0 24px 48px rgb(0 0 0/.35)}

@@ -96,7 +96,7 @@ class StarterContentTest {
             assertEquals(c.text("contact", "phone"), c.text("contact", "whatsapp"), "WhatsApp defaults to the phone")
             assertEquals("ramesh@example.com", c.text("contact", "email"))
         }
-        assertTrue(starter(locale = "hi").text("hero", "headline").contains("Ramesh Kumar"))
+        assertTrue(starter(locale = "hi").text("hero", "headline").contains("Ramesh"), "the seed headline names the agent (first name, DECISIONS #132)")
         assertNotEquals(starter(locale = "en").text("hero", "headline"), starter(locale = "hi").text("hero", "headline"))
         assertEquals(starter(locale = "en"), starter(locale = "xx"), "an unknown locale falls back to the default")
     }
@@ -107,7 +107,7 @@ class StarterContentTest {
         val bios = (1..40).map { starter(agentId = "agent-$it").text("about", "bio") }.toSet()
         assertTrue(bios.size > 1, "different agents get different bios")
         val expected = SiteSeed.pick("agent-1", SiteSeed.salt("hero", "headline"), 3)
-        val headlines = listOf("Namaste, I'm Ramesh Kumar", "Hello, I'm Ramesh Kumar", "Hi, I'm Ramesh Kumar")
+        val headlines = listOf("Protect your family's future with Ramesh", "Insurance advice you can trust, from Ramesh", "The right cover for your family, explained by Ramesh")
         assertEquals(headlines[expected], starter(agentId = "agent-1").text("hero", "headline"))
     }
 

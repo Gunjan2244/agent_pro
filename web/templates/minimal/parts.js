@@ -4,20 +4,23 @@
 import { esc, has, arr, tel, wa, mail, interestLabel } from "../../sections/util.js";
 import { heroParts } from "../../sections/hero.js";
 import { aboutData } from "../../sections/about.js";
-import { serviceList } from "../../sections/services.js";
+import { serviceRows } from "../../sections/services.js";
+import { quoteItems } from "../../sections/testimonials.js";
+import { disclaimer } from "../../sections/offers.js";
 import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
-import { slider, numbers, menuItems } from "../../sections/ui.js";
-import { pageHead, planOrEnquire } from "../../sections/pages.js";
+import { slider, numbers, menuItems, tr } from "../../sections/ui.js";
+import { pageHead, planOrEnquire, processSteps, feeNote } from "../../sections/pages.js";
+import { pageHref } from "../../sections/links.js";
 import { featuredSection, sec, band } from "../../sections/plan-page.js";
 
 // The page <header> holds both columns' tops: the profile card (pinned) and the intro (h1, lead, chips, featured).
 // With no contact links the card's one button is the hero CTA, linking to the form.
 export function hero(d, ctx) {
-  const x = heroParts(d, ctx, { photo: [96, 96] });
+  const x = heroParts(d, ctx, { photo: [96, 96], loginCls: "pc-login" });
   return `<div class="hero-in">
-${pcard(x, ctx)}
+${profileCard(x, ctx)}
 <div class="intro enter">
 ${x.h1}
 ${x.lead}
@@ -30,16 +33,16 @@ ${x.offer}
 // Inner pages (DECISIONS #122): the same profile card column, the shared page header in the résumé column (without
 // its picture column: the card shows the photo).
 export function pagehead(ctx) {
-  const x = heroParts((ctx.site.content || {}).hero || {}, ctx, { photo: [96, 96] });
+  const x = heroParts((ctx.site.content || {}).hero || {}, ctx, { photo: [96, 96], loginCls: "pc-login" });
   return `<div class="hero-in">
-${pcard(x, ctx)}
+${profileCard(x, ctx)}
 <div class="intro">${pageHead(ctx, { pic: false })}</div>
 </div>`;
 }
 
 // The profile card: photo, name, Call / WhatsApp / Email (or the hero CTA), facts with counting numbers, the page menu
 // (a list in the pinned card; a row of tabs under the card on phones) and the customer login.
-function pcard(x, ctx) {
+function profileCard(x, ctx) {
   const { t, profile: p } = ctx;
   const c = (ctx.site.content || {}).contact || {}, a = (ctx.site.content || {}).about || {};
   const acts = [
@@ -56,7 +59,7 @@ function pcard(x, ctx) {
     code ? `<li><strong>${esc(code)}</strong></li>` : "",
   ].join("");
   const nav = menuItems(ctx, { login: false });
-  return `<aside class="pcard">${x.face}<p class="who">${has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : ""}${x.sub ? `<span>${x.sub}</span>` : ""}</p>${nav ? `<ul class="pc-nav">${nav}</ul>` : ""}${btns ? `<p class="pc-acts">${btns}</p>` : ""}${facts ? `<ul class="pc-facts">${facts}</ul>` : ""}${x.login.replace('class="hero-login"', 'class="pc-login"')}</aside>`;
+  return `<aside class="mn-pcard">${x.face}<p class="who">${has(p.full_name) ? `<strong>${esc(p.full_name)}</strong>` : ""}${x.sub ? `<span>${x.sub}</span>` : ""}</p>${nav ? `<ul class="pc-nav">${nav}</ul>` : ""}${btns ? `<p class="pc-acts">${btns}</p>` : ""}${facts ? `<ul class="pc-facts">${facts}</ul>` : ""}${x.login}</aside>`;
 }
 
 // About: the bio as prose under a small label (the numbers live in the card).
@@ -68,8 +71,7 @@ export function about(d, ctx) {
 
 // How I can help: rows (name, description) each with an "Enquire" link that preselects the form.
 export function services(d, ctx) {
-  const { items, extra } = serviceList(d, ctx);
-  const rows = [...items, ...extra.map((k) => ({ interest: k }))];
+  const rows = serviceRows(d, ctx);
   if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
 <ul class="rows">${rows.map((i) => `<li><div><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}</div>${planOrEnquire(ctx, i.interest)}</li>`).join("")}</ul>`;
@@ -80,8 +82,7 @@ export function offers(d, ctx) {
   const list = ctx.offers.grid;
   if (!list.length) return "";
   const title = has(d.title) ? d.title : ctx.t("site.offers_title_default");
-  const disc = has(ctx.site.company && ctx.site.company.disclaimer) ? `<p class="fine disc">${esc(ctx.site.company.disclaimer)}</p>` : "";
-  return `<h2>${esc(title)}</h2><ul class="offers stg">${list.map((o) => offerCard(o, ctx)).join("")}</ul>${disc}`;
+  return `<h2>${esc(title)}</h2><ul class="offers stg">${list.map((o) => offerCard(o, ctx)).join("")}</ul>${disclaimer(ctx)}`;
 }
 
 // Why choose me: a two-column list, each with its icon.
@@ -99,9 +100,26 @@ export function achievements(d, ctx) {
   return `<h2>${esc(ctx.t("section.achievements"))}</h2><ul class="years">${items.map((i) => `<li><span class="yr">${has(i.year) ? esc(i.year) : ""}</span><span>${esc(i.title)}</span></li>`).join("")}</ul>`;
 }
 
+// How working with me goes: résumé rows like the achievements, the step number where the year is, then the fee line.
+export function process(d, ctx) {
+  const h = tr(ctx, "site.process_heading"), steps = processSteps(ctx);
+  if (!h || !steps.length) return "";
+  return `<h2>${esc(h)}</h2><ol class="years">${steps.map((s) => `<li><span class="yr">${s.n}</span><div><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}</div></li>`).join("")}</ol>${feeNote(ctx)}`;
+}
+
+// Home's contact band: the card already carries Call and WhatsApp, so the band offers only the enquiry form.
+export function contactBand(d, ctx) {
+  const form = ((ctx.site.content || {}).contact || {}).showEnquiryForm !== false;
+  const go = pageHref(ctx, "contact", form ? { anchor: "enq" } : {});
+  const label = form ? tr(ctx, "site.help_enquire") || ctx.t("site.cta_default") : ctx.t("site.cta_default");
+  const lead = tr(ctx, "site.contact_band_lead");
+  if (!go) return "";
+  return `<h2>${esc(ctx.t("section.contact"))}</h2><div class="cband">${lead ? `<p class="lead">${esc(lead)}</p>` : ""}<p class="cb-acts"><a class="btn" href="${esc(go)}">${esc(label)}</a></p></div>`;
+}
+
 // Kind words: a slider, two quotes per view on wide screens.
 export function testimonials(d, ctx) {
-  const items = arr(d.items).filter((i) => i && has(i.quote) && has(i.name));
+  const items = quoteItems(d);
   if (!items.length) return "";
   const h = ctx.t("section.testimonials");
   return `<h2>${esc(h)}</h2>${slider(items.map((i) => `<figure class="kw"><blockquote>${esc(i.quote)}</blockquote><figcaption class="meta">${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: h, cls: "sl-kw", auto: 7000 })}`;
@@ -118,6 +136,12 @@ export function companies(d, ctx) {
 // Plans I recommend (DECISIONS #130): hairline rows with a small picture, like the rest of the résumé column.
 export const featuredPlans = (d, ctx) => featuredSection(d, ctx, { layout: "rows" });
 
-// A plan's page in the résumé column (the profile card stays pinned): the picture, then one labelled block each for
-// the key features, the offer, the documents and similar plans.
-export const planPage = (x) => band("pic", x.pic && `<div class="pl-pic">${x.pic}</div>`) + sec("features", x.features) + sec("about", x.about) + sec("offer", x.offer) + sec("docs", x.docs) + sec("similar", x.similarList) + band("fine", x.fine);
+// A plan's page in the résumé column (the profile card stays pinned): the picture (an uploaded one only), then one
+// labelled block each for the key features, the offer, the documents and similar plans; "Talk to …" closes it (on
+// phones the card is only at the top, DECISIONS #131).
+export const planPage = (x) => band("pic", x.pic && `<div class="pl-pic">${x.pic}</div>`) + sec("features", x.features) + sec("about", x.about) + sec("offer", x.offer) + sec("docs", x.docs) + sec("similar", x.similarList) + sec("talk", x.talk) + band("fine", x.fine);
+
+// The slot contract (sections/index.js SLOTS, DECISIONS #131): the sections this template draws itself, and those it
+// leaves to the shared partials on purpose.
+export const PARTS = { hero, about, services, offers, highlights, achievements, testimonials, companies, pagehead, featuredPlans, process, contactBand };
+export const INHERITS = ["faq"];

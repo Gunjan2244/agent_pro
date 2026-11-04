@@ -29,9 +29,9 @@ const tr = (ctx, key) => { const s = ctx.t(key); return s && s !== key ? s : "";
 export const portalLogin = (ctx) => (ctx.portalBase === "#" ? "#" : ctx.portalBase ? ctx.portalBase + "/login" : "");
 
 // F4: the small "Customer login" text link at the top of the hero (a <p>, not a nav: the call bar stays the only <nav>).
-export function heroLogin(ctx) {
+export function heroLogin(ctx, cls = "hero-login") {
   const href = portalLogin(ctx), label = tr(ctx, "site.header_portal");
-  return href && label ? `<p class="hero-login"><a href="${esc(href)}" rel="nofollow">${esc(label)}</a></p>` : "";
+  return href && label ? `<p class="${cls}"><a href="${esc(href)}" rel="nofollow">${esc(label)}</a></p>` : "";
 }
 
 export function portalPromo(d, ctx) {

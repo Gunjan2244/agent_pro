@@ -11,7 +11,7 @@
 .tpl-modern .hero-text h1{margin-top:var(--space-s);letter-spacing:-.02em}
 .tpl-modern .acts{display:flex;flex-wrap:wrap;gap:var(--space-s);margin-top:var(--space-l)}
 .tpl-modern .acts .btn{margin:0}
-.tpl-modern .cover{position:relative;order:-1;margin-bottom:var(--space-m)}
+.tpl-modern .cover{position:relative;margin-bottom:var(--space-m)}
 .tpl-modern .cover .hero-photo{width:100%;height:auto;aspect-ratio:4/3;border-radius:var(--shape-lg);object-fit:cover;object-position:50% 25%}
 .tpl-modern .cover .hero-photo.mono{display:grid;place-items:center;font-size:var(--text-xl);line-height:var(--line-xl)}
 .tpl-modern .badge{position:absolute;left:var(--space-m);bottom:calc(var(--space-m)*-1);display:flex;gap:var(--space-l);padding:var(--space-m) var(--space-l);border-radius:var(--shape-md);background:var(--c-surface);box-shadow:0 12px 32px rgb(17 24 39/.14)}
@@ -20,7 +20,7 @@
 .tpl-modern .badge span{color:var(--c-onSurfaceVariant)}
 @media(min-width:1024px){
   .tpl-modern .hero-in{grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:calc(var(--space-l)*3)}
-  .tpl-modern .cover{order:0;margin:0;padding:0 var(--space-l) var(--space-l) 0}
+  .tpl-modern .cover{margin:0;padding:0 var(--space-l) var(--space-l) 0}
   .tpl-modern .cover::before{content:"";position:absolute;inset:var(--space-l) 0 0 var(--space-l);border-radius:var(--shape-lg);background:var(--tint)}
   .tpl-modern .cover .hero-photo{position:relative;aspect-ratio:4/5}
   .tpl-modern .badge{left:calc(var(--space-l)*-1);bottom:calc(var(--space-l)*2)}
@@ -95,7 +95,7 @@
 .tpl-modern .sec-contact .btn.ghost{background:transparent;border-color:#fff;color:#fff}
 .tpl-modern .sec-contact .enq{color:var(--c-onSurface);border:0;box-shadow:0 20px 48px rgb(0 0 0/.3)}
 .tpl-modern .sec-contact .talk{border-radius:var(--shape-md)}
-.tpl-modern .sec-contact .hint,.tpl-modern .sec-contact .contact-info .prose{color:#D1D5DB}
+.tpl-modern .sec-contact .hint,.tpl-modern .sec-contact .contact-info .prose,.tpl-modern .sec-contact .cband .lead{color:#E5E7EB}
 .tpl-modern .enq .hint{color:var(--c-onSurfaceVariant)}
 .tpl-modern .sec:last-of-type.sec-contact{padding-bottom:calc(var(--space-l)*3)}
 .tpl-modern .foot{background:var(--ink);color:#9CA3AF;border-top:1px solid #1F2937}

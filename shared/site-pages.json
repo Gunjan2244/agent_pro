@@ -8,15 +8,23 @@
       "labelKey": "site.page_home",
       "sections": [
         "hero",
+        "companies",
         "offers",
         "services",
         "about",
         "highlights",
+        "achievements",
+        "testimonials",
+        "faq",
         "contact"
       ],
       "teasers": [
+        "offers",
         "services",
         "about",
+        "achievements",
+        "testimonials",
+        "faq",
         "contact"
       ]
     },
@@ -30,6 +38,7 @@
         "services",
         "offers"
       ],
+      "order": "page",
       "helpBand": true
     },
     {
@@ -46,8 +55,7 @@
       "key": "planDetail",
       "path": "insurance/{interest}/{plan}",
       "parent": "plan",
-      "sections": [],
-      "helpBand": true
+      "sections": []
     },
     {
       "key": "about",

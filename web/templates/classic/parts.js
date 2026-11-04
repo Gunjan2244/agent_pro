@@ -5,24 +5,28 @@
 import { esc, has, arr, interestLabel, wa } from "../../sections/util.js";
 import { heroParts } from "../../sections/hero.js";
 import { aboutData } from "../../sections/about.js";
-import { serviceList } from "../../sections/services.js";
+import { serviceRows } from "../../sections/services.js";
+import { quoteItems } from "../../sections/testimonials.js";
+import { disclaimer } from "../../sections/offers.js";
 import { pic, interestPic, fnv1a32 } from "../../sections/media.js";
 import { icon } from "../../sections/icons.js";
 import { offerCard } from "../../sections/offer.js";
 import { companyList, companiesHeading } from "../../sections/companies.js";
-import { slider, ticker, numbers, bigNumber, topBar } from "../../sections/ui.js";
-import { planOrEnquire } from "../../sections/pages.js";
+import { slider, ticker, numbers, bigNumber, topBar, tr } from "../../sections/ui.js";
+import { planOrEnquire, processSteps, feeNote } from "../../sections/pages.js";
 import { featuredSection, defaultPlanPage } from "../../sections/plan-page.js";
 
 const scene = (ctx) => `hero-scene-${(fnv1a32(ctx.seed || ctx.agentName || "") % 3) + 1}`;
 
-// The ticker under the banner: the agent's numbers, languages and highlight titles (only what the agent set).
+// The ticker under the banner: the agent's numbers, languages and office hours (only what the agent set). The
+// highlight titles stay out: "Why choose me" follows and says them.
 function trustItems(ctx) {
   const c = ctx.site.content || {}, a = c.about || {};
   const out = numbers(a, ctx).map((x) => `<strong>${esc(x.n)}</strong> ${esc(x.label)}`);
   const { langs } = aboutData(a, ctx);
   if (langs.length) out.push(`${esc(ctx.t("field.languages_spoken"))}: ${langs.map(esc).join(", ")}`);
-  for (const i of arr((c.highlights || {}).items)) if (i && has(i.title)) out.push(`${icon(i.icon)}${esc(i.title)}`);
+  const hours = (c.contact || {}).officeHours;
+  if (has(hours)) out.push(esc(tr(ctx, "site.reachable", { hours })));
   return out;
 }
 
@@ -48,8 +52,7 @@ export function offers(d, ctx) {
   const list = ctx.offers.all;
   if (!list.length || !ctx.visible.has("offers")) return "";
   const title = has(d.title) ? d.title : ctx.t("site.offers_title_default");
-  const disc = has(ctx.site.company && ctx.site.company.disclaimer) ? `<p class="fine disc">${esc(ctx.site.company.disclaimer)}</p>` : "";
-  return `<h2>${esc(title)}</h2>${slider(list.map((o) => offerCard(o, ctx, { tag: "div", image: true })), ctx, { label: title, cls: "sl-offers", auto: 5000 })}${disc}`;
+  return `<h2>${esc(title)}</h2>${slider(list.map((o) => offerCard(o, ctx, { tag: "div", image: true })), ctx, { label: title, cls: "sl-offers", auto: 5000 })}${disclaimer(ctx)}`;
 }
 
 // Introduction: the agent's photo (or the "let's talk" picture) beside a dark panel: heading, designation, bio,
@@ -81,8 +84,7 @@ export function companies(d, ctx) {
 
 // Insurance plans: a 2 × 3 grid (1 column on phones, 2 from 720 px, 3 from 1024 px) of picture cards that lift.
 export function services(d, ctx) {
-  const { items, extra } = serviceList(d, ctx);
-  const rows = [...items, ...extra.map((k) => ({ interest: k }))];
+  const rows = serviceRows(d, ctx);
   if (!rows.length) return "";
   return `<h2>${esc(ctx.t("site.services_heading"))}</h2>
 <ul class="plans stg">${rows.map((i) => `<li class="plan-c lift zoom">${interestPic(ctx, i.interest, { sizes: "(min-width: 1024px) 340px, (min-width: 720px) 50vw, 100vw" })}<div class="plan-b"><h3>${esc(interestLabel(ctx, i.interest))}</h3>${has(i.description) ? `<p>${esc(i.description)}</p>` : ""}${planOrEnquire(ctx, i.interest, "lnk ask")}</div></li>`).join("")}</ul>`;
@@ -98,11 +100,18 @@ export function highlights(d, ctx) {
 
 // Our policyholders: quote cards in a slider that runs off the right edge on wide screens.
 export function testimonials(d, ctx) {
-  const items = arr(d.items).filter((i) => i && has(i.quote) && has(i.name));
+  const items = quoteItems(d);
   if (!items.length) return "";
   const h = ctx.t("site.policyholders_heading");
   const head = h && h !== "site.policyholders_heading" ? h : ctx.t("section.testimonials");
   return `<h2>${esc(head)}</h2>${slider(items.map((i) => `<figure class="card quote"><blockquote>${esc(i.quote)}</blockquote><figcaption class="meta">${esc(i.name)}${has(i.city) ? ", " + esc(i.city) : ""}</figcaption></figure>`), ctx, { label: head, cls: "sl-quotes", auto: 6000 })}`;
+}
+
+// How working with me goes: four soft cards, centred, the step number in a round tinted badge, the fee line below.
+export function process(d, ctx) {
+  const h = tr(ctx, "site.process_heading"), steps = processSteps(ctx);
+  if (!h || !steps.length) return "";
+  return `<h2>${esc(h)}</h2><ol class="process tr-steps stg">${steps.map((s) => `<li class="tr-step"><span class="ps-n" aria-hidden="true">${s.n}</span><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}</li>`).join("")}</ol>${feeNote(ctx)}`;
 }
 
 export const before = (ctx) => topBar(ctx);
@@ -113,3 +122,8 @@ export const featuredPlans = (d, ctx) => featuredSection(d, ctx, { layout: "slid
 // A plan's page: the shared arrangement (features, note and offer beside the documents and a dark "Talk to …" card
 // that stays in view), under a dark header with the picture on the right (style.css).
 export const planPage = (x) => defaultPlanPage(x);
+
+// The slot contract (sections/index.js SLOTS, DECISIONS #131): the sections this template draws itself, and those it
+// leaves to the shared partials on purpose.
+export const PARTS = { hero, offers, about, companies, services, highlights, testimonials, featuredPlans, process };
+export const INHERITS = ["achievements", "faq"];

@@ -155,10 +155,87 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(h.includes('<p class="crumb"><a href="/a/demo/">') && h.includes(`<a href="/a/demo/insurance">${dicts.en["site.page_insurance"]}</a>`), k + " crumb");
       assert.ok(h.includes('id="help"'), k);
     }
-    const none = page(en, "classic", "insurance/term");
-    assert.ok(none.includes(`<div class="note"><p>${esc(dicts.en["site.plan_no_offer"])}</p><a class="lnk" href="/a/demo/contact?interest=term#enq" data-interest="term">`), "no offer: the dashed note");
+    const none = page(en, "classic", "insurance/child");
+    assert.ok(none.includes(`<div class="note"><p>${esc(dicts.en["site.plan_no_offer"])}</p><a class="lnk" href="/a/demo/contact?interest=child#enq" data-interest="child">`), "no offer and no official plan: the dashed note");
+    const plansOnly = page(en, "classic", "insurance/term");
+    assert.ok(!plansOnly.includes('<div class="note">') && !plansOnly.includes('id="offers"') && plansOnly.includes('id="insurerPlans"'), "no offer but official plans: the plans lead, no note");
   });
-  ok("About: the story header (photo 4:5, <h1>, designation, bio, counting numbers, languages, agency code), companies ticker, icon cards, timeline, quotes slider, help band", () => {
+  // Each template's own look for a content section, the same on Home and every inner page (DECISIONS #131); a slot the
+  // template inherits gets the site-wide shared look (companies: the ticker band; achievements: the timeline).
+  const LOOK = {
+    classic: { companies: 'class="ticker tk-rev tk-cos"', highlights: 'class="slider sl-three"', achievements: '<ol class="tline stg">', testimonials: 'class="slider sl-quotes"', faq: '<div class="faq">' },
+    modern: { companies: 'class="ticker tk-cos"', highlights: '<ol class="hl-cols stg">', achievements: '<ol class="tline stg">', testimonials: 'class="slider sl-pull"', faq: '<div class="faq-grid">' },
+    minimal: { companies: '<ul class="plain">', highlights: '<ul class="ilist stg">', achievements: '<ul class="years">', testimonials: 'class="slider sl-kw"', faq: '<div class="faq">' },
+    spotlight: { companies: 'class="ticker tk-cos"', highlights: '<ul class="cards hl stg">', achievements: '<ol class="tline stg">', testimonials: 'class="slider sl-q"', faq: '<div class="faq">' },
+    guide: { companies: 'class="ticker tk-cos"', highlights: 'class="ticker tk-trust"', achievements: '<ol class="tline stg">', testimonials: 'class="slider sl-bigq"', faq: '<div class="faq">' },
+  };
+  const secOf = (h, id) => { const i = h.indexOf(`id="${id}"`); return i < 0 ? "" : h.slice(i, h.indexOf("</section>", i)); };
+  ok("About and Contact draw each content section in the template's own look (DECISIONS #131); Guide's trust ticker isn't repeated under its highlights", () => {
+    for (const k of TEMPLATE_KEYS) {
+      const about = page(en, k, "about"), contact = page(en, k, "contact");
+      for (const id of ["companies", "highlights", "achievements", "testimonials"]) assert.ok(secOf(about, id).includes(LOOK[k][id]), `${k} About ${id}`);
+      assert.ok(secOf(contact, "faq").includes(LOOK[k].faq), `${k} Contact faq`);
+    }
+    assert.ok(!page(en, "guide", "about").includes('class="g-trust"') && page(en, "guide", "contact").includes('class="g-trust"'));
+  });
+  // Each template is a selling strategy (DECISIONS #132): its own Home order (whatever the content's sectionOrder), its
+  // own number of offers. Written out here as the contract: the demo agent (sample-en) and a brand-new agent (seeded).
+  const STRATEGY = {
+    classic: { offers: 3, en: "hero companies about testimonials achievements highlights process services featuredPlans offers faq contact", seeded: "hero about highlights process services faq contact" },
+    modern: { offers: 3, en: "hero companies services featuredPlans offers process about achievements testimonials faq contact", seeded: "hero services process about faq contact" },
+    minimal: { offers: 3, en: "hero about achievements companies services process faq testimonials offers featuredPlans contact", seeded: "hero about services process faq contact" },
+    spotlight: { offers: 6, en: "hero offers services process featuredPlans testimonials about contact", seeded: "hero services process about contact" },
+    guide: { offers: 3, en: "hero featuredPlans offers about companies testimonials highlights faq contact", seeded: "hero about highlights faq contact" },
+  };
+  const homeIds = (h) => [...h.matchAll(/<(?:header|section) class="sec sec-[^"]*" id="([^"]+)"/g)].map((m) => m[1]).join(" ");
+  ok("Home (DECISIONS #131, #132): each template's strategy order (the demo and a brand-new agent), its offer count with 'All offers', testimonials (≤ 3, 'More from my customers'), one wording for plan links, plan types before offers on Insurance", () => {
+    const seeded = fx("sample-seeded");
+    assert.equal(new Set(Object.values(STRATEGY).map((x) => x.en)).size, 5, "five different strategies");
+    const many = (arr, k) => Array.from({ length: k }, (_, i) => ({ ...arr[i % arr.length], id: `x${i}`, title: `Offer ${i + 1}`, quote: `Quote number ${i + 1}` }));
+    const big = { ...en, content: { ...en.content, testimonials: { ...en.content.testimonials, items: many(en.content.testimonials.items, 5) } }, offers: { featured: null, items: many(en.offers.items, 9) } };
+    for (const k of TEMPLATE_KEYS) {
+      assert.equal(homeIds(page(en, k, "")), STRATEGY[k].en, k + ": the strategy's order");
+      assert.equal(homeIds(page(seeded, k, "")), STRATEGY[k].seeded, k + ": a brand-new agent's Home still pitches");
+      // the agent's own order doesn't change Home (it still orders the inner pages)
+      const reordered = { ...en, content: { ...en.content, sectionOrder: [...(en.content.sectionOrder || [])].reverse() } };
+      assert.equal(homeIds(page(reordered, k, "")), STRATEGY[k].en, k + ": the strategy owns Home's order");
+      const h = page(en, k, "");
+      assert.ok(!h.includes(esc(dicts.en["site.more_reviews"])), k + ": 2 quotes, no 'more' link");
+      const b = page(big, k, ""), q = secOf(b, "testimonials"), o = secOf(b, "offers");
+      assert.equal(count(q, /Quote number \d/g), 3, k + ": three quotes on Home");
+      assert.ok(q.includes(`<a class="lnk" href="/a/demo/about#testimonials">${esc(dicts.en["site.more_reviews"])}</a>`), k);
+      // the whole page (Spotlight shows the first offers in its hero): exactly the strategy's number of live offers
+      assert.equal(new Set([...b.matchAll(/>Offer (\d+)</g)].map((m) => m[1])).size, STRATEGY[k].offers, k + ": the strategy's offers on Home");
+      assert.ok(o.includes(`href="/a/demo/insurance#offers">${esc(dicts.en["site.offers_all"])}</a>`), k + ": All offers");
+      // one wording per destination (DECISIONS #131): "See plans" to a plan type's page, "View plan" to a plan's page
+      for (const pg of ["", "insurance", "insurance/term"]) { const x = page(en, k, pg); assert.ok(!/>See plan</.test(x) && !x.includes(">Other plans<"), `${k} ${pg}`); }
+      assert.ok(page(en, k, "insurance").includes(`>${dicts.en["site.see_plans"]}<`), k);
+      const ins = page(en, k, "insurance");
+      const at = (id) => ins.indexOf(`id="${id}"`);
+      if (at("services") >= 0) assert.ok(at("services") < at("offers"), k + ": plan types before the offers on Insurance");
+    }
+  });
+  ok("Home says why each section matters (DECISIONS #132): the strategy's lead under the h2; 'How working with me goes' with 4 steps and the agent's fee line; the strategy's button", () => {
+    const fee = en.content.about && en.content.about.feeNote;
+    const withFee = { ...en, content: { ...en.content, about: { ...en.content.about, feeNote: "No fee for my advice." } } };
+    for (const k of TEMPLATE_KEYS) {
+      const h = page(withFee, k, "");
+      for (const id of homeIds(h).split(" ")) {
+        const lead = dicts.en[`site.lead_${k}_${id}`];
+        if (lead) assert.ok(secOf(h, id).includes(`<p class="lead sub">${esc(lead)}</p>`), `${k} ${id}: its lead`);
+      }
+      if (k !== "guide") {
+        const pr = secOf(h, "process");
+        for (const n of [1, 2, 3, 4]) assert.ok(pr.includes(esc(dicts.en[`site.process_${n}`])), `${k}: step ${n}`);
+        assert.ok(pr.includes("No fee for my advice."), k + ": the fee line");
+      } else assert.ok(h.includes('class="steps"') && h.includes("No fee for my advice."), "guide: its own steps strip with the fee line");
+      assert.ok(!page({ ...en, content: { ...en.content, about: { ...en.content.about, feeNote: "" } } }, k, "").includes('class="fee"'), k + ": no fee line when the agent cleared it");
+      const btn = dicts.en[`site.cta_${k}`];
+      if (btn && k !== "guide") assert.ok(secOf(h, "hero").includes(`>${esc(btn)}</a>`), k + ": the strategy's button");
+    }
+    void fee;
+  });
+  ok("About: the story header (photo 4:5, <h1>, designation, bio, counting numbers, languages, agency code), its sections, help band", () => {
     for (const k of TEMPLATE_KEYS) {
       const h = page(en, k, "about");
       const head = between(h, '<header class="sec sec-ph" id="top">', "</header>");
@@ -166,7 +243,6 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(head.includes('<strong class="cu">12</strong>') && head.includes("English, Hindi, Marathi"), k);
       if (k !== "minimal") assert.ok(head.includes('<img class="ph-photo"') && head.includes('width="640" height="800"'), k);
       assert.ok(!h.includes('id="about"'), k + ": the about section isn't repeated under its own header");
-      assert.ok(h.includes('<div class="ticker tk-cos"') && h.includes('<ul class="icards stg">') && h.includes('<ol class="tline stg">') && h.includes('<div class="slider sl-sq"'), k);
     }
   });
   ok("Contact: header, ways to reach me (Call / WhatsApp / Email cards), the address card, the enquiry form unchanged (ids, consent, privacy link), FAQ beside the portal card; no help band", () => {
@@ -181,10 +257,11 @@ export async function run({ ok, R, dicts, catalog, schema, fx, makeT, TEMPLATE_K
       assert.ok(h.includes('href="/a/demo/my/login"'), k + ": the customer login stays in the menu");
     }
   });
-  ok("Home: the template's hero and teasers (a few plan cards to their pages, 'All insurance plans', a short about with 'More about me', the contact band); no FAQ or form", () => {
+  ok("Home: the template's hero and teasers (a few plan cards to their pages, 'All insurance plans', a short about with 'More about me', at most 3 FAQ answers, the contact band); no form", () => {
     for (const k of TEMPLATE_KEYS) {
       const h = page(en, k, "");
-      assert.ok(h.includes('id="hero"') && !h.includes('id="faq"') && !h.includes('id="enq"'), k);
+      assert.ok(h.includes('id="hero"') && !h.includes('id="enq"'), k);
+      assert.ok(count(secOf(h, "faq"), /<details/g) <= 3, k + ": at most 3 answers on Home");
       assert.ok(h.includes(`<a class="lnk" href="/a/demo/insurance">${dicts.en["site.plan_back"]}</a>`), k + " all plans");
       assert.ok(h.includes(`<a class="lnk" href="/a/demo/about">${dicts.en["site.more_about"]}</a>`), k + " more about me");
       assert.ok(h.includes('<div class="cband">') && h.includes('href="/a/demo/contact#enq"'), k + " contact band");

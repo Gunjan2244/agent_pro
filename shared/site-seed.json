@@ -205,6 +205,11 @@
             "hindi"
           ]
         }
+      },
+      "feeNote": {
+        "variants": [
+          "seed.about.fee_note"
+        ]
       }
     },
     "services": {

@@ -68,7 +68,8 @@ const askLink = (ctx, p, cls = "btn") => { const h = contactHref(ctx, p.interest
 //   head: the page header's text column (crumb, <h1>, company, facts, actions); pic: the plan's picture;
 //   facts: a facts row (plan number, UIN, type, company); features, about, offer, docs, talk, similar: sections'
 //   inner HTML (each starts with its <h2>); checks: the features as a checklist (Spotlight); docTiles: the documents
-//   as tiles (Spotlight); compare: similar plans as rows (Guide); ask: Call / WhatsApp / Ask buttons.
+//   as tiles (Spotlight); compare: similar plans as rows (Guide); ask: Call / WhatsApp / Ask buttons;
+//   featuresBody, docsBody: the features and the documents without their <h2> (a template that titles them itself).
 export function planParts(ctx) {
   const p = pagePlan(ctx);
   if (!p) return null;
@@ -79,7 +80,7 @@ export function planParts(ctx) {
   const tags = [type, ...(facts ? facts.split(" · ") : [])].filter(Boolean).map((x) => `<span class="pill">${esc(x)}</span>`).join("");
   const actions = [askLink(ctx, p), waLink(ctx)].filter(Boolean).join("");
   const head = `${crumb(ctx)}<h1>${esc(p.name)}</h1><p class="pl-co">${esc(co)}</p>${tags ? `<p class="pl-tags">${tags}</p>` : ""}${actions ? `<p class="ph-act">${actions}</p>` : ""}`;
-  const pic = planPicture(ctx, p, { sizes: "(min-width: 1024px) 520px, (min-width: 720px) 45vw, 100vw", eager: true });
+  const pic = planPicture(ctx, p, { sizes: "(min-width: 1024px) 520px, (min-width: 720px) 45vw, 100vw", eager: true, large: true });
   const factRows = [
     p.plan_no ? [tr(ctx, "site.pp_fact_no"), p.plan_no] : null,
     p.uin ? [tr(ctx, "site.pp_fact_uin"), p.uin] : null,
@@ -103,7 +104,8 @@ export function planParts(ctx) {
     src = `<p class="pl-src">${from ? `<a href="${esc(from)}"${goAttrs(ctx)}>${esc(site)}</a>` : esc(site)}${when ? ` · ${esc(tr(ctx, "site.pp_src_checked", { date: when }))}` : ""}</p>`;
   }
   const fh = `<h2>${esc(tr(ctx, "site.pp_features"))}</h2>`;
-  const features = kf.length ? `${fh}<ul class="pl-kf">${kf.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>${src}` : "";
+  const featuresBody = kf.length ? `<ul class="pl-kf">${kf.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>${src}` : "";
+  const features = featuresBody ? fh + featuresBody : "";
   const numbered = kf.length ? `${fh}<ol class="pl-kf num">${kf.map((f) => `<li>${esc(f)}</li>`).join("")}</ol>${src}` : "";
   const checks = kf.length ? `${fh}<ul class="pl-checks">${kf.map((f) => `<li>${icon("check")}<span>${esc(f)}</span></li>`).join("")}</ul>${src}` : "";
 
@@ -115,9 +117,11 @@ export function planParts(ctx) {
   const offer = offers.length ? `<h2>${esc(tr(ctx, offers.length === 1 ? "site.pp_offer" : "site.pp_offers"))}</h2><ul class="offers${offers.length > 1 ? " two" : ""}">${offers.map((o) => offerCard(o, ctx, { image: false, noPlan: true })).join("")}</ul>${disc}` : "";
 
   const docs = planDocs(p);
-  const dh = `<h2>${esc(tr(ctx, "site.pp_docs", { company: co }))}</h2><p class="pl-docs-l">${esc(tr(ctx, "site.pp_docs_lead", { company: co }))}</p>`;
+  const dlead = `<p class="pl-docs-l">${esc(tr(ctx, "site.pp_docs_lead", { company: co }))}</p>`;
+  const dh = `<h2>${esc(tr(ctx, "site.pp_docs", { company: co }))}</h2>${dlead}`;
   const docLabel = (d) => tr(ctx, "site.pp_doc_" + d);
-  const docsHtml = docs.length ? `${dh}<ul class="pl-docs">${docs.map((d) => `<li><a href="${esc(goHref(ctx, p, d))}"${goAttrs(ctx)}>${icon("description")}<span class="pd-n">${esc(docLabel(d))}</span><span class="pd-w">${icon("open_in_new")}<span class="vh">${esc(tr(ctx, "site.pp_doc_on", { company: co }))}</span></span></a></li>`).join("")}</ul>` : "";
+  const docsBody = docs.length ? `${dlead}<ul class="pl-docs">${docs.map((d) => `<li><a href="${esc(goHref(ctx, p, d))}"${goAttrs(ctx)}>${icon("description")}<span class="pd-n">${esc(docLabel(d))}</span><span class="pd-w">${icon("open_in_new")}<span class="vh">${esc(tr(ctx, "site.pp_doc_on", { company: co }))}</span></span></a></li>`).join("")}</ul>` : "";
+  const docsHtml = docsBody ? `<h2>${esc(tr(ctx, "site.pp_docs", { company: co }))}</h2>${docsBody}` : "";
   const docTiles = docs.length ? `${dh}<ul class="pl-tiles">${docs.map((d) => `<li><a class="card" href="${esc(goHref(ctx, p, d))}"${goAttrs(ctx)}>${icon("description")}<strong>${esc(docLabel(d))}</strong><span class="pd-w">${esc(tr(ctx, "site.pp_doc_on", { company: co }))}</span></a></li>`).join("")}</ul>` : "";
 
   const call = tel(ctx.phone);
@@ -130,12 +134,12 @@ export function planParts(ctx) {
   const sim = [...others.filter((x) => x.interest === p.interest), ...others.filter((x) => x.interest !== p.interest && x.company === co)].slice(0, 3);
   const simH = `<h2>${esc(tr(ctx, "site.pp_similar"))}</h2>`;
   const similar = sim.length ? `${simH}<ul class="pcards">${sim.map((x) => planCard(ctx, x)).join("")}</ul>` : "";
-  const compare = sim.length ? `<h2>${esc(tr(ctx, "site.pp_compare"))}</h2><ul class="prows">${sim.map((x) => planRow(ctx, x)).join("")}</ul>` : "";
+  const compare = sim.length ? `${simH}<ul class="prows">${sim.map((x) => planRow(ctx, x)).join("")}</ul>` : "";
   const similarRows = sim.length ? `${simH}<ul class="prows numbered">${sim.map((x, i) => planRow(ctx, x, { n: i + 1 })).join("")}</ul>` : "";
   const similarList = sim.length ? `${simH}<ul class="prows">${sim.map((x) => planRow(ctx, x)).join("")}</ul>` : "";
   const fine = tr(ctx, "site.iplans_fine");
 
-  return { p, head, pic, tags, actions, facts: factsRow, features, numbered, checks, about, offer, offers, docs: docsHtml, docTiles, talk, ask, similar, similarRows, similarList, compare, fine: fine ? `<p class="fine disc">${esc(fine)}</p>` : "" };
+  return { p, head, pic, tags, actions, facts: factsRow, features, numbered, checks, about, offer, offers, docs: docsHtml, docsBody, featuresBody, docTiles, talk, ask, similar, similarRows, similarList, compare, fine: fine ? `<p class="fine disc">${esc(fine)}</p>` : "" };
 }
 
 // Helpers for the templates' arrangements. Every element with an <h2> is a <section> (one heading per section);
