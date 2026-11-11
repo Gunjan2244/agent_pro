@@ -165,8 +165,8 @@ Home has at most 3 blocks, top to bottom:
    - "{n} follow-ups today"
    - "{n} premiums due this week · ₹x"
 
-   With nothing due, a single line reads "Nothing due today".
-3. **This month:** two `KpiTile`s side by side, "Enquiries" (with the change) and "Premium due (30d)". Below them, one chart card, "Enquiries per week", and a **See insights** link.
+   With nothing due, a single line reads "Nothing due today". The rows open Enquiries (new enquiries, follow-ups) and Customers (premiums).
+3. **This month:** two `KpiTile`s side by side, "Enquiries" (with the change) and "Premium due (30d)". Below them, one chart card, "Enquiries per week" (the last 8 weeks), and a **See insights** link. The Home screen scrolls. > TODO(doc): the See insights link isn't built; it comes with the Insights screen.
 
 **While setup is incomplete,** a single compact row appears above Today: "Finish setup · 2 of 5". It opens a checklist sheet covering profile, publishing the site, **making your About section your own** (done when `about.bio` in the draft is not blank and is none of the seeded bio variants in any language, so unique text can rank), sharing the link and adding a first customer, plus (each only when its feature is on) **Add your companies** and **Give a customer their login** (DECISIONS #103).
 - **Every step is tappable (DECISIONS #105, supersedes the next-only rule of #103).** The first undone item, in order, shows a primary icon and title with "Next step" under it as the suggestion, but no step blocks another. Order: Profile, Companies, Publish, About, Share, First customer, Customer login. Items whose feature is off are hidden and not counted ("1 of 7").

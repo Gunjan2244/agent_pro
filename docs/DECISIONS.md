@@ -1236,3 +1236,21 @@ This log is append-only. Each entry is numbered and dated. To reverse a decision
   - **Budgets raised (user's choice):** 800 px ≤ 90 KB (was 45) and 400 px ≤ 30 KB (was 18). The grain doubles the file size, and lower quality smears it. `web/images` grows from 640 KB to 2.1 MB; phones load the 400 px files (9–30 KB).
   - **Offer pictures are never cropped:** Trusted Advisor's offer slider and Offer Showcase's wide first card used to stretch the picture to the card's height. With text on the picture, they now keep it 16:9.
 - **Status:** Accepted. Built locally 2026-11-05; not committed, not deployed.
+
+## 134. Home's Today and This month are computed from the local cache by one pure object (2026-11-09)
+- **Context:** Home showed only the setup row, "Nothing due today" and the What's new sheet (user: "i dont think the home screen should only contain a whats new").
+- **Decision:** build the two blocks UX.md already specified. `HomeSummary` (pure, in `feature/home`) computes them from the cached enquiries and policies, so Home works offline and needs no new RPC or migration. "Due this week" is active policies due in 0–7 days (as `DueBuckets`' week); "Premium due (30d)" is 0–30 days; follow-ups count open enquiries whose follow-up date is today or earlier; the change is the last 30 days against the 30 before. Overdue premiums are not in "due this week": they stay in Customers → Dues.
+- **Scope cut:** no "See insights" link until the Insights screen exists. No What's new item (nothing existing agents must act on).
+- **Trade-off:** the numbers are computed on the phone from the whole cache on each change; fine for an agent's volumes, revisit if lists reach tens of thousands.
+- **Status:** Accepted. Built locally 2026-11-09; not committed.
+
+## 135. Play releases are signed with an upload key kept outside the repo, and the release placeholders are filled (2026-11-11)
+- **Context:** the user asked for an `.aab` to upload to the Play Store. `:androidApp` had no release signing, and the earlier bundles in `~/AgentPRO-test/` were signed with the Android **debug** key, which Play Console rejects. `bundleRelease` was also blocked by the release gate (`verifyReleaseReady`) because the privacy notices still had the grievance officer and email provider placeholders.
+- **Decision:**
+  - **Upload key:** a new PKCS12 keystore `~/.config/agentpro-release/upload-keystore.jks` (alias `agentpro-upload`, RSA 4096, valid 10,000 days, `CN=Agent PRO, O=Sledje Softwares, C=IN`). Its random password is in `upload-keystore.credentials` beside it (both mode 600, folder 700). Upload-key SHA-1 `30:A0:47:F8:B9:9D:F9:EC:DA:D6:EE:B3:9E:55:44:A9:2A:A2:56:CB`.
+  - **Play App Signing:** Google holds the app-signing key; this key only signs uploads. If it is lost, the upload key can be reset through Play Console support, so the app is never locked out.
+  - **Gradle:** `androidApp/build.gradle.kts` reads `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD` from the git-ignored `mobile/local.properties`. Without `RELEASE_STORE_FILE`, release builds stay unsigned, so a fresh checkout still builds.
+  - **Release placeholders (the user's values):** grievance officer **Gunjan**, `support@eagle.org.in`, `+91 96615 22005`; email provider **Google (Gmail)** (the Supabase custom SMTP, #68). The notices go to `agent_signup` v3 and `enquiry_form` v2, and the generated `20261111133054_catalog_sync.sql` carries the new hashes.
+- **Trade-off:** the keystore lives on one laptop. **Back it up** (password manager, plus an offline copy).
+- **Must happen before the bundle reaches any user:** apply `20261111133054_catalog_sync.sql` to `AGENT_PRO`, or the server refuses the v3 sign-up consent. Push the web renderer so the enquiry form sends `enquiry_form` v2. The server keeps accepting the old versions' hashes, so the order doesn't break live sites.
+- **Status:** Accepted. Built 2026-11-11; not committed, the migration is not applied, and nothing is uploaded.

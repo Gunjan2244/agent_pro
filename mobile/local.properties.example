@@ -8,3 +8,9 @@ SITE_BASE_URL=https://<renderer-domain>
 # Google sign-in (DECISIONS #112): the OAuth "Web application" client ID from Google Cloud, also entered in
 # Supabase → Authentication → Providers → Google. Empty hides "Continue with Google" (email sign-up stays).
 GOOGLE_WEB_CLIENT_ID=<id>.apps.googleusercontent.com
+# Play upload key for release builds (DECISIONS #135). Keep the keystore outside the repo and back it up.
+# Empty or missing: bundleRelease/assembleRelease produce an unsigned build.
+RELEASE_STORE_FILE=/home/<user>/.config/agentpro-release/upload-keystore.jks
+RELEASE_STORE_PASSWORD=<password>
+RELEASE_KEY_ALIAS=agentpro-upload
+RELEASE_KEY_PASSWORD=<password>

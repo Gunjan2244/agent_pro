@@ -794,7 +794,7 @@
       "key": "agent_signup",
       "labelKey": "privacy.agent_signup.title",
       "order": 1,
-      "version": 2,
+      "version": 3,
       "textKeys": [
         "privacy.agent_signup.consent",
         "privacy.agent_signup.title",
@@ -837,7 +837,7 @@
       "key": "enquiry_form",
       "labelKey": "privacy.enquiry_form.title",
       "order": 2,
-      "version": 1,
+      "version": 2,
       "textKeys": [
         "privacy.enquiry_form.consent",
         "privacy.enquiry_form.link",

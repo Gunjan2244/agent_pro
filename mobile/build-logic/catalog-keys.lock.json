@@ -169,12 +169,20 @@
       "2": {
         "en": "cd74628e3d65b64615dde4d2cc30f4649a3f441cad77b8737330b2fecca6fcd2",
         "hi": "6b8d88a471e6ed7bc97acf9e5f8e10eb51f3ca9c4b399d481527c13440cf3cc2"
+      },
+      "3": {
+        "en": "4f232a5741ea53093251c2d9d8e3284b762f2128f5f7547f0dea11ad68a72a57",
+        "hi": "0009adb6a11bc1b7a229f0777ba366eb917d6330da1d285ceb07de5e940e73a0"
       }
     },
     "enquiry_form": {
       "1": {
         "en": "62c47ee389319fa4cfd147ba2fd1ea14350e8b9201bedd650334a1823584e6d7",
         "hi": "940db3dec13cabfe503f2394d063bbe8d699fd89669d8169c6511860fff2ad51"
+      },
+      "2": {
+        "en": "c18ebdeaf3c73f84c806e2ab1c0b4dbb4564327c62ecfe7704fada60f3717fae",
+        "hi": "8ef8a0d13edaf02e314d410989e9f2333210614a8f2f8d0b892a7777836c0ce2"
       }
     },
     "agent_customer_duty": {

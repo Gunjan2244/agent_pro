@@ -247,4 +247,21 @@
     <string name="validation_must_be_true">जारी रखने के लिए पुष्टि करें</string>
     <string name="validation_too_far_ahead">आज से %1$d दिनों के भीतर की तारीख चुनें</string>
     <string name="form_item_needs_confirmation">प्रकाशित करने से पहले जानकारी की पुष्टि करें</string>
+    <string name="home_section_today">आज</string>
+    <string name="home_section_month">इस महीने</string>
+    <plurals name="home_new_enquiries">
+        <item quantity="one">%1$d नई पूछताछ</item>
+        <item quantity="other">%1$d नई पूछताछ</item>
+    </plurals>
+    <plurals name="home_follow_ups">
+        <item quantity="one">आज %1$d फ़ॉलो-अप</item>
+        <item quantity="other">आज %1$d फ़ॉलो-अप</item>
+    </plurals>
+    <string name="home_dues_week">इस हफ़्ते %1$d प्रीमियम बाकी · %2$s</string>
+    <string name="home_kpi_enquiries">पूछताछ</string>
+    <string name="home_kpi_premium">बाकी प्रीमियम (30 दिन)</string>
+    <string name="home_kpi_change">पिछले 30 दिनों से %1$d%%</string>
+    <string name="home_chart_title">हर हफ़्ते की पूछताछ</string>
+    <string name="home_chart_takeaway">पिछले %2$d हफ़्तों में %1$d पूछताछ</string>
+    <string name="home_chart_series">पूछताछ</string>
 </resources>

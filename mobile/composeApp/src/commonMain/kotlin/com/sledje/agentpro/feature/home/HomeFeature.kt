@@ -31,6 +31,31 @@ import com.sledje.agentpro.core.designsystem.Spacing
 import com.sledje.agentpro.core.designsystem.components.AppBottomSheet
 import com.sledje.agentpro.core.designsystem.components.AvatarButton
 import com.sledje.agentpro.core.designsystem.components.HairlineDivider
+import com.sledje.agentpro.core.designsystem.components.ChartCard
+import com.sledje.agentpro.core.designsystem.components.KpiDelta
+import com.sledje.agentpro.core.designsystem.components.KpiTile
+import com.sledje.agentpro.core.designsystem.components.SectionHeader
+import com.sledje.agentpro.core.designsystem.ChartData
+import com.sledje.agentpro.core.designsystem.ChartKind
+import com.sledje.agentpro.core.designsystem.ChartSeries
+import com.sledje.agentpro.core.format.Dates
+import com.sledje.agentpro.core.format.Money
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import org.jetbrains.compose.resources.pluralStringResource
+import com.sledje.agentpro.resources.home_new_enquiries
+import com.sledje.agentpro.resources.home_follow_ups
+import com.sledje.agentpro.resources.home_dues_week
+import com.sledje.agentpro.resources.home_section_today
+import com.sledje.agentpro.resources.home_section_month
+import com.sledje.agentpro.resources.home_kpi_enquiries
+import com.sledje.agentpro.resources.home_kpi_premium
+import com.sledje.agentpro.resources.home_kpi_change
+import com.sledje.agentpro.resources.home_chart_title
+import com.sledje.agentpro.resources.home_chart_takeaway
+import com.sledje.agentpro.resources.home_chart_series
 import com.sledje.agentpro.core.designsystem.components.ListLeading
 import com.sledje.agentpro.core.designsystem.components.ListRow
 import com.sledje.agentpro.core.designsystem.components.NavRow
@@ -106,6 +131,8 @@ object HomeFeature : AppFeature {
                 state,
                 onOpenSettings = host::openSettings,
                 onSetupItem = { host.openSetupItem(it) },
+                onOpenEnquiries = { host.openTab("enquiries") },
+                onOpenCustomers = { host.openTab("customers") },
                 onWhatsNewItem = { item ->
                     vm.markWhatsNewSeen()
                     host.openWhatsNewItem(item)
@@ -188,6 +215,8 @@ data class HomeUiState(
     val items: List<SetupItem> = SetupItem.entries.toList(),
     val whatsNew: List<WhatsNewItem> = emptyList(),
     val walkthrough: List<WhatsNewItem> = emptyList(),
+    val today: TodaySummary = TodaySummary(),
+    val month: MonthSummary = MonthSummary(),
 ) {
     val doneCount: Int get() = items.count { it in done }
     val setupComplete: Boolean get() = items.all { it in done }
@@ -238,8 +267,15 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
         deps.sites.observeMine(),
         deps.featureFlags,
         marks,
-        combine(deps.customers.observeAll(), companiesLinked) { customers, linked -> customers.isNotEmpty() to linked },
-    ) { profile, site, flags, (shared, invited, seen), (hasCustomers, linked) ->
+        combine(deps.customers.observeAll(), companiesLinked, deps.enquiries.observeAll(), deps.policies.observeAll()) { customers, linked, enquiries, policies ->
+            Crm(customers.isNotEmpty(), linked, enquiries, policies)
+        },
+    ) { profile, site, flags, (shared, invited, seen), crm ->
+        val hasCustomers = crm.hasCustomers
+        val linked = crm.companiesLinked
+        val enquiries = crm.enquiries
+        val policies = crm.policies
+        val today = Dates.today()
         val news = WhatsNew.pending(WhatsNew.seenVersion(seen, profile?.whatsNewSeen), hasSite = site != null, enabled = flags::isEnabled)
         HomeUiState(
             firstName = profile?.firstName,
@@ -257,6 +293,8 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
             },
             whatsNew = WhatsNew.sheet(news),
             walkthrough = WhatsNew.walkthrough(news),
+            today = HomeSummary.today(enquiries, policies, today),
+            month = HomeSummary.month(enquiries, policies, today),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
@@ -274,6 +312,13 @@ class HomeViewModel(private val deps: AppDependencies) : ViewModel() {
     }
 }
 
+private data class Crm(
+    val hasCustomers: Boolean,
+    val companiesLinked: Boolean,
+    val enquiries: List<com.sledje.agentpro.feature.enquiries.data.Enquiry>,
+    val policies: List<com.sledje.agentpro.feature.policies.data.Policy>,
+)
+
 /** The draft's `hero.photo` URL, null when unset. */
 internal fun Site.heroPhoto(): String? =
     ((draftContent[StarterContent.HERO] as? JsonObject)?.get(StarterContent.PHOTO) as? kotlinx.serialization.json.JsonPrimitive)
@@ -288,6 +333,8 @@ fun HomeScreen(
     state: HomeUiState,
     onOpenSettings: () -> Unit,
     onSetupItem: (SetupItem) -> Unit = {},
+    onOpenEnquiries: () -> Unit = {},
+    onOpenCustomers: () -> Unit = {},
     onWhatsNewItem: (WhatsNewItem) -> Unit = {},
     onWhatsNewSeen: () -> Unit = {},
 ) {
@@ -298,7 +345,7 @@ fun HomeScreen(
         titleText = title,
         trailing = { AvatarButton(state.firstName.orEmpty(), stringResource(Res.string.action_settings), onOpenSettings, photoUrl = state.photoUrl) },
     ) {
-        Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             if (!state.setupComplete) {
                 NavRow(
                     title = stringResource(Res.string.home_setup_row, state.doneCount, state.items.size),
@@ -306,12 +353,8 @@ fun HomeScreen(
                 )
                 HairlineDivider()
             }
-            Text(
-                stringResource(Res.string.home_nothing_due),
-                style = AgentProTheme.text.body,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(Spacing.m),
-            )
+            TodayBlock(state.today, onOpenEnquiries, onOpenCustomers)
+            MonthBlock(state.month)
         }
     }
     if (sheet) {
@@ -352,4 +395,65 @@ fun ColumnScope.SetupChecklistContent(state: HomeUiState, onItem: (SetupItem) ->
             muted = !tappable,
         )
     }
+}
+
+/** The "Today" block: up to 3 rows, zero counts hidden; "Nothing due today" when all are zero. */
+@Composable
+private fun TodayBlock(today: TodaySummary, onOpenEnquiries: () -> Unit, onOpenCustomers: () -> Unit) {
+    SectionHeader(stringResource(Res.string.home_section_today))
+    if (today.isEmpty) {
+        Text(
+            stringResource(Res.string.home_nothing_due),
+            style = AgentProTheme.text.body,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(Spacing.m),
+        )
+        return
+    }
+    if (today.newEnquiries > 0) {
+        NavRow(pluralStringResource(Res.plurals.home_new_enquiries, today.newEnquiries, today.newEnquiries), onOpenEnquiries)
+        HairlineDivider()
+    }
+    if (today.followUpsToday > 0) {
+        NavRow(pluralStringResource(Res.plurals.home_follow_ups, today.followUpsToday, today.followUpsToday), onOpenEnquiries)
+        HairlineDivider()
+    }
+    if (today.duesThisWeek > 0) {
+        NavRow(
+            stringResource(Res.string.home_dues_week, today.duesThisWeek, Money.format(today.duesThisWeekAmount)),
+            onOpenCustomers,
+        )
+        HairlineDivider()
+    }
+}
+
+/** The "This month" block: two tiles and the weekly enquiries chart. Hidden until there is something to show. */
+@Composable
+private fun MonthBlock(month: MonthSummary) {
+    SectionHeader(stringResource(Res.string.home_section_month))
+    val change = month.enquiryChangePercent
+    Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.m), horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        KpiTile(
+            label = stringResource(Res.string.home_kpi_enquiries),
+            value = month.enquiries.toString(),
+            modifier = Modifier.weight(1f),
+            delta = change?.takeIf { it != 0 }?.let { KpiDelta(up = it > 0, text = stringResource(Res.string.home_kpi_change, kotlin.math.abs(it))) },
+        )
+        KpiTile(
+            label = stringResource(Res.string.home_kpi_premium),
+            value = Money.compact(month.premiumDue30d),
+            modifier = Modifier.weight(1f),
+        )
+    }
+    val name = stringResource(Res.string.home_chart_series)
+    ChartCard(
+        title = stringResource(Res.string.home_chart_title),
+        takeaway = stringResource(Res.string.home_chart_takeaway, month.weekly.sumOf { it.second }, month.weekly.size),
+        data = ChartData(
+            kind = ChartKind.Column,
+            xLabels = month.weekly.map { it.first.day.toString() },
+            series = listOf(ChartSeries(name, month.weekly.map { it.second.toDouble() })),
+        ),
+        modifier = Modifier.padding(Spacing.m),
+    )
 }

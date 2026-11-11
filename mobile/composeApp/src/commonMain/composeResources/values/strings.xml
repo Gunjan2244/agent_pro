@@ -250,4 +250,21 @@
     <string name="validation_must_be_true">Please confirm to continue</string>
     <string name="validation_too_far_ahead">Choose a date within %1$d days from today</string>
     <string name="form_item_needs_confirmation">Confirm the details before publishing</string>
+    <string name="home_section_today">Today</string>
+    <string name="home_section_month">This month</string>
+    <plurals name="home_new_enquiries">
+        <item quantity="one">%1$d new enquiry</item>
+        <item quantity="other">%1$d new enquiries</item>
+    </plurals>
+    <plurals name="home_follow_ups">
+        <item quantity="one">%1$d follow-up today</item>
+        <item quantity="other">%1$d follow-ups today</item>
+    </plurals>
+    <string name="home_dues_week">%1$d premiums due this week · %2$s</string>
+    <string name="home_kpi_enquiries">Enquiries</string>
+    <string name="home_kpi_premium">Premium due (30d)</string>
+    <string name="home_kpi_change">%1$d%% vs last 30 days</string>
+    <string name="home_chart_title">Enquiries per week</string>
+    <string name="home_chart_takeaway">%1$d enquiries in the last %2$d weeks</string>
+    <string name="home_chart_series">Enquiries</string>
 </resources>

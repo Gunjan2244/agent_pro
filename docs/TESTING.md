@@ -8,6 +8,7 @@
   - `:build-logic:test` runs the codegen and verifier unit tests (also `./gradlew -p build-logic test`).
   - After changing `shared/`, run `./gradlew generateShared` first. It writes the `catalog_sync` migration, `shared/generated/privacy-notices.json` and updates the keys lockfile; otherwise `verifyShared` fails and says why.
   - **Before any release** (app or web), run `./gradlew verifyReleaseReady`: it fails while fill-in placeholders such as `{GRIEVANCE_EMAIL}` remain in `shared/i18n` (Android release builds run it automatically).
+  - **Play bundle check:** after `./gradlew :androidApp:bundleRelease`, run `keytool -printcert -jarfile androidApp/build/outputs/bundle/release/androidApp-release.aab`. The owner must be `CN=Agent PRO, O=Sledje Softwares` (the upload key, DECISIONS #135), never `CN=Android Debug`, which Play rejects.
   - In the iOS phase, on a Mac, add `:composeApp:iosSimulatorArm64Test`.
 - **Unit tests** live in `commonTest` so they run on every target (`domain/`, `core/`):
   - `DueDateCalculator`: every premium mode, month-end dates (31 Jan + 1 month), leap years, and policies started in the past.

@@ -3,6 +3,23 @@
 Newest entries go first. Each entry has a date, what changed, why, and the files touched.
 
 
+## 2026-11-11 — A signed Play Store bundle; the release placeholders are filled (DECISIONS #135; user request)
+- **Why:** the user asked for an `.aab` to upload to the Play Store. The earlier bundles in `~/AgentPRO-test/` (`AgentPRO.aab`, `AgentPRO-test-2026-11-06.aab`) are signed with `CN=Android Debug`, which Play rejects. The release gate also blocked `bundleRelease`.
+- **Upload key:** `~/.config/agentpro-release/upload-keystore.jks` (alias `agentpro-upload`) with its password in `upload-keystore.credentials`. Both are outside the repo, mode 600.
+- **Signing config:** `mobile/androidApp/build.gradle.kts` reads `RELEASE_*` from `mobile/local.properties` (git-ignored; filled in locally). Without them the release build is unsigned. `local.properties.example` documents the keys.
+- **Release gate filled (the user's values):** grievance officer Gunjan, `support@eagle.org.in`, `+91 96615 22005`; email provider "Google (Gmail)". This covers `shared/i18n/en.json` and `hi.json`. In `shared/catalog.json`, `agent_signup` goes to v3 and `enquiry_form` to v2. `generateShared` produced `supabase/migrations/20261111133054_catalog_sync.sql` (privacy notice functions only, **not applied**), `shared/generated/privacy-notices.json` and `mobile/build-logic/catalog-keys.lock.json`.
+- **Docs:** PRIVACY.md (Contact details, notice v3, gate row), ARCHITECTURE.md (release signing, local.properties), BACKEND.md (migration row), TESTING.md (bundle signer check), PRODUCT.md, STATUS.md.
+- **Verified:** `generateShared verifyShared verifyReleaseReady` pass; `:androidApp:bundleRelease` succeeded: 23.8 MB, signer `CN=Agent PRO, O=Sledje Softwares, C=IN` (`keytool -printcert -jarfile`), copied to `~/AgentPRO-test/AgentPRO-release-2026-11-11-v1.aab`. **Not run:** the full app suite, lint, and a phone install of the release build.
+
+## 2026-11-09 — Home gets its Today and This month blocks (DECISIONS #134; user request)
+- **Why:** the user said Home should not contain only "What's new". It held the greeting, the setup row, a fixed "Nothing due today" line and the What's new sheet: the Today and This month blocks in UX.md were never built (Phase 11).
+- **Home now shows,** under the optional "Finish setup" row, and scrolls:
+  - **Today:** "{n} new enquiries" and "{n} follow-ups today" (both open Enquiries), "{n} premiums due this week · ₹x" (opens Customers); zero rows hidden; "Nothing due today" when all are zero.
+  - **This month:** two `KpiTile`s ("Enquiries" in the last 30 days with the change against the 30 before, and "Premium due (30d)") and the "Enquiries per week" chart (last 8 weeks, with View as table).
+- **Not done:** the **See insights** link, since the Insights screen does not exist yet (Phase 11 stays unticked).
+- **Files:** `feature/home/HomeSummary.kt` (new, pure), `feature/home/HomeFeature.kt`, `commonTest/.../home/HomeSummaryTest.kt` (new, 4 tests), strings EN + HI (`home_section_*`, `home_new_enquiries`, `home_follow_ups`, `home_dues_week`, `home_kpi_*`, `home_chart_*`), UX.md, PRODUCT.md, STATUS.md.
+- **Verified:** `generateShared verifyShared`, `:composeApp:testAndroidHostTest --tests '*feature.home*'` (30 tests, 0 failures). **Not run:** the full app suite and screenshot verify (the Home baselines will differ), lint, a phone check. The Hindi strings are drafts.
+
 ## 2026-11-05 — The bold pictures are in; offer pictures never cropped; What's new `BoldPictures` (DECISIONS #133; user request)
 - **Why:** the user generated the pictures from `design/site-images/PROMPTS.md` into `pictures/` ("the pictures are in pictures folder") and chose to raise the size limits to keep the print grain ("ok do it").
 - **Pictures:** 27 of the user's 33 files were copied as masters into `design/site-images/source/` (trimmed to exact 16:9 where they were 1 px off) and converted with `scripts/gen-site-images.py` into `web/images/` (25 names, 2.1 MB).
